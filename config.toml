@@ -1,8 +1,8 @@
 project_name = "MoneyPrinterTurboCN"
-project_version = "2.0.1"
+project_version = "2.0.3"
 
 [app]
-video_source = "pixabay"
+video_source = "pexels"
 hide_config = false
 pexels_api_keys = [ "***REMOVED***", "***REMOVED***",]
 pixabay_api_keys = [ "***REMOVED***",]
