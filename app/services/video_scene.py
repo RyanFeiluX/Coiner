@@ -1,0 +1,697 @@
+import os
+import random
+import gc
+import time
+from typing import List
+
+from loguru import logger
+from moviepy import (
+    AudioFileClip,
+    VideoFileClip,
+    concatenate_videoclips,
+)
+
+from app.config import config
+from app.models.schema import (
+    VideoAspect,
+    VideoConcatMode,
+    VideoTransitionMode,
+)
+from app.services.utils import video_effects
+from app.services.video_utils import (
+    SubClippedVideoClip,
+    memory_safe_operation,
+    memory_safe_wait,
+    close_clip,
+    crop_clip_to_target,
+    fit_intro_video_to_target,
+)
+from app.services.video_target import finalize_video
+from moviepy import ImageClip
+
+
+@memory_safe_operation
+def process_scene_videos(
+    scene_video_paths: List[str],
+    video_aspect: VideoAspect,
+    video_concat_mode: VideoConcatMode,
+    video_transition_mode: VideoTransitionMode,
+    max_clip_duration: int,
+    local_video_paths: List[str] = None,
+) -> List:
+    """
+    Process videos for a single scene
+    
+    Args:
+        scene_video_paths: List of video paths for the scene
+        video_aspect: Video aspect ratio
+        video_concat_mode: Video concatenation mode
+        video_transition_mode: Video transition mode
+        max_clip_duration: Maximum clip duration
+        local_video_paths: List of local video paths
+    
+    Returns:
+        List of processed video clips
+    """
+    aspect = VideoAspect(video_aspect)
+    video_width, video_height = aspect.to_resolution()
+    
+    logger.debug(f"process_scene_videos - video_aspect: {video_aspect}, width: {video_width}, height: {video_height}")
+    
+    processed_clips = []
+    subclipped_items = []
+    
+    # Process videos
+    for i, video_path in enumerate(scene_video_paths):
+        try:
+            # Check memory before processing each video
+            memory_safe_wait()
+            
+            clip = VideoFileClip(video_path)
+            clip_duration = clip.duration
+            clip_w, clip_h = clip.size
+            close_clip(clip)
+            
+            start_time = 0
+
+            while start_time < clip_duration:
+                end_time = min(start_time + max_clip_duration, clip_duration)            
+                subclip = SubClippedVideoClip(file_path= video_path, start_time=start_time, end_time=end_time, width=clip_w, height=clip_h)
+                subclipped_items.append(subclip)
+                
+                start_time = end_time    
+                if video_concat_mode.value == VideoConcatMode.sequential.value:
+                    break
+        except Exception as e:
+            logger.error(f"failed to process video file {video_path}: {str(e)}")
+            # Release memory in case of error
+            gc.collect()
+            continue
+
+    # Apply concat mode to scene's video clips
+    if video_concat_mode.value == VideoConcatMode.random.value:
+        random.shuffle(subclipped_items)
+    
+    # Process subclips
+    for i, subclipped_item in enumerate(subclipped_items):
+        try:
+            # Check memory before processing each subclip
+            memory_safe_wait()
+            
+            clip = VideoFileClip(subclipped_item.file_path).subclipped(subclipped_item.start_time, subclipped_item.end_time)
+            clip_duration = clip.duration
+            
+            # Resize if needed
+            clip_w, clip_h = clip.size
+            if clip_w != video_width or clip_h != video_height:
+                clip_ratio = clip.w / clip.h
+                video_ratio = video_width / video_height
+                
+                # Use unified crop function
+                is_local = local_video_paths and subclipped_item.file_path in local_video_paths
+                if is_local:
+                    max_scale = 5.0  # Allow up to 500% upscaling for local materials
+                    logger.debug(f"Processing LOCAL clip {i}: {subclipped_item.file_path}, target: {video_width}x{video_height}, max_scale: {max_scale}")
+                else:
+                    max_scale = 1.5 if video_aspect == VideoAspect.portrait_3_4 else 1.10
+                    logger.debug(f"Processing ONLINE clip {i}: {subclipped_item.file_path}, target: {video_width}x{video_height}, max_scale: {max_scale}")
+                
+                # Check memory before crop
+                memory_safe_wait()
+                
+                old_clip = clip
+                clip = crop_clip_to_target(clip, video_width, video_height, max_scale=max_scale)
+                
+                # Close old clip to release memory
+                try:
+                    if old_clip is not clip:
+                        close_clip(old_clip)
+                except Exception as e:
+                    logger.debug(f"Error closing old clip: {e}")
+                
+                if clip is None:
+                    if local_video_paths and subclipped_item.file_path in local_video_paths:
+                        logger.warning(f"Local clip {i+1} could not be processed even with relaxed quality constraints, skipping")
+                    else:
+                        logger.warning(f"Online clip {i+1} could not be processed within quality constraints, skipping")
+                    continue
+            
+            # Apply transitions
+            shuffle_side = random.choice(["left", "right", "top", "bottom"])
+            if video_transition_mode and video_transition_mode.value == VideoTransitionMode.none.value:
+                clip = clip
+            elif video_transition_mode and video_transition_mode.value == VideoTransitionMode.fade_in.value:
+                old_clip = clip
+                clip = video_effects.fadein_transition(clip,1)
+                try:
+                    if old_clip is not clip:
+                        close_clip(old_clip)
+                except Exception as e:
+                    logger.debug(f"Error closing old clip: {e}")
+            elif video_transition_mode and video_transition_mode.value == VideoTransitionMode.fade_out.value:
+                old_clip = clip
+                clip = video_effects.fadeout_transition(clip,1)
+                try:
+                    if old_clip is not clip:
+                        close_clip(old_clip)
+                except Exception as e:
+                    logger.debug(f"Error closing old clip: {e}")
+            elif video_transition_mode and video_transition_mode.value == VideoTransitionMode.slide_in.value:
+                old_clip = clip
+                clip = video_effects.slidein_transition(clip,1, shuffle_side)
+                try:
+                    if old_clip is not clip:
+                        close_clip(old_clip)
+                except Exception as e:
+                    logger.debug(f"Error closing old clip: {e}")
+            elif video_transition_mode and video_transition_mode.value == VideoTransitionMode.slide_out.value:
+                old_clip = clip
+                clip = video_effects.slideout_transition(clip,1, shuffle_side)
+                try:
+                    if old_clip is not clip:
+                        close_clip(old_clip)
+                except Exception as e:
+                    logger.debug(f"Error closing old clip: {e}")
+            elif video_transition_mode and video_transition_mode.value == VideoTransitionMode.shuffle.value:
+                transition_funcs = [
+                    lambda c: video_effects.fadein_transition(c,1),
+                    lambda c: video_effects.fadeout_transition(c,1),
+                    lambda c: video_effects.slidein_transition(c,1, shuffle_side),
+                    lambda c: video_effects.slideout_transition(c,1, shuffle_side),
+                ]
+                shuffle_transition = random.choice(transition_funcs)
+                old_clip = clip
+                clip = shuffle_transition(clip)
+                try:
+                    if old_clip is not clip:
+                        close_clip(old_clip)
+                except Exception as e:
+                    logger.debug(f"Error closing old clip: {e}")
+
+            # Check brightness and filter out dark videos
+            brightness_threshold = config.app.get("video_brightness_threshold", 0.3)
+            try:
+                brightness = video_effects.detect_brightness(clip)
+                logger.debug(f"Clip brightness: {brightness:.3f}, threshold: {brightness_threshold}")
+                
+                if brightness < brightness_threshold:
+                    logger.warning(f"Skipping dark video clip (brightness: {brightness:.3f} < {brightness_threshold})")
+                    close_clip(clip)
+                    continue
+            except Exception as e:
+                logger.debug(f"Error detecting brightness: {e}, continuing with clip")
+            
+            # Apply brightness and contrast enhancement
+            brightness_factor = config.app.get("video_brightness", 1.0)
+            contrast_factor = config.app.get("video_contrast", 1.0)
+            
+            if brightness_factor != 1.0:
+                old_clip = clip
+                clip = video_effects.brightness_enhance(clip, brightness_factor)
+                try:
+                    if old_clip is not clip:
+                        close_clip(old_clip)
+                except Exception as e:
+                    logger.debug(f"Error closing old clip: {e}")
+            
+            if contrast_factor != 1.0:
+                old_clip = clip
+                clip = video_effects.contrast_enhance(clip, contrast_factor)
+                try:
+                    if old_clip is not clip:
+                        close_clip(old_clip)
+                except Exception as e:
+                    logger.debug(f"Error closing old clip: {e}")
+
+            if clip.duration > max_clip_duration:
+                old_clip = clip
+                clip = clip.subclipped(0, max_clip_duration)
+                try:
+                    if old_clip is not clip:
+                        close_clip(old_clip)
+                except Exception as e:
+                    logger.debug(f"Error closing old clip: {e}")
+            
+            # Check memory before adding to processed clips
+            memory_safe_wait()
+            
+            # Track source path for local material usage tracking
+            clip.source_path = subclipped_item.file_path
+            processed_clips.append(clip)
+            
+            # Release memory more frequently
+            if len(processed_clips) % 3 == 0:
+                logger.debug(f"Releasing memory after processing {len(processed_clips)} clips")
+                gc.collect()
+                
+        except Exception as e:
+            logger.error(f"failed to process clip {i+1}: {str(e)}")
+            # Release memory in case of error
+            gc.collect()
+            continue
+    
+    # Final memory cleanup
+    gc.collect()
+    return processed_clips
+
+def combine_scene_clips(
+    scene_clips: List,
+    audio_duration: float,
+) -> tuple:
+    """
+    Combine clips for a single scene, handling duration matching
+    
+    Args:
+        scene_clips: List of processed clips for the scene
+        audio_duration: Target audio duration
+    
+    Returns:
+        Tuple of (processed_clips, used_source_paths) where used_source_paths is a list of source paths actually used
+    """
+    processed_clips = []
+    used_source_paths = []
+    video_duration = 0
+    
+    # Calculate total duration of provided clips
+    total_clips_duration = sum(clip.duration for clip in scene_clips)
+    
+    # If total duration is already enough, use them
+    if total_clips_duration >= audio_duration:
+        logger.info(f"Total clips duration ({total_clips_duration:.2f}s) is already enough for audio duration ({audio_duration:.2f}s), no looping needed")
+        # Add clips until reaching audio duration
+        for i, clip in enumerate(scene_clips):
+            # Track source path for local material usage tracking
+            source_path = getattr(clip, 'source_path', None)
+            
+            # Check if adding this clip would exceed audio duration
+            if video_duration + clip.duration > audio_duration:
+                # Trim the clip to fit exactly
+                remaining_duration = audio_duration - video_duration
+                if remaining_duration > 0:
+                    # If remaining duration is less than 1 second, use last frame of previous clip as still image
+                    if remaining_duration < 1.0 and i > 0:
+                        logger.info(f"Last clip would be {remaining_duration:.2f}s (< 1s), using still frame from previous clip to avoid visual flash")
+                        # Get the last frame from the previous clip
+                        prev_clip = processed_clips[-1]
+                        last_frame = prev_clip.to_ImageClip()
+                        last_frame = last_frame.with_duration(remaining_duration)
+                        # Copy source_path from previous clip for tracking
+                        last_frame.source_path = used_source_paths[-1]
+                        processed_clips.append(last_frame)
+                        used_source_paths.append(used_source_paths[-1])
+                        video_duration = audio_duration
+                    else:
+                        logger.info(f"Trimming last clip from {clip.duration:.2f}s to {remaining_duration:.2f}s to match audio duration")
+                        clip = clip.subclipped(0, remaining_duration)
+                        if source_path:
+                            clip.source_path = source_path
+                        used_source_paths.append(source_path)
+                        processed_clips.append(clip)
+                        video_duration = audio_duration
+                break
+            used_source_paths.append(source_path)
+            processed_clips.append(clip)
+            video_duration += clip.duration
+            
+            # Release memory periodically
+            if len(processed_clips) % 10 == 0:
+                gc.collect()
+        return processed_clips, used_source_paths
+    
+    # Add clips from the scene
+    for i, clip in enumerate(scene_clips):
+        # Track source path for local material usage tracking
+        source_path = getattr(clip, 'source_path', None)
+        
+        # Check if adding this clip would exceed audio duration
+        if video_duration + clip.duration > audio_duration:
+            # Trim the clip to fit exactly
+            remaining_duration = audio_duration - video_duration
+            if remaining_duration > 0:
+                # If remaining duration is less than 1 second, use last frame of previous clip as still image
+                if remaining_duration < 1.0 and i > 0:
+                    logger.info(f"Last clip would be {remaining_duration:.2f}s (< 1s), using still frame from previous clip to avoid visual flash")
+                    # Get the last frame from the previous clip
+                    prev_clip = processed_clips[-1]
+                    last_frame = prev_clip.to_ImageClip()
+                    last_frame = last_frame.with_duration(remaining_duration)
+                    # Copy source_path from previous clip for tracking
+                    last_frame.source_path = used_source_paths[-1]
+                    processed_clips.append(last_frame)
+                    used_source_paths.append(used_source_paths[-1])
+                    video_duration = audio_duration
+                else:
+                    logger.info(f"Trimming last clip from {clip.duration:.2f}s to {remaining_duration:.2f}s to match audio duration")
+                    clip = clip.subclipped(0, remaining_duration)
+                    if source_path:
+                        clip.source_path = source_path
+                    used_source_paths.append(source_path)
+                    processed_clips.append(clip)
+                    video_duration = audio_duration
+            break
+        used_source_paths.append(source_path)
+        processed_clips.append(clip)
+        video_duration += clip.duration
+        
+        # Release memory periodically
+        if len(processed_clips) % 10 == 0:
+            gc.collect()
+    
+    # Loop if needed to match audio duration
+    if video_duration < audio_duration:
+        logger.warning(f"video duration ({video_duration:.2f}s) is shorter than audio duration ({audio_duration:.2f}s), looping clips to match audio length.")
+        base_duration = video_duration
+        if base_duration <= 0:
+            logger.error(f"video duration is zero or negative ({video_duration:.2f}s), cannot loop clips")
+            return [], []
+        num_loops = int(audio_duration / base_duration) + 1
+        logger.info(f"Need {num_loops} loops to match audio duration")
+        
+        # Only keep base clips in memory and reuse them
+        base_clips = processed_clips.copy()
+        base_source_paths = used_source_paths.copy()
+        for i in range(num_loops - 1):
+            for j, clip in enumerate(base_clips):
+                if video_duration >= audio_duration:
+                    break
+                # Reuse clip without copying source_path (it already has it)
+                processed_clips.append(clip)
+                used_source_paths.append(base_source_paths[j])
+                video_duration += clip.duration
+                # Release memory periodically
+                if len(processed_clips) % 10 == 0:
+                    gc.collect()
+        logger.info(f"video duration: {video_duration:.2f}s, audio duration: {audio_duration:.2f}s, looped {len(processed_clips)-len(base_clips)} clips")
+        # Force garbage collection after loop
+        gc.collect()
+    
+    return processed_clips, used_source_paths
+
+
+def combine_early_scenes(
+    scene_clips_list: List[List],
+    audio_duration: float,
+) -> List:
+    """
+    Combine multiple scenes while maintaining scene order
+    
+    Args:
+        scene_clips_list: List of processed clips for each scene
+        audio_duration: Target audio duration
+    
+    Returns:
+        List of clips ready for final concatenation
+    """
+    processed_clips = []
+    video_duration = 0
+    
+    # Add clips from each scene in order
+    for scene_index, scene_clips in enumerate(scene_clips_list):
+        logger.info(f"Adding clips from scene {scene_index + 1}")
+        for clip in scene_clips:
+            if video_duration > audio_duration:
+                break
+            processed_clips.append(clip)
+            video_duration += clip.duration
+            
+            # Release memory periodically
+            if len(processed_clips) % 10 == 0:
+                gc.collect()
+    
+    # Loop if needed to match audio duration
+    if video_duration < audio_duration:
+        logger.warning(f"video duration ({video_duration:.2f}s) is shorter than audio duration ({audio_duration:.2f}s), looping clips to match audio length.")
+        base_duration = video_duration
+        if base_duration <= 0:
+            logger.error(f"video duration is zero or negative ({video_duration:.2f}s), cannot loop clips")
+            return []
+        num_loops = int(audio_duration / base_duration) + 1
+        logger.info(f"Need {num_loops} loops to match audio duration")
+        
+        # Only keep base clips in memory and reuse them
+        base_clips = processed_clips.copy()
+        for i in range(num_loops - 1):
+            for clip in base_clips:
+                if video_duration >= audio_duration:
+                    break
+                processed_clips.append(clip)
+                video_duration += clip.duration
+                # Release memory periodically
+                if len(processed_clips) % 10 == 0:
+                    gc.collect()
+        logger.info(f"video duration: {video_duration:.2f}s, audio duration: {audio_duration:.2f}s, looped {len(processed_clips)-len(base_clips)} clips")
+        # Force garbage collection after loop
+        gc.collect()
+    
+    return processed_clips
+
+
+def build_scene_video(
+    combined_video_path: str,
+    video_paths: List[str],
+    audio_file: str,
+    video_aspect: VideoAspect = VideoAspect.portrait,
+    video_concat_mode: VideoConcatMode = VideoConcatMode.random,
+    video_transition_mode: VideoTransitionMode = None,
+    max_clip_duration: int = 5,
+    threads: int = 2,
+    scene_info: str = None,
+    local_video_paths: List[str] = None,
+    intro_video_path: str = None,
+    intro_duration: int = 10,
+    is_first_scene: bool = False,
+) -> str:
+    # Ensure video_aspect is a valid VideoAspect enum
+    if video_aspect is None:
+        video_aspect = VideoAspect.portrait
+    elif isinstance(video_aspect, str):
+        try:
+            video_aspect = VideoAspect(video_aspect)
+        except ValueError:
+            logger.warning(f"Invalid video aspect '{video_aspect}', defaulting to 9:16")
+            video_aspect = VideoAspect.portrait
+    
+    # For 3:4 aspect ratio, we output 9:16 video with pillarboxing
+    # This ensures the video fits mobile screens while maintaining 3:4 content area
+    is_pillarbox_mode = video_aspect == VideoAspect.portrait_3_4
+    
+    if is_pillarbox_mode:
+        logger.info(f"3:4 aspect ratio selected - outputting as 9:16 with pillarboxing")
+    
+    logger.debug(f"build_scene_video - Using aspect ratio: {video_aspect.value}")
+    
+    # Handle audio_file being None (scene videos already contain audio)
+    if audio_file:
+        audio_clip = AudioFileClip(audio_file)
+        audio_duration = audio_clip.duration
+        logger.info(f"audio duration: {audio_duration} seconds")
+        # Close audio_clip immediately after getting duration, we'll reopen it later if needed
+        close_clip(audio_clip)
+        audio_clip = None
+    else:
+        # Calculate total video duration from scene videos
+        audio_duration = 0
+        for video_path in video_paths:
+            try:
+                clip = VideoFileClip(video_path)
+                audio_duration += clip.duration
+                close_clip(clip)
+            except Exception as e:
+                logger.error(f"Failed to get duration for {video_path}: {e}")
+        logger.info(f"Total video duration: {audio_duration} seconds")
+    
+    output_dir = os.path.dirname(combined_video_path)
+
+    # Process intro video separately if provided
+    intro_clips = []
+    logger.info(f"build_scene_video - intro_video_path received: {intro_video_path}")
+    total_intro_duration = 0
+    has_enough_intro = False
+    
+    if intro_video_path:
+        # Check if intro video exists
+        if os.path.exists(intro_video_path):
+            logger.info(f"Found intro video: {intro_video_path}")
+            # Process intro video
+            try:
+                # Check if intro video is actually an image
+                if intro_video_path.endswith(('.png', '.jpg', '.jpeg', '.bmp')):
+                    # Handle static images with specified duration
+                    logger.info(f"Processing image as intro video with duration: {intro_duration:.1f}s")
+                    
+                    clip = ImageClip(intro_video_path).with_duration(intro_duration)
+                    clip_duration = intro_duration
+                    clip_w, clip_h = clip.size
+                    
+                    aspect = VideoAspect(video_aspect)
+                    video_width, video_height = aspect.to_resolution()
+                    
+                    logger.debug(f"Intro video processing - video_aspect input: {video_aspect}")
+                    logger.debug(f"Intro video processing - VideoAspect enum: {aspect}")
+                    logger.debug(f"Intro video processing - Resolution: {video_width}x{video_height}")
+                    
+                    # Get intro video background configuration
+                    intro_bg_type = config.app.get("intro_video_bg_type", "solid")
+                    intro_bg_blur = config.app.get("intro_video_bg_blur", 15)
+                    intro_bg_color = config.app.get("intro_video_bg_color", "black")
+                    
+                    clip = fit_intro_video_to_target(clip, video_width, video_height, bg_color_str=intro_bg_color, bg_type=intro_bg_type, blur_radius=intro_bg_blur)
+                    
+                    brightness_factor = config.app.get("video_brightness", 1.0)
+                    contrast_factor = config.app.get("video_contrast", 1.0)
+                    
+                    if brightness_factor != 1.0:
+                        clip = video_effects.brightness_enhance(clip, brightness_factor)
+                    
+                    if contrast_factor != 1.0:
+                        clip = video_effects.contrast_enhance(clip, contrast_factor)
+                    
+                    intro_clips.append(clip)
+                    total_intro_duration = clip_duration
+                    logger.info(f"Image intro video processed: {intro_video_path} (duration: {intro_duration:.1f}s)")
+                elif intro_video_path.endswith('.gif'):
+                    # Handle animated GIF as video
+                    logger.info(f"Processing animated GIF as intro video")
+                    
+                    clip = VideoFileClip(intro_video_path)
+                    clip_duration = clip.duration
+                    clip_w, clip_h = clip.size
+                    
+                    if clip_duration > intro_duration:
+                        clip = clip.subclip(0, intro_duration)
+                        clip_duration = intro_duration
+                    
+                    aspect = VideoAspect(video_aspect)
+                    video_width, video_height = aspect.to_resolution()
+                    
+                    logger.debug(f"Intro video processing - video_aspect input: {video_aspect}")
+                    logger.debug(f"Intro video processing - VideoAspect enum: {aspect}")
+                    logger.debug(f"Intro video processing - Resolution: {video_width}x{video_height}")
+                    
+                    # Get intro video background configuration
+                    intro_bg_type = config.app.get("intro_video_bg_type", "solid")
+                    intro_bg_blur = config.app.get("intro_video_bg_blur", 15)
+                    intro_bg_color = config.app.get("intro_video_bg_color", "black")
+                    
+                    clip = fit_intro_video_to_target(clip, video_width, video_height, bg_color_str=intro_bg_color, bg_type=intro_bg_type, blur_radius=intro_bg_blur)
+                    
+                    brightness_factor = config.app.get("video_brightness", 1.0)
+                    contrast_factor = config.app.get("video_contrast", 1.0)
+                    
+                    if brightness_factor != 1.0:
+                        clip = video_effects.brightness_enhance(clip, brightness_factor)
+                    
+                    if contrast_factor != 1.0:
+                        clip = video_effects.contrast_enhance(clip, contrast_factor)
+                    
+                    intro_clips.append(clip)
+                    total_intro_duration = clip_duration
+                    logger.info(f"Animated GIF intro video processed: {intro_video_path} (duration: {clip_duration:.1f}s)")
+                else:
+                    clip = VideoFileClip(intro_video_path)
+                    clip_duration = clip.duration
+                    clip_w, clip_h = clip.size
+                    close_clip(clip)
+                    
+                    start_time = 0
+                    end_time = min(start_time + intro_duration, clip_duration)
+                    subclip = SubClippedVideoClip(file_path=intro_video_path, start_time=start_time, end_time=end_time, width=clip_w, height=clip_h)
+                    
+                    aspect = VideoAspect(video_aspect)
+                    video_width, video_height = aspect.to_resolution()
+                    
+                    clip = VideoFileClip(subclip.file_path).subclipped(subclip.start_time, subclip.end_time)
+                    
+                    # Use fit_intro_video_to_target for intro videos - always scale to fit without cropping
+                    # Get intro video background configuration
+                    intro_bg_type = config.app.get("intro_video_bg_type", "solid")
+                    intro_bg_blur = config.app.get("intro_video_bg_blur", 15)
+                    intro_bg_color = config.app.get("intro_video_bg_color", "black")
+                    
+                    clip = fit_intro_video_to_target(clip, video_width, video_height, bg_color_str=intro_bg_color, bg_type=intro_bg_type, blur_radius=intro_bg_blur)
+                    
+                    brightness_factor = config.app.get("video_brightness", 1.0)
+                    contrast_factor = config.app.get("video_contrast", 1.0)
+                    
+                    if brightness_factor != 1.0:
+                        clip = video_effects.brightness_enhance(clip, brightness_factor)
+                    
+                    if contrast_factor != 1.0:
+                        clip = video_effects.contrast_enhance(clip, contrast_factor)
+                    
+                    intro_clips.append(clip)
+                    total_intro_duration = clip.duration
+                    logger.info(f"Video intro processed: {intro_video_path}")
+            except Exception as e:
+                logger.error(f"Failed to process intro video: {str(e)}")
+            
+            # Remove intro video from regular video paths if it exists
+            normalized_intro_path = os.path.abspath(intro_video_path)
+            video_paths = [path for path in video_paths if os.path.abspath(path) != normalized_intro_path]
+        else:
+            logger.warning(f"Intro video path does not exist: {intro_video_path}")
+    else:
+        logger.info("No intro video provided")
+    
+    # Check if intro duration is enough to cover audio duration
+    if intro_clips and total_intro_duration >= audio_duration:
+        logger.info(f"Intro video duration ({total_intro_duration:.2f}s) is enough to cover audio duration ({audio_duration:.2f}s). Only using intro video.")
+        
+        # Trim intro video if it exceeds audio duration
+        if total_intro_duration > audio_duration:
+            intro_clip = intro_clips[0]
+            remaining_duration = audio_duration
+            if remaining_duration > 0:
+                logger.info(f"Trimming intro video from {intro_clip.duration:.2f}s to {remaining_duration:.2f}s to match audio duration")
+                trimmed_clip = intro_clip.subclipped(0, remaining_duration)
+                intro_clips = [trimmed_clip]
+                total_intro_duration = audio_duration
+                logger.info(f"Intro video trimmed, new duration: {total_intro_duration:.2f}s")
+        
+        all_clips = intro_clips
+        has_enough_intro = True
+    else:
+        # Process regular videos as a single scene
+        scene_clips = process_scene_videos(
+            scene_video_paths=video_paths,
+            video_aspect=video_aspect,
+            video_concat_mode=video_concat_mode,
+            video_transition_mode=video_transition_mode,
+            max_clip_duration=max_clip_duration,
+            local_video_paths=local_video_paths
+        )
+        
+        # Combine intro clips with scene clips
+        all_clips = intro_clips + scene_clips
+    
+    # Check if we have any processed clips
+    if not all_clips:
+        logger.error("No video clips were successfully processed")
+        return None, []
+    
+    # Combine clips to match audio duration
+    processed_clips, used_source_paths = combine_scene_clips(
+        scene_clips=all_clips,
+        audio_duration=audio_duration
+    )
+    
+    # Filter used_source_paths to only include local materials (from local_video_paths)
+    used_local_paths = []
+    if local_video_paths:
+        for source_path in used_source_paths:
+            if source_path and source_path in local_video_paths:
+                used_local_paths.append(source_path)
+    
+    logger.info(f"Local materials actually used: {len(used_local_paths)} out of {len(local_video_paths) if local_video_paths else 0}")
+    
+    # Finalize video
+    result = finalize_video(
+        processed_clips=processed_clips,
+        combined_video_path=combined_video_path,
+        audio_file=audio_file,
+        threads=threads,
+        is_first_scene=is_first_scene
+    )
+    
+    # Return both the result and the used local paths for tracking
+    return result, used_local_paths
