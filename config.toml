@@ -1,9 +1,9 @@
 project_name = "MoneyPrinterTurboCN"
-project_version = "2.2.28.0"
+project_version = "2.2.28.1"
 
 [app]
 video_source = "pexels"
-hide_config = false
+host_visible = false
 pexels_api_keys = [ "***REMOVED***", "***REMOVED***",]
 pixabay_api_keys = [ "***REMOVED***",]
 llm_provider = "deepseek"
