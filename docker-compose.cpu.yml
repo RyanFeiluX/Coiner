@@ -1,0 +1,31 @@
+# Docker Compose configuration for CPU-only mode
+# Usage: docker-compose -f docker-compose.cpu.yml up -d
+#
+# Use this file when running on machines without NVIDIA GPU.
+# The FastAPI backend serves both the API and the Vue frontend static files.
+
+x-common-volumes: &common-volumes
+  - ./:/Coiner
+  - ./models:/Coiner/models
+  - ./config.toml:/Coiner/config.toml
+  - ./storage:/Coiner/storage
+  # Mount timezone files from host to use local time
+  - /etc/localtime:/etc/localtime:ro
+  - /etc/timezone:/etc/timezone:ro
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: "coiner-api"
+    ports:
+      - "8080:8080"
+    volumes: *common-volumes
+    restart: always
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Asia/Shanghai
+      - PYTHON_TZ=Asia/Shanghai
+      # Explicitly disable GPU
+      - CUDA_VISIBLE_DEVICES=""
