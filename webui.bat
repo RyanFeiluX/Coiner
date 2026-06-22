@@ -6,14 +6,31 @@ echo Starting Coiner with Vue frontend...
 
 set PYTHONPATH=%CD%
 
-rem Check if npm is available
-where npm >nul 2>&1
+rem Ensure local npm.cmd is in PATH if it exists
+if exist "%CD%\npm.cmd" (
+    set "PATH=%CD%;%PATH%"
+)
+
+rem Check if npm is available and working
+call npm.cmd --version >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo npm not found in PATH, trying to find Node.js...
-    if exist "C:\Program Files\nodejs" set "PATH=C:\Program Files\nodejs;%PATH%"
-    if exist "C:\Program Files (x86)\nodejs" set "PATH=C:\Program Files (x86)\nodejs;%PATH%"
-    if exist "%LOCALAPPDATA%\Programs\node" set "PATH=%LOCALAPPDATA%\Programs\node;%PATH%"
-    if exist "%USERPROFILE%\.trae-cn\sdks\versions\node\current" set "PATH=%USERPROFILE%\.trae-cn\sdks\versions\node\current;%PATH%"
+    echo npm not found or not working, installing npm...
+    node "%CD%\install-npm.js"
+    if %ERRORLEVEL% EQU 0 (
+        echo npm installed successfully
+        set "PATH=%CD%;%PATH%"
+    ) else (
+        echo Failed to install npm
+        pause
+        exit /b 1
+    )
+    rem Verify npm is now working
+    call npm.cmd --version >nul 2>&1
+    if %ERRORLEVEL% NEQ 0 (
+        echo npm still not working after installation
+        pause
+        exit /b 1
+    )
 )
 
 rem Activate conda environment
@@ -164,7 +181,7 @@ if "!PID_FOUND!" == "true" (
 rem Start backend
 if not defined SKIP_BACKEND (
     echo Starting backend API...
-    start "Backend API" cmd /c "cd /d %CD% && python main.py"
+    start "Backend API" cmd /d /e:on /v:on /c "cd /d %CD% && call conda activate condaenv-coiner && python main.py"
 
     rem Wait for backend to start
     echo Waiting for backend to start...
