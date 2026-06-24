@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.5.9"
+project_version = "2.6.0"
 
 [app]
 host_visible = false
@@ -54,6 +54,8 @@ video_brightness = 1.15
 video_contrast = 1.05
 video_concat_mode = "random"
 video_transition_mode = "Shuffle"
+# Minimum ratio of successful scenes to allow task completion (0.0 = disabled)
+min_scene_success_ratio = 0.9
 video_aspect = "square"
 video_clip_duration = 3
 video_count = 1

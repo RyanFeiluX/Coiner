@@ -1221,6 +1221,25 @@ def start_multi_scene(task_id, params: VideoParams, stop_at: str = "video", task
         return
     
     logger.success(f"successfully processed {len(scene_results)}/{total_scenes} scenes")
+
+    # Track scenes that failed for frontend notification
+    if len(scene_results) < total_scenes:
+        succeeded_indices = {r.get("scene_index", -1) for r in scene_results if r}
+        failed_indices = [i for i in range(total_scenes) if i not in succeeded_indices]
+        scene_loss_warning = f"{len(failed_indices)}/{total_scenes} scenes failed"
+        logger.warning(scene_loss_warning)
+
+        # Check against min_scene_success_ratio threshold
+        min_ratio = config.app.get("min_scene_success_ratio", 0.0)
+        if min_ratio > 0 and len(scene_results) / total_scenes < min_ratio:
+            logger.error(f"Scene success rate {len(scene_results)}/{total_scenes} "
+                         f"({len(scene_results)/total_scenes:.0%}) below threshold {min_ratio:.0%}")
+            logger.error("Failing task due to too many lost scenes")
+            sm.state.update_task(task_id, state=const.TASK_STATE_FAILED)
+            return
+    else:
+        failed_indices = []
+        scene_loss_warning = ""
     
     if stop_at == "audio":
         logger.info("Multi-scene: returning at stop_at='audio'")
@@ -1327,6 +1346,9 @@ def start_multi_scene(task_id, params: VideoParams, stop_at: str = "video", task
         "scenes": scenes,
         "scene_results": scene_results,
     }
+    if scene_loss_warning:
+        kwargs["scene_loss_warning"] = scene_loss_warning
+        kwargs["failed_scene_indices"] = failed_indices
     sm.state.update_task(
         task_id, state=const.TASK_STATE_COMPLETE, progress=100, **kwargs
     )
