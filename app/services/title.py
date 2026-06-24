@@ -152,10 +152,18 @@ def create_title_clip(
     max_width = video_width - margin_left_px - margin_right_px
     
     font_size = int(params.title_font_size)
+
+    # Convert points to pixel height: points are defined relative to PlayResY
+    # (= video_height), just like the subtitle ASS path.  At 72 DPI, 1 pt = 1 px,
+    # so the pixel height equals font_size * (video_height / PlayResY).
+    # Using PlayResY = 1080 as the typographic reference keeps title sizes
+    # visually consistent across resolutions (e.g. 72 pt ≈ 7 % of height).
+    _play_res_y = 1080
+    font_size_px = max(1, int(font_size * video_height / _play_res_y))
     
     # Load font first for accurate text measurement
     try:
-        font = ImageFont.truetype(font_path, font_size)
+        font = ImageFont.truetype(font_path, font_size_px)
     except Exception as e:
         logger.error(f"Failed to load font: {str(e)}")
         return None
@@ -228,7 +236,7 @@ def create_title_clip(
     
     for line in lines:
         if not line.strip():
-            line_heights.append(font_size * 1.2)
+            line_heights.append(font_size_px * 1.2)
             continue
         bbox = temp_draw.textbbox((0, 0), line, font=font, stroke_width=stroke_width)
         line_width = bbox[2] - bbox[0]
@@ -244,6 +252,10 @@ def create_title_clip(
     # This ensures we have a block that fills the available width, just like the preview
     img_width = int(max_width)
     img_height = total_height
+    
+    if img_height <= 0:
+        logger.error(f"Title image height is zero, cannot create clip")
+        return None
     
     logger.info(f"Setting image width to max_width={img_width} to match preview's text block size")
     
@@ -344,19 +356,19 @@ def create_title_clip(
     elif params.title_animation == "fade_out":
         img_clip = img_clip.with_effects([vfx.FadeOut(animation_duration)])
     elif params.title_animation == "slide_up":
-        img_clip = img_clip.with_position((block_x, video_height + img_height))
-        img_clip = img_clip.with_effects([vfx.MoveToTargetPosition(
-            (block_x, block_y) if block_y != "center" else (block_x, (video_height - img_height)/2),
-            duration=animation_duration
-        )])
+        start_y = max(0, video_height - 1)
+        end_y = block_y if block_y != "center" else (video_height - img_height) / 2
+        img_clip = img_clip.with_position(lambda t: (
+            block_x,
+            start_y + (end_y - start_y) * min(t / animation_duration, 1.0)
+        ))
     elif params.title_animation == "slide_down":
-        start_y = -img_height
-        end_y = block_y if block_y != "center" else (video_height - img_height)/2
-        img_clip = img_clip.with_position((block_x, start_y))
-        img_clip = img_clip.with_effects([vfx.MoveToTargetPosition(
-            (block_x, end_y),
-            duration=animation_duration
-        )])
+        start_y = min(video_height - img_height, 1 - img_height)
+        end_y = block_y if block_y != "center" else (video_height - img_height) / 2
+        img_clip = img_clip.with_position(lambda t: (
+            block_x,
+            start_y + (end_y - start_y) * min(t / animation_duration, 1.0)
+        ))
     
     return img_clip
 
@@ -422,6 +434,12 @@ def add_title_to_video(
         video_subclip.end = title_duration
         logger.debug(f"add_title_to_video - Set subclip duration to {title_duration}")
     layers.append(video_subclip)
+    
+    # Validate title clip has non-zero dimensions
+    if title_clip.h <= 0 or title_clip.w <= 0:
+        logger.error(f"Title clip has invalid dimensions: {title_clip.w}x{title_clip.h}, skipping title")
+        return video_clip
+    
     layers.append(title_clip)
     
     title_section = create_composite_video_clip(layers, size=(video_width, video_height))

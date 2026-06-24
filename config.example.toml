@@ -346,6 +346,30 @@ stroke_width = 1.5
 # Output background color
 output_bg_color = "black"
 
+# Title Settings
+# Enable title
+title_enabled = false
+# Title text
+title_text = ""
+# Title font name
+title_font_name = "MicrosoftYaHeiBold.ttc"
+# Title font size (in points)
+title_font_size = 72
+# Title text color (hex format)
+title_text_color = "#FFFFFF"
+# Title stroke color (hex format)
+title_stroke_color = "#000000"
+# Title stroke width
+title_stroke_width = 2.0
+# Title background color ("transparent" or hex color)
+title_background_color = "transparent"
+# Title position: "top", "center", "bottom"
+title_position = "center"
+# Title margin (percentage of video height)
+title_margin = 0.05
+# Title animation: "none", "fade", "slide_up", etc.
+title_animation = "none"
+
 [imagemagick]
 # ImageMagick path (only needed on Windows)
 imagemagick_path = "D:\\ProgramData\\ImageMagick-7.1.12-Q16\\magick.exe"

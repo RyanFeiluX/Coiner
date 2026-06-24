@@ -67,7 +67,7 @@
                 :show-input="true"
                 :input-size="'small'"
               />
-              <span class="slider-value">{{ form.titleFontSize }}px</span>
+              <span class="slider-value">{{ form.titleFontSize }}pt</span>
             </div>
           </div>
           
@@ -511,10 +511,10 @@ const previewStyle = computed(() => {
   const marginLeftPercent = form.titleMarginLeft;
   const marginRightPercent = form.titleMarginRight;
   
-  // Scale font size proportionally to the preview frame vs real video width (1080px)
-  const videoWidth = 1080;
-  const previewWidth = parseInt(previewFrameStyle.value.width);
-  const scaleFactor = previewWidth / videoWidth;
+  // Scale proportionally to preview frame vs real video (1080px height reference).
+  // Matches backend: font_size_px = fontSize * videoHeight / 1080  (title.py:162)
+  const previewHeight = parseInt(previewFrameStyle.value.height);
+  const scaleFactor = previewHeight / 1080;
   const scaledFontSize = Math.round(form.titleFontSize * scaleFactor);
   
   let topPosition: string;

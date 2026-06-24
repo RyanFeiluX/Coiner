@@ -558,8 +558,8 @@ def recover_scene_integration(request: Request, body: dict):
     start_scene = body.get("start_scene", 1)
     end_scene = body.get("end_scene", None)
     
-    # Extract subtitle parameters from request
-    subtitle_params = {
+    # Extract subtitle parameters from request (filter None so fallback chain works)
+    subtitle_params = {k: v for k, v in {
         'subtitle_enabled': body.get('subtitle_enabled'),
         'font_name': body.get('font_name'),
         'font_size': body.get('font_size'),
@@ -569,14 +569,14 @@ def recover_scene_integration(request: Request, body: dict):
         'stroke_width': body.get('stroke_width'),
         'subtitle_position': body.get('subtitle_position'),
         'custom_position': body.get('custom_position')
-    }
+    }.items() if v is not None}
     
-    # Extract BGM parameters from request
-    bgm_params = {
+    # Extract BGM parameters from request (filter None so fallback chain works)
+    bgm_params = {k: v for k, v in {
         'bgm_type': body.get('bgm_type'),
         'bgm_file': body.get('bgm_file'),
         'bgm_volume': body.get('bgm_volume')
-    }
+    }.items() if v is not None}
     
     if not task_id_or_path:
         raise HttpException(task_id="", status_code=400, message="Task ID or path is required")
