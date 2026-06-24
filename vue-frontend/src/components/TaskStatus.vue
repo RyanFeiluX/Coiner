@@ -70,6 +70,28 @@
                   <span class="error-message">{{ task.error }}</span>
                 </div>
               </div>
+
+              <div v-if="task.status === 'completed' && task.scene_loss_warning" class="scene-loss-banner">
+                <el-alert
+                  :title="task.scene_loss_warning"
+                  type="warning"
+                  show-icon
+                  :closable="false"
+                >
+                  <template #default>
+                    <span>{{ t('Some scenes were lost during generation. You can recover them via Scene Integration.') }}</span>
+                  </template>
+                </el-alert>
+                <el-button
+                  v-if="task.videos && task.videos.length > 0"
+                  type="primary"
+                  size="small"
+                  class="recover-btn"
+                  @click="navigateToSceneIntegration(task.task_id)"
+                >
+                  {{ t('Recover Lost Scenes') }}
+                </el-button>
+              </div>
               
               <div class="task-actions">
                 <!-- 下载按钮 - 仅在任务完成且有视频时显示 -->
@@ -125,6 +147,8 @@ interface Task {
   created_at?: string;
   updated_at?: string;
   sequence_number?: number;
+  scene_loss_warning?: string;
+  failed_scene_indices?: number[];
 }
 
 interface Props {
@@ -222,6 +246,10 @@ const formatDate = (dateString: string): string => {
 const handleDownload = (videoUrl: string) => {
   window.open(videoUrl, '_blank');
 };
+
+const navigateToSceneIntegration = (taskId: string) => {
+  window.location.href = `/#/scene-integration?original_task_id=${taskId}`;
+};
 </script>
 
 <style scoped>
@@ -282,6 +310,14 @@ const handleDownload = (videoUrl: string) => {
   display: flex;
   gap: 10px;
   margin-top: 15px;
+}
+
+.scene-loss-banner {
+  margin-bottom: 12px;
+}
+
+.scene-loss-banner .recover-btn {
+  margin-top: 8px;
 }
 
 /* 过渡效果 */

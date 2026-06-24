@@ -216,6 +216,10 @@ video_concat_mode = "sequential"
 # Video transition mode
 # Options: "none", "fade", "slide"
 video_transition_mode = "none"
+# Minimum ratio of successful scenes to allow task completion.
+# If the success rate drops below this threshold, the task will fail.
+# Set to 0.0 to disable (always produce output even with lost scenes).
+# min_scene_success_ratio = 0.0
 
 # Video aspect ratio
 # Options: "portrait_9_16", "portrait_3_4", "landscape_16_9", "square"

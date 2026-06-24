@@ -1,4 +1,5 @@
 import os
+import json
 import math
 import time
 from typing import List
@@ -120,6 +121,110 @@ def scan_task_files(task_id_or_path: str) -> dict:
     return result
 
 
+def _rebuild_scene_video(scene_info: dict, task_dir: str) -> str:
+    """
+    Rebuild a scene's combined.mp4 from its existing audio and re-downloaded materials.
+
+    Args:
+        scene_info: Scene info dict from scan_task_files (must contain scene_num, scene_dir, audio)
+        task_dir: Original task directory path
+
+    Returns:
+        Path to rebuilt combined.mp4, or None on failure
+    """
+    scene_dir = scene_info["scene_dir"]
+    audio_path = scene_info["audio"]
+    combined_path = scene_info.get("video") or os.path.join(scene_dir, "combined.mp4")
+
+    if not audio_path or not os.path.exists(audio_path):
+        return None
+
+    # Load script.json for scene search terms and params
+    script_path = os.path.join(task_dir, "script.json")
+    if not os.path.exists(script_path):
+        logger.warning(f"No script.json found in {task_dir}, cannot rebuild scene {scene_info['scene_num']}")
+        return None
+
+    try:
+        with open(script_path, "r", encoding="utf-8") as f:
+            script_data = json.loads(f.read())
+    except Exception as e:
+        logger.warning(f"Failed to read script.json: {e}")
+        return None
+
+    scenes = script_data.get("script", [])
+    terms_list = script_data.get("search_terms", [])
+    params_data = script_data.get("params", {})
+
+    scene_index = scene_info["scene_num"] - 1
+    if scene_index >= len(scenes) or scene_index >= len(terms_list):
+        logger.warning(f"Scene index {scene_index} out of range in script.json")
+        return None
+
+    scene = scenes[scene_index]
+    search_terms = terms_list[scene_index]
+
+    if not search_terms:
+        logger.warning(f"No search terms for scene {scene_info['scene_num']}, cannot rebuild")
+        return None
+
+    # Read app config for video settings
+    app_config = config.app
+
+    video_source = app_config.get("video_source", "pexels")
+    video_aspect_str = app_config.get("video_aspect", "portrait")
+    try:
+        video_aspect = VideoAspect(video_aspect_str)
+    except ValueError:
+        video_aspect = VideoAspect.portrait
+
+    video_concat_mode_str = app_config.get("video_concat_mode", "random")
+    try:
+        video_concat_mode = VideoConcatMode(video_concat_mode_str)
+    except ValueError:
+        video_concat_mode = VideoConcatMode.random
+
+    max_clip_duration = int(app_config.get("video_clip_duration", 5))
+    n_threads = int(app_config.get("n_threads", 2))
+
+    # Download video materials for this scene
+    from app.services.material import download_videos
+    downloaded = download_videos(
+        task_id=os.path.basename(task_dir),
+        search_terms=search_terms,
+        source=video_source,
+        video_aspect=video_aspect,
+        video_concat_mode=video_concat_mode,
+        audio_duration=0.0,
+        max_clip_duration=max_clip_duration,
+        style_keyword="",
+        target_number_of_clips=None,
+    )
+
+    if not downloaded:
+        logger.warning(f"No videos downloaded for scene {scene_info['scene_num']}, cannot rebuild")
+        return None
+
+    # Build scene video using existing audio
+    from app.services.video_scene import build_scene_video
+    result = build_scene_video(
+        combined_video_path=combined_path,
+        video_paths=downloaded,
+        audio_file=audio_path,
+        video_aspect=video_aspect,
+        video_concat_mode=video_concat_mode,
+        max_clip_duration=max_clip_duration,
+        threads=n_threads,
+        scene_info=f"(rebuild scene {scene_info['scene_num']})",
+    )
+
+    if result and os.path.exists(result):
+        logger.success(f"Rebuilt scene {scene_info['scene_num']} video: {result}")
+        return result
+
+    return None
+
+
 def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_scene=None, end_scene=None, task_id: str = None, subtitle_params: dict = None, bgm_params: dict = None, check_cancelled=None, task_create_time: float = None) -> str:
     """
     Recover video synthesis from existing task files.
@@ -191,46 +296,71 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
             return None
     
         task_dir = task_files["task_dir"]
-        valid_scenes = [s for s in task_files["scene_videos"] if s["video"] is not None]
-        
-        if not valid_scenes:
+        all_scenes = task_files["scene_videos"]
+
+        if not all_scenes:
             end_time = time.time()
             total_time = end_time - start_time
             hours, remainder = divmod(total_time, 3600)
             minutes, seconds = divmod(remainder, 60)
-            logger.error("No valid scenes found")
+            logger.error("No scene directories found in task directory")
             logger.info(f"Task duration: {int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}")
             sm.state.update_task(task_id, state=const.TASK_STATE_FAILED, progress=0)
             return None
+
+        total_available = len(all_scenes)
         
-        # Apply scene range filtering
-        # Default to first scene if start_scene not specified
+        # Apply scene range filtering on raw scenes (including missing ones)
         actual_start_scene = start_scene if start_scene is not None else 1
-        # Default to last scene if end_scene not specified
-        actual_end_scene = end_scene if end_scene is not None else len(task_files['scene_videos'])
+        actual_end_scene = end_scene if end_scene is not None else total_available
         
-        # Convert to 0-based indices
-        start_idx = actual_start_scene - 1
-        end_idx = actual_end_scene - 1
+        start_idx = max(0, actual_start_scene - 1)
+        end_idx = min(total_available - 1, actual_end_scene - 1)
         
-        # Ensure indices are within bounds
-        start_idx = max(0, start_idx)
-        end_idx = min(len(valid_scenes) - 1, end_idx)
+        scenes_in_range = all_scenes[start_idx:end_idx + 1]
         
-        # Filter scenes
-        valid_scenes = valid_scenes[start_idx:end_idx + 1]
-        
+        if not scenes_in_range:
+            end_time = time.time()
+            total_time = end_time - start_time
+            hours, remainder = divmod(total_time, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            logger.error("No scenes in the specified range")
+            logger.info(f"Task duration: {int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}")
+            sm.state.update_task(task_id, state=const.TASK_STATE_FAILED, progress=0)
+            return None
+
+        # Attempt to rebuild scenes with missing combined.mp4 but existing audio
+        rebuilt_count = 0
+        for scene_info in scenes_in_range:
+            if scene_info["video"] is not None and os.path.exists(scene_info["video"]):
+                continue  # already valid
+            if not scene_info.get("audio") or not os.path.exists(scene_info["audio"]):
+                logger.warning(f"Scene {scene_info['scene_num']}: video missing and no audio to rebuild from, skipping")
+                continue
+
+            logger.info(f"Scene {scene_info['scene_num']}: video missing, attempting rebuild from existing audio")
+            rebuilt_path = _rebuild_scene_video(scene_info, task_dir)
+            if rebuilt_path:
+                scene_info["video"] = rebuilt_path
+                rebuilt_count += 1
+                logger.success(f"Scene {scene_info['scene_num']}: rebuilt successfully: {rebuilt_path}")
+            else:
+                logger.warning(f"Scene {scene_info['scene_num']}: rebuild failed, scene will be skipped")
+
+        # Collect scenes that are now valid
+        valid_scenes = [s for s in scenes_in_range if s["video"] is not None and os.path.exists(s["video"])]
+
         if not valid_scenes:
             end_time = time.time()
             total_time = end_time - start_time
             hours, remainder = divmod(total_time, 3600)
             minutes, seconds = divmod(remainder, 60)
-            logger.error("No valid scenes in the specified range")
+            logger.error("No valid scenes after rebuild attempt")
             logger.info(f"Task duration: {int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}")
             sm.state.update_task(task_id, state=const.TASK_STATE_FAILED, progress=0)
             return None
-        
-        logger.info(f"Filtered to {len(valid_scenes)} valid scenes (range: {actual_start_scene}-{actual_end_scene})")
+
+        logger.info(f"Scenes in range: {len(scenes_in_range)}, rebuilt: {rebuilt_count}, valid: {len(valid_scenes)}")
         
         # Determine which audio and subtitle files to use
         subtitle_file = task_files["global_subtitle"]
