@@ -60,11 +60,11 @@
           <label class="form-label" v-html="parseLabelMarkdown(t('Video Transition Mode'))"></label>
           <el-select v-model="form.videoTransitionMode" :placeholder="t('Select transition mode')" class="form-select">
             <el-option :label="t('None')" value="none" />
-            <el-option :label="t('Shuffle')" value="shuffle" />
-            <el-option :label="t('FadeIn')" value="fade_in" />
-            <el-option :label="t('FadeOut')" value="fade_out" />
-            <el-option :label="t('SlideIn')" value="slide_in" />
-            <el-option :label="t('SlideOut')" value="slide_out" />
+            <el-option :label="t('Shuffle')" value="Shuffle" />
+            <el-option :label="t('FadeIn')" value="FadeIn" />
+            <el-option :label="t('FadeOut')" value="FadeOut" />
+            <el-option :label="t('SlideIn')" value="SlideIn" />
+            <el-option :label="t('SlideOut')" value="SlideOut" />
           </el-select>
         </div>
         

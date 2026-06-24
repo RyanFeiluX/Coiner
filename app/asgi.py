@@ -26,11 +26,11 @@ def exception_handler(request: Request, e: HttpException):
 
 
 def validation_exception_handler(request: Request, e: RequestValidationError):
+    errors = e.errors()
+    msg = errors[0].get("msg", "field required") if errors else "field required"
     return JSONResponse(
         status_code=400,
-        content=utils.get_response(
-            status=400, data=e.errors(), message="field required"
-        ),
+        content=utils.get_response(status=400, data=errors, message=msg),
     )
 
 
