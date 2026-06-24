@@ -1298,8 +1298,8 @@ def wrap_text(text, max_width, font="Arial", fontsize=60, auto_fit=False, min_fo
     Returns:
         Tuple of (wrapped_text, text_height, actual_font_size)
     """
-    actual_fontsize = fontsize
-    img_font = ImageFont.truetype(font, fontsize)
+    actual_fontsize = max(fontsize, 1)
+    img_font = ImageFont.truetype(font, actual_fontsize)
 
     def get_text_size(inner_text):
         inner_text = inner_text.strip()

@@ -57,6 +57,115 @@ def _get_font_family_name(font_path: str) -> str:
         return os.path.splitext(os.path.basename(font_path))[0]
 
 
+def _srt_to_ass(srt_path: str, ass_path: str, video_height: int,
+                font_name: str = "Arial", font_size: int = 60,
+                primary_color: str = "&H00FFFFFF",
+                outline_color: str = "&H00000000",
+                outline_width: int = 2,
+                alignment: int = 2,
+                margin_v: int = 30) -> bool:
+    """
+    Convert an SRT subtitle file to ASS with PlayResY matching video height,
+    so FontSize is interpreted as video-pixel-relative units (1pt ≈ 1px at 72 DPI).
+
+    Args:
+        srt_path: Path to the source SRT file.
+        ass_path: Path to write the generated ASS file.
+        video_height: Video height in pixels (used as PlayResY).
+        font_name: Font family name for the default style.
+        font_size: Font size in points.
+        primary_color: ASS colour string for the text (AABBGGRR).
+        outline_color: ASS colour string for the outline.
+        outline_width: Outline thickness.
+        alignment: ASS alignment value (2 = bottom-centre).
+        margin_v: Vertical margin from the edge.
+
+    Returns:
+        True on success, False on failure.
+    """
+    import re as _re
+
+    if not srt_path or not os.path.isfile(srt_path):
+        return False
+
+    try:
+        # ── Parse SRT ──
+        entries = []
+        with open(srt_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        blocks = content.strip().split("\n\n")
+        for block in blocks:
+            lines = block.strip().split("\n")
+            if len(lines) < 2:
+                continue
+            # Find the timing line (contains -->)
+            timing_idx = None
+            for i, line in enumerate(lines):
+                if "-->" in line:
+                    timing_idx = i
+                    break
+            if timing_idx is None:
+                continue
+
+            timing_line = lines[timing_idx]
+            text_lines = lines[timing_idx + 1:]
+            text = "\\N".join(l.strip() for l in text_lines if l.strip())
+            if not text:
+                continue
+
+            # Convert SRT timing (HH:MM:SS,mmm) to ASS timing (H:MM:SS.cc)
+            times = _re.findall(r"(\d{2}:\d{2}:\d{2}[,\.]\d{3})", timing_line)
+            if len(times) != 2:
+                continue
+
+            def _srt_to_ass_time(t: str) -> str:
+                t = t.replace(",", ".")
+                h, m, rest = t.split(":")
+                s, ms = rest.split(".")
+                cs = ms[:2]  # centiseconds
+                return f"{int(h)}:{m}:{s}.{cs}"
+
+            start = _srt_to_ass_time(times[0])
+            end = _srt_to_ass_time(times[1])
+            entries.append((start, end, text))
+
+        if not entries:
+            logger.warning(f"No valid subtitle entries found in {srt_path}")
+            return False
+
+        # ── Write ASS ──
+        # Escape backslashes for the ASS style value
+        ass_font_name = font_name.replace("\\", "\\\\")
+
+        ass_content = f"""[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: {video_height}
+WrapStyle: 0
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,{ass_font_name},{font_size},{primary_color},&H000000FF,{outline_color},&H80000000,0,0,0,0,100,100,0,0,1,{outline_width},1,{alignment},20,20,{margin_v},1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+"""
+
+        for start, end, text in entries:
+            ass_content += f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text}\n"
+
+        with open(ass_path, "w", encoding="utf-8-sig") as f:
+            f.write(ass_content)
+
+        logger.debug(f"Converted SRT to ASS: {srt_path} -> {ass_path} (PlayResY={video_height})")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to convert SRT to ASS: {e}")
+        return False
+
+
 def concat_videos_stream_copy(
     video_paths: List[str],
     output_path: str,
@@ -357,9 +466,35 @@ def _ffmpeg_fast_encode(
         cur_label = "v_padded"
     
     # 3. Subtitle burn-in via FFmpeg subtitles filter
+    _temp_ass_file = None
     if subtitle_file and os.path.exists(subtitle_file):
+        # Convert SRT to ASS so FontSize is relative to PlayResY = video height (1pt ≈ 1px).
+        # This ensures consistent rendering regardless of video resolution.
+        sub_file_to_use = subtitle_file
+        if subtitle_file.lower().endswith(".srt") and subtitle_params:
+            import tempfile
+            _temp_ass_file = tempfile.mktemp(suffix=".ass", prefix="coiner_sub_")
+            _srt_to_ass(
+                srt_path=subtitle_file,
+                ass_path=_temp_ass_file,
+                video_height=target_height,
+                font_name=subtitle_params.get("font_name", "Arial"),
+                font_size=subtitle_params.get("font_size", 60),
+                primary_color=subtitle_params.get("primary_color", "&H00FFFFFF"),
+                outline_color=subtitle_params.get("outline_color", "&H00000000"),
+                outline_width=subtitle_params.get("outline_width", 2),
+                alignment=subtitle_params.get("alignment", 2),
+                margin_v=subtitle_params.get("margin_v", 30),
+            )
+            if os.path.exists(_temp_ass_file):
+                sub_file_to_use = _temp_ass_file
+                logger.debug(f"Using converted ASS subtitle: {_temp_ass_file}")
+            else:
+                logger.warning("SRT->ASS conversion failed, falling back to SRT with force_style")
+                _temp_ass_file = None
+
         # Escape colons and backslashes in the path for FFmpeg's subtitles filter
-        escaped_sub = (subtitle_file
+        escaped_sub = (sub_file_to_use
                        .replace("\\", "/")
                        .replace(":", "\\:")
                        .replace("'", "\\'"))
@@ -367,23 +502,26 @@ def _ffmpeg_fast_encode(
         sub_style = ""
         fonts_dir_option = ""
         if subtitle_params:
-            style_parts = []
-            if subtitle_params.get("font_name"):
-                style_parts.append(f"FontName={subtitle_params['font_name']}")
-            if subtitle_params.get("font_size"):
-                style_parts.append(f"FontSize={subtitle_params['font_size']}")
-            if subtitle_params.get("primary_color"):
-                style_parts.append(f"PrimaryColour={subtitle_params['primary_color']}")
-            if subtitle_params.get("outline_color"):
-                style_parts.append(f"OutlineColour={subtitle_params['outline_color']}")
-            if subtitle_params.get("outline_width"):
-                style_parts.append(f"Outline={subtitle_params['outline_width']}")
-            if subtitle_params.get("alignment"):
-                style_parts.append(f"Alignment={subtitle_params['alignment']}")
-            if subtitle_params.get("margin_v"):
-                style_parts.append(f"MarginV={subtitle_params['margin_v']}")
-            if style_parts:
-                sub_style = f":force_style='{','.join(style_parts)}'"
+            # When using converted ASS, styles are embedded; force_style is only
+            # needed as a fallback when the conversion was skipped.
+            if _temp_ass_file is None:
+                style_parts = []
+                if subtitle_params.get("font_name"):
+                    style_parts.append(f"FontName={subtitle_params['font_name']}")
+                if subtitle_params.get("font_size"):
+                    style_parts.append(f"FontSize={subtitle_params['font_size']}")
+                if subtitle_params.get("primary_color"):
+                    style_parts.append(f"PrimaryColour={subtitle_params['primary_color']}")
+                if subtitle_params.get("outline_color"):
+                    style_parts.append(f"OutlineColour={subtitle_params['outline_color']}")
+                if subtitle_params.get("outline_width"):
+                    style_parts.append(f"Outline={subtitle_params['outline_width']}")
+                if subtitle_params.get("alignment"):
+                    style_parts.append(f"Alignment={subtitle_params['alignment']}")
+                if subtitle_params.get("margin_v"):
+                    style_parts.append(f"MarginV={subtitle_params['margin_v']}")
+                if style_parts:
+                    sub_style = f":force_style='{','.join(style_parts)}'"
             
             # If fonts_dir is provided, add it as a subtitles filter option
             # so libass can find the font by family name
@@ -494,6 +632,13 @@ def _ffmpeg_fast_encode(
     except Exception as e:
         logger.error(f"FFmpeg fast encode error: {e}")
         return False
+    finally:
+        # Clean up temporary ASS file if one was created
+        if _temp_ass_file and os.path.exists(_temp_ass_file):
+            try:
+                os.remove(_temp_ass_file)
+            except OSError:
+                pass
 
 
 def _fmt_duration(seconds):
@@ -680,7 +825,7 @@ def process_final_video(
                     subtitle_clips = []
                     video_width, video_height = video_clip.size
                     
-                    if not os.path.exists(font_path):
+                    if not font_path or not os.path.exists(font_path):
                         logger.warning(f"Font file not found: {font_path}, using default font")
                         font_path = None
                     
@@ -709,10 +854,27 @@ def process_final_video(
                                 logger.warning(f"Skipping subtitle with invalid duration: {duration}s")
                                 continue
                             
-                            wrapped_text, _, _ = wrap_text(
-                                text, max_width=max_width, font=font_path, 
-                                fontsize=int(params.font_size), auto_fit=subtitle_auto_fit
-                            )
+                            if not text or not text.strip():
+                                logger.debug(f"Skipping subtitle with empty text at index {index}")
+                                continue
+                            
+                            font_to_use = font_path if font_path and os.path.exists(font_path) else None
+                            if font_to_use is None:
+                                logger.warning(f"No valid font for subtitle, skipping entry {index}")
+                                continue
+                            
+                            try:
+                                wrapped_text, text_h, _ = wrap_text(
+                                    text, max_width=max_width, font=font_to_use, 
+                                    fontsize=int(params.font_size), auto_fit=subtitle_auto_fit
+                                )
+                            except Exception as e:
+                                logger.warning(f"wrap_text failed for subtitle {index}: {e}")
+                                continue
+                            
+                            if not wrapped_text or not wrapped_text.strip():
+                                logger.debug(f"Skipping subtitle with empty wrapped text at index {index}")
+                                continue
                             
                             bg_color = params.text_background_color
                             if bg_color == 'transparent' or bg_color is False:
@@ -722,15 +884,24 @@ def process_final_video(
                             else:
                                 bg_color = None
                             
-                            txt_clip = TextClip(
-                                text=wrapped_text,
-                                font=font_path,
-                                font_size=int(params.font_size),
-                                color=parse_color(params.text_fore_color),
-                                bg_color=bg_color,
-                                stroke_color=parse_color(params.stroke_color),
-                                stroke_width=int(params.stroke_width),
-                            )
+                            try:
+                                txt_clip = TextClip(
+                                    text=wrapped_text,
+                                    font=font_to_use,
+                                    font_size=int(params.font_size),
+                                    color=parse_color(params.text_fore_color),
+                                    bg_color=bg_color,
+                                    stroke_color=parse_color(params.stroke_color),
+                                    stroke_width=int(params.stroke_width),
+                                )
+                            except Exception as e:
+                                logger.warning(f"TextClip creation failed for subtitle {index}: {e}")
+                                continue
+                            
+                            if txt_clip.h <= 0 or txt_clip.w <= 0:
+                                logger.warning(f"Skipping zero-size subtitle clip at index {index}: {txt_clip.w}x{txt_clip.h}")
+                                txt_clip.close()
+                                continue
                             
                             margin_px = video_height * subtitle_margin
                             if params.subtitle_position == "bottom":
@@ -836,7 +1007,7 @@ def process_final_video(
             
             sub_params = {
                 "font_name": font_family,
-                "font_size": int(getattr(params, 'font_size', 28)),
+                "font_size": int(getattr(params, 'font_size', 60)),
                 "primary_color": "&H00FFFFFF",
                 "fonts_dir": os.path.dirname(font_path) if font_path else None,
             }
@@ -847,7 +1018,8 @@ def process_final_video(
             
             _ui_cfg = load_config().get("ui", {})
             margin_ratio = _ui_cfg.get("subtitle_margin", 0.05)
-            sub_params["margin_v"] = int(1920 * margin_ratio)
+            _video_height = video_clip.size[1] if video_clip else 1920
+            sub_params["margin_v"] = int(_video_height * margin_ratio)
             
             stroke_w = int(getattr(params, 'stroke_width', 0) or 0)
             if stroke_w > 0:
