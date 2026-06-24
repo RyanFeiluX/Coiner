@@ -337,7 +337,7 @@ export const useSettingsStore = defineStore('settings', {
     },
     
     loadFromLocalStorage() {
-      const savedSettings = localStorage.getItem('moneyprinter-settings');
+      const savedSettings = localStorage.getItem('coiner-settings');
       if (savedSettings) {
         try {
           const parsed = JSON.parse(savedSettings);

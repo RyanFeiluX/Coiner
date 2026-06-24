@@ -224,7 +224,7 @@ def fetch_cloned_voices_from_api(api_key: str) -> list:
             model_name = payload["model"]
             logger.info(f"Fetching cloned voices from Qwen TTS API (model: {model_name})")
             
-            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            response = requests.post(url, headers=headers, json=payload, timeout=60)
             
             if response.status_code == 200:
                 try:
@@ -2246,7 +2246,7 @@ def coze_tts(
         if preview_audio and is_preview_mode:
             logger.info(f"Preview mode: downloading preview audio from: {preview_audio}")
             try:
-                response = requests.get(preview_audio, timeout=30)
+                response = requests.get(preview_audio, timeout=60)
                 if response.status_code == 200:
                     with open(voice_file, "wb") as f:
                         f.write(response.content)
@@ -2438,7 +2438,7 @@ def qwen_tts(
         if preview_audio and is_preview_mode:
             logger.info(f"Preview mode: downloading preview audio from: {preview_audio}")
             try:
-                response = requests.get(preview_audio, timeout=30)
+                response = requests.get(preview_audio, timeout=60)
                 if response.status_code == 200:
                     with open(voice_file, "wb") as f:
                         f.write(response.content)
@@ -2518,7 +2518,7 @@ def qwen_tts(
                 
                 logger.debug(f"Qwen TTS segment {i+1}: model={model}, text_len={len(segment)}")
                 
-                response = requests.post(url, json=payload, headers=headers, timeout=30)
+                response = requests.post(url, json=payload, headers=headers, timeout=60)
                 
                 logger.debug(f"Qwen TTS API response status: {response.status_code}")
                 
@@ -2537,7 +2537,7 @@ def qwen_tts(
                             if audio_url:
                                 # 下载音频文件
                                 logger.debug(f"Downloading audio from URL: {audio_url[:100]}...")
-                                audio_response = requests.get(audio_url, timeout=30)
+                                audio_response = requests.get(audio_url, timeout=60)
                                 if audio_response.status_code == 200:
                                     audio_bytes = audio_response.content
                                     logger.debug(f"Downloaded audio, size: {len(audio_bytes)} bytes")

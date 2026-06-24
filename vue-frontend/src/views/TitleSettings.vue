@@ -735,9 +735,13 @@ const loadTitleStyles = async () => {
 
 const loadConfig = async () => {
   try {
+    console.log('[TitleSettings] loadConfig called');
     const response = await apiService.getConfig();
-    if (response.status === 200 && response.data) {
-      const cfg = response.data;
+    console.log('[TitleSettings] loadConfig response:', response);
+    if (response.status === 200 && response.data?.data) {
+      const cfg = response.data.data;
+      console.log('[TitleSettings] loadConfig cfg:', cfg);
+      console.log('[TitleSettings] loadConfig cfg.ui:', cfg.ui);
       if (cfg.ui) {
         if (cfg.ui.title_enabled !== undefined) {
           form.titleEnabled = cfg.ui.title_enabled;
@@ -796,6 +800,8 @@ const loadConfig = async () => {
         if (cfg.ui.title_align !== undefined) {
           form.titleAlign = cfg.ui.title_align;
         }
+        
+        updateTitleSettings();
       }
     }
   } catch (error: any) {
@@ -804,35 +810,32 @@ const loadConfig = async () => {
 };
 
 const saveConfig = async () => {
-  try {
-    const cfg = {
-      ui: {
-        title_enabled: form.titleEnabled,
-        title_text: form.titleText,
-        title_duration: form.titleDuration,
-        title_font_name: form.titleFont,
-        title_font_size: form.titleFontSize,
-        title_text_color: form.titleColor,
-        title_stroke_color: form.titleStrokeColor,
-        title_stroke_width: form.titleStrokeWidth,
-        title_background_color: form.titleBackgroundColor,
-        title_position: form.titlePosition,
-        title_margin: form.titleMargin / 100,
-        title_margin_left: form.titleMarginLeft / 100,
-        title_margin_right: form.titleMarginRight / 100,
-        title_animation: form.titleAnimation,
-        title_animation_duration: form.titleAnimationDuration,
-        title_background_overlay: form.titleBackgroundOverlay,
-        title_overlay_color: form.titleOverlayColor,
-        title_style: form.titleStyle,
-        title_align: form.titleAlign
-      }
-    };
-    await apiService.updateConfig(cfg);
-    console.log('[TitleSettings] Config saved:', cfg);
-  } catch (error: any) {
-    console.error('Failed to save config:', error);
-  }
+  const cfg = {
+    ui: {
+      title_enabled: form.titleEnabled,
+      title_text: form.titleText,
+      title_duration: form.titleDuration,
+      title_font_name: form.titleFont,
+      title_font_size: form.titleFontSize,
+      title_text_color: form.titleColor,
+      title_stroke_color: form.titleStrokeColor,
+      title_stroke_width: form.titleStrokeWidth,
+      title_background_color: form.titleBackgroundColor,
+      title_position: form.titlePosition,
+      title_margin: form.titleMargin / 100,
+      title_margin_left: form.titleMarginLeft / 100,
+      title_margin_right: form.titleMarginRight / 100,
+      title_animation: form.titleAnimation,
+      title_animation_duration: form.titleAnimationDuration,
+      title_background_overlay: form.titleBackgroundOverlay,
+      title_overlay_color: form.titleOverlayColor,
+      title_style: form.titleStyle,
+      title_align: form.titleAlign
+    }
+  };
+  console.log('[TitleSettings] Attempting to save config:', cfg);
+  const response = await apiService.updateConfig(cfg);
+  console.log('[TitleSettings] Config save response:', response);
 };
 
 // Watch for changes to scriptStore.videoTitle
@@ -890,35 +893,52 @@ watch([
   () => form.titleOverlayColor,
   () => form.titleStyle,
   () => form.titleAlign
-], () => {
-  saveConfig();
-  updateTitleSettings();
+], async () => {
+  try {
+    await saveConfig();
+    updateTitleSettings();
+  } catch (error) {
+    console.error('[TitleSettings] Failed to save config, reverting form:', error);
+    const title = settingsStore.video.title;
+    form.titleEnabled = title.enabled;
+    form.titleText = title.text || '';
+    form.titleDuration = title.duration;
+    form.titleFont = title.font;
+    form.titleFontSize = title.fontSize;
+    form.titleColor = title.color;
+    form.titleStrokeColor = title.strokeColor;
+    form.titleStrokeWidth = title.strokeWidth;
+    form.titleBackgroundColor = title.backgroundColor;
+    form.titlePosition = title.position;
+    form.titleMargin = title.margin * 100;
+    form.titleMarginLeft = title.marginLeft * 100;
+    form.titleMarginRight = title.marginRight * 100;
+    form.titleAnimation = title.animation;
+    form.titleAnimationDuration = title.animationDuration;
+    form.titleBackgroundOverlay = title.backgroundOverlay;
+    form.titleOverlayColor = title.overlayColor;
+    form.titleStyle = title.style;
+    form.titleAlign = title.align || 'center';
+  }
 });
 
-watch(() => settingsStore.video.title, (newTitle) => {
-  form.titleEnabled = newTitle.enabled;
-  form.titleText = newTitle.text || '';
-  form.titleDuration = newTitle.duration;
-  form.titleFont = newTitle.font;
-  form.titleFontSize = newTitle.fontSize;
-  form.titleColor = newTitle.color;
-  form.titleStrokeColor = newTitle.strokeColor;
-  form.titleStrokeWidth = newTitle.strokeWidth;
-  form.titleBackgroundColor = newTitle.backgroundColor;
-  form.titlePosition = newTitle.position;
-  form.titleMargin = newTitle.margin * 100;
-  form.titleMarginLeft = newTitle.marginLeft * 100;
-  form.titleMarginRight = newTitle.marginRight * 100;
-  form.titleAnimation = newTitle.animation;
-  form.titleAnimationDuration = newTitle.animationDuration;
-  form.titleBackgroundOverlay = newTitle.backgroundOverlay;
-  form.titleOverlayColor = newTitle.overlayColor;
-  form.titleStyle = newTitle.style;
-  form.titleAlign = newTitle.align || 'center';
-}, { deep: true });
-
 onMounted(async () => {
+  console.log('[TitleSettings] onMounted called');
+  console.log('[TitleSettings] Form initial state (from store):', {
+    titleEnabled: form.titleEnabled,
+    titleText: form.titleText,
+    titleDuration: form.titleDuration,
+    titleFont: form.titleFont,
+    titleFontSize: form.titleFontSize
+  });
   await loadConfig();
+  console.log('[TitleSettings] Form state after loadConfig:', {
+    titleEnabled: form.titleEnabled,
+    titleText: form.titleText,
+    titleDuration: form.titleDuration,
+    titleFont: form.titleFont,
+    titleFontSize: form.titleFontSize
+  });
   await loadTitleStyles();
 });
 
