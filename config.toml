@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.5.8"
+project_version = "2.5.9"
 
 [app]
 host_visible = false
@@ -53,13 +53,13 @@ video_bitrate = "20M"
 video_brightness = 1.15
 video_contrast = 1.05
 video_concat_mode = "random"
-video_transition_mode = "fade_in"
+video_transition_mode = "Shuffle"
 video_aspect = "square"
 video_clip_duration = 3
 video_count = 1
 silence_duration = 0.5
 console_log_level = "INFO"
-video_style = "cartoon"
+video_style = "people"
 intro_video_bg_type = "blurred"
 intro_video_bg_blur = 48
 intro_video_bg_color = "black"
