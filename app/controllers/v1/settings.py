@@ -48,6 +48,7 @@ def get_voices(request: Request, tts_server: str = "azure-tts-v1", force_refresh
 def get_config(request: Request):
     """Get current configuration for UI settings."""
     try:
+        logger.info(f"[Get Config] ui.title_enabled={config.ui.get('title_enabled')}, ui.title_text={config.ui.get('title_text')}")
         tts_server = config.ui.get("tts_server", "azure-tts-v1")
         voice_name = config.ui.get("voice_name", "")
 
@@ -68,6 +69,25 @@ def get_config(request: Request):
                 "stroke_color": config.ui.get("stroke_color", "#000000"),
                 "stroke_width": config.ui.get("stroke_width", 1.5),
                 "output_bg_color": config.ui.get("output_bg_color", "black"),
+                "title_enabled": config.ui.get("title_enabled", False),
+                "title_text": config.ui.get("title_text", ""),
+                "title_duration": config.ui.get("title_duration", 3.0),
+                "title_font_name": config.ui.get("title_font_name", "MicrosoftYaHeiBold.ttc"),
+                "title_font_size": config.ui.get("title_font_size", 72),
+                "title_text_color": config.ui.get("title_text_color", "#FFFFFF"),
+                "title_stroke_color": config.ui.get("title_stroke_color", "#000000"),
+                "title_stroke_width": config.ui.get("title_stroke_width", 2),
+                "title_background_color": config.ui.get("title_background_color", "transparent"),
+                "title_position": config.ui.get("title_position", "top"),
+                "title_margin": config.ui.get("title_margin", 0.05),
+                "title_margin_left": config.ui.get("title_margin_left", 0.05),
+                "title_margin_right": config.ui.get("title_margin_right", 0.05),
+                "title_animation": config.ui.get("title_animation", "fade"),
+                "title_animation_duration": config.ui.get("title_animation_duration", 1.0),
+                "title_background_overlay": config.ui.get("title_background_overlay", False),
+                "title_overlay_color": config.ui.get("title_overlay_color", "rgba(0,0,0,0.5)"),
+                "title_style": config.ui.get("title_style", "none"),
+                "title_align": config.ui.get("title_align", "center"),
             },
             "app": {
                 "llm_provider": config.app.get("llm_provider", "openai"),

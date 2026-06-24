@@ -71,7 +71,7 @@ export const useScriptStore = defineStore('script', {
     },
     
     loadFromLocalStorage() {
-      const savedScript = localStorage.getItem('moneyprinter-script');
+      const savedScript = localStorage.getItem('coiner-script');
       if (savedScript) {
         try {
           const parsed = JSON.parse(savedScript);

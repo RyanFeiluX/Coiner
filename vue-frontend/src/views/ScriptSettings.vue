@@ -660,6 +660,21 @@ onMounted(() => {
   scriptStore.loadFromLocalStorage();
 });
 
+// Watch for changes in form fields and save automatically
+watch([
+  () => form.videoSubject,
+  () => form.videoScript,
+  () => form.language,
+  () => form.videoTitle
+], () => {
+  scriptStore.saveToLocalStorage();
+});
+
+// Watch for scene changes
+watch(() => scriptStore.scenes, () => {
+  scriptStore.saveToLocalStorage();
+}, { deep: true });
+
 defineExpose({
   form,
   scenes
