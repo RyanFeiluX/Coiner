@@ -4,6 +4,7 @@ import time
 import requests
 import os
 from loguru import logger
+from moviepy.video.io.VideoFileClip import VideoFileClip
 
 class VideoDownloadQueue:
     def __init__(self, max_concurrent=3):
@@ -65,6 +66,17 @@ class VideoDownloadQueue:
             except queue.Empty:
                 continue
     
+    def _validate_video(self, file_path):
+        """Validate that the downloaded file is a playable video."""
+        try:
+            clip = VideoFileClip(file_path)
+            valid = clip.duration > 0 and clip.fps > 0
+            clip.close()
+            return valid
+        except Exception as e:
+            logger.warning(f"Video validation failed for {file_path}: {e}")
+            return False
+
     def _download_video(self, url, save_path, max_retries=3):
         """Download video from URL to save path with retry logic and exponential backoff"""
         import time
@@ -89,7 +101,13 @@ class VideoDownloadQueue:
                         if chunk:
                             f.write(chunk)
                 
-                logger.info(f"Video downloaded successfully: {save_path}")
+                # Validate the downloaded file is a playable video
+                if not self._validate_video(save_path):
+                    logger.warning(f"Downloaded file is not a valid video: {save_path}")
+                    os.remove(save_path)
+                    raise ValueError("Downloaded file is not a valid video")
+                
+                logger.info(f"Video downloaded and validated: {save_path}")
                 return True
             except Exception as e:
                 logger.warning(f"Download attempt {attempt + 1}/{max_retries} failed: {e}")

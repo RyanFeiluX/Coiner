@@ -522,14 +522,30 @@ def download_videos(
                 save_dir = utils.storage_dir("cache_videos")
                 save_path = f"{save_dir}/{video_id}.mp4"
             
-            # Check if video already exists
+            # Check if video already exists and is valid
             if os.path.exists(save_path) and os.path.getsize(save_path) > 0:
-                logger.info(f"Video already exists: {save_path}")
-                downloaded_paths.append(save_path)
-                seconds = min(max_clip_duration, item.duration)
-                total_duration += seconds
-                download_count += 1
-            else:
+                try:
+                    clip = VideoFileClip(save_path)
+                    valid = clip.duration > 0 and clip.fps > 0
+                    clip.close()
+                except Exception:
+                    valid = False
+                if not valid:
+                    logger.warning(f"Existing cached video is corrupted, will re-download: {save_path}")
+                    try:
+                        os.remove(save_path)
+                    except Exception:
+                        pass
+                    # Fall through to download queue
+                else:
+                    logger.info(f"Video already exists and is valid: {save_path}")
+                    downloaded_paths.append(save_path)
+                    seconds = min(max_clip_duration, item.duration)
+                    total_duration += seconds
+                    download_count += 1
+                    continue  # skip adding to download queue
+            
+            if not (os.path.exists(save_path) and os.path.getsize(save_path) > 0):
                 # Add to download queue
                 logger.info(f"Adding video to download queue: {item.url}")
                 download_video(item.url, save_path, download_callback)
