@@ -36,6 +36,19 @@ from app.services.video_target import finalize_video
 from moviepy import ImageClip
 
 
+def _load_clip_with_retry(file_path: str, start_time: float, end_time: float, max_retries: int = 3, delay: float = 0.5) -> VideoFileClip:
+    for attempt in range(max_retries):
+        try:
+            return VideoFileClip(file_path).subclipped(start_time, end_time)
+        except Exception as e:
+            logger.warning(f"Failed to load clip (attempt {attempt+1}/{max_retries}): {file_path} - {e}")
+            if attempt < max_retries - 1:
+                time.sleep(delay * (1.5 ** attempt))
+                gc.collect()
+            else:
+                raise
+
+
 @memory_safe_operation
 def process_scene_videos(
     scene_video_paths: List[str],
@@ -125,7 +138,7 @@ def process_scene_videos(
             # Check memory before processing each subclip
             memory_safe_wait()
             
-            clip = VideoFileClip(subclipped_item.file_path).subclipped(subclipped_item.start_time, subclipped_item.end_time)
+            clip = _load_clip_with_retry(subclipped_item.file_path, subclipped_item.start_time, subclipped_item.end_time)
             clip_duration = clip.duration
             
             # Resize if needed
