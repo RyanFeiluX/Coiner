@@ -469,7 +469,6 @@ def get_title_styles(request: Request):
 def preview_title(request: Request, body: dict):
     from app.services.title import create_title_clip, _get_valid_font_path
     from app.models.schema import VideoParams
-    from app.models.schema import VideoAspect
     from loguru import logger
     from moviepy import ColorClip, CompositeVideoClip
     
@@ -512,7 +511,7 @@ def preview_title(request: Request, body: dict):
     elif normalized == '1:1':
         width, height = 1080, 1080
     elif normalized == '3:4':
-        width, height = 1080, 1440
+        width, height = 1080, 1920
     else:
         width, height = 1080, 1920
     
@@ -522,17 +521,30 @@ def preview_title(request: Request, body: dict):
         raise HttpException(task_id="", status_code=400, message="Failed to create title clip")
     
     preview_dir = utils.storage_dir("title_previews", create=True)
-    preview_path = os.path.join(preview_dir, "title_preview.png")
+    preview_name = f"title_preview_{utils.get_uuid()[:8]}.png"
+    preview_path = os.path.join(preview_dir, preview_name)
     
     # Render title on full video frame so preview image matches video proportions
     duration = getattr(title_clip, 'duration', None) or 5.0
-    bg = ColorClip(size=(width, height), color=(51, 51, 51), duration=duration)
+    if normalized == '3:4':
+        # Show pillarbox bars visually: content area (1440px) in gray, bars in dark gray
+        content_h = 1440
+        pad_h = (height - content_h) // 2  # 240
+        content_bg = ColorClip(size=(width, content_h), color=(51, 51, 51), duration=duration)
+        bar = ColorClip(size=(width, pad_h), color=(20, 20, 20), duration=duration)
+        bg = CompositeVideoClip([
+            content_bg.with_position((0, pad_h)),
+            bar.with_position((0, 0)),
+            bar.with_position((0, height - pad_h)),
+        ], size=(width, height))
+    else:
+        bg = ColorClip(size=(width, height), color=(51, 51, 51), duration=duration)
     composite = CompositeVideoClip([bg, title_clip], size=(width, height))
     composite.save_frame(preview_path, t=1.0)
     
     logger.info(f"Title preview saved to: {preview_path}")
     
-    response = {"preview_path": "/title-preview-image/title_preview.png"}
+    response = {"preview_path": f"/title-preview-image/{preview_name}"}
     return utils.get_response(200, response)
 
 

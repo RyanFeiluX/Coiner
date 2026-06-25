@@ -470,9 +470,11 @@ const form = reactive({
 const previewImageUrl = ref<string | null>(null);
 const isLoadingPreview = ref(false);
 let previewTimer: ReturnType<typeof setTimeout> | null = null;
+let previewRequestId = 0;
 
 async function updateTitlePreview() {
   if (!form.titleEnabled) return;
+  const reqId = ++previewRequestId;
   isLoadingPreview.value = true;
   try {
     const aspect = settingsStore.video.aspect;
@@ -494,13 +496,14 @@ async function updateTitlePreview() {
       title_animation_duration: form.titleAnimationDuration,
       video_aspect: aspect,
     });
+    if (reqId !== previewRequestId) return; // stale response
     if (res.status === 200 && res.data?.preview_path) {
-      previewImageUrl.value = `http://localhost:8000${res.data.preview_path}?t=${Date.now()}`;
+      previewImageUrl.value = `http://localhost:8000${res.data.preview_path}`;
     }
   } catch (e) {
     console.error('[TitlePreview] Failed to generate preview:', e);
   } finally {
-    isLoadingPreview.value = false;
+    if (reqId === previewRequestId) isLoadingPreview.value = false;
   }
 }
 
@@ -512,8 +515,6 @@ watch(
   },
   { deep: true }
 );
-
-onMounted(() => { updateTitlePreview(); });
 
 const isLightColor = (colorValue: string): boolean => {
   if (colorValue === 'transparent') return false;
@@ -544,9 +545,9 @@ const previewFrameStyle = computed(() => {
     width = maxDim;
     height = maxDim;
   } else if (aspect === 'portrait_3_4') {
-    // 3:4
+    // Pillarboxed to 9:16 in final video — preview image is also 9:16
     height = maxDim;
-    width = Math.round(maxDim * 3 / 4);
+    width = Math.round(maxDim * 9 / 16);
   } else {
     // Default to portrait 9:16
     height = maxDim;
@@ -993,6 +994,7 @@ onMounted(async () => {
     titleFontSize: form.titleFontSize
   });
   await loadTitleStyles();
+  updateTitlePreview();
 });
 
 defineExpose({

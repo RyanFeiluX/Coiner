@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.6.4"
+project_version = "2.6.5"
 
 [app]
 host_visible = false
@@ -90,7 +90,7 @@ bgm_type = "random"
 bgm_volume = 0.1
 subtitle_enabled = true
 subtitle_position = "custom"
-subtitle_custom_position = 83
+subtitle_custom_position = 73
 subtitle_margin = 0.02
 subtitle_auto_fit = true
 font_name = "MicrosoftYaHeiBold.ttc"
