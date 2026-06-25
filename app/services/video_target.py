@@ -1017,9 +1017,21 @@ def process_final_video(
             sub_params["alignment"] = align_map.get(pos, 2)
             
             _ui_cfg = load_config().get("ui", {})
-            margin_ratio = _ui_cfg.get("subtitle_margin", 0.05)
             _video_height = video_clip.size[1] if video_clip else 1920
-            sub_params["margin_v"] = int(_video_height * margin_ratio)
+            
+            if pos == 'custom':
+                # Approximate MoviePy custom position logic in FFmpeg path.
+                # MoviePy: custom_y = (video_height - txt_clip.h) * (custom_position / 100)
+                # We estimate txt_clip.h ≈ font_size * 1.5 for a typical line.
+                custom_pos = float(getattr(params, 'custom_position', 70.0))
+                estimated_h = int(sub_params.get("font_size", 60) * 1.5)
+                target_y = int((_video_height - estimated_h) * (custom_pos / 100))
+                sub_params["margin_v"] = _video_height - target_y - estimated_h
+                if sub_params["margin_v"] < 0:
+                    sub_params["margin_v"] = 0
+            else:
+                margin_ratio = _ui_cfg.get("subtitle_margin", 0.05)
+                sub_params["margin_v"] = int(_video_height * margin_ratio)
             
             stroke_w = int(getattr(params, 'stroke_width', 0) or 0)
             if stroke_w > 0:

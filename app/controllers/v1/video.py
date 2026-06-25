@@ -548,6 +548,228 @@ def preview_title(request: Request, body: dict):
     return utils.get_response(200, response)
 
 
+@router.post("/subtitle-preview", summary="Preview subtitle style")
+def preview_subtitle(request: Request, body: dict):
+    from app.services.title import _get_valid_font_path
+    from app.services.video_utils import wrap_text, parse_color
+    from loguru import logger
+    from moviepy import ColorClip, CompositeVideoClip, ImageClip
+    from PIL import Image, ImageDraw, ImageFont
+    import numpy as np
+
+    subtitle_enabled = body.get('subtitle_enabled', True)
+    subtitle_text = body.get('subtitle_text', '这是一段示例字幕文字\n用于展示字幕效果')
+    font_name = body.get('font_name', 'MicrosoftYaHeiBold.ttc')
+    font_size = body.get('font_size', 60)
+    text_fore_color = body.get('text_fore_color', '#FFFF00')
+    stroke_color = body.get('stroke_color', '#000000')
+    stroke_width = body.get('stroke_width', 1.5)
+    subtitle_position = body.get('subtitle_position', 'bottom')
+    custom_position = float(body.get('custom_position', 80.0))
+    subtitle_auto_fit = body.get('subtitle_auto_fit', False)
+    subtitle_margin = body.get('subtitle_margin')
+    if subtitle_margin is None:
+        subtitle_margin = config.ui.get("subtitle_margin", 0.05)
+
+    logger.info(f"Subtitle preview request - text: '{subtitle_text}', font: '{font_name}', position: {subtitle_position}, margin: {subtitle_margin}")
+
+    font_path = _get_valid_font_path(font_name, subtitle_text)
+    logger.info(f"Resolved font path: '{font_path}', exists: {os.path.exists(font_path)}")
+
+    video_aspect = body.get('video_aspect', '9:16')
+    aspect_map = {
+        'portrait': '9:16', 'portrait_9_16': '9:16',
+        'landscape': '16:9', 'landscape_16_9': '16:9',
+        'square': '1:1', 'portrait_3_4': '3:4',
+        '1:1': '1:1', '9:16': '9:16', '16:9': '16:9', '3:4': '3:4',
+    }
+    normalized = aspect_map.get(video_aspect, '9:16')
+    if normalized == '9:16':
+        width, height = 1080, 1920
+    elif normalized == '16:9':
+        width, height = 1920, 1080
+    elif normalized == '1:1':
+        width, height = 1080, 1080
+    elif normalized == '3:4':
+        width, height = 1080, 1920
+    else:
+        width, height = 1080, 1920
+
+    if not subtitle_enabled or not subtitle_text.strip():
+        preview_dir = utils.storage_dir("subtitle_previews", create=True)
+        preview_name = f"subtitle_preview_{utils.get_uuid()[:8]}.png"
+        preview_path = os.path.join(preview_dir, preview_name)
+        duration = 3.0
+        if normalized == '3:4':
+            content_h = 1440
+            pad_h = (height - content_h) // 2
+            content_bg = ColorClip(size=(width, content_h), color=(51, 51, 51), duration=duration)
+            bar = ColorClip(size=(width, pad_h), color=(20, 20, 20), duration=duration)
+            bg = CompositeVideoClip([
+                content_bg.with_position((0, pad_h)),
+                bar.with_position((0, 0)),
+                bar.with_position((0, height - pad_h)),
+            ], size=(width, height))
+        else:
+            bg = ColorClip(size=(width, height), color=(51, 51, 51), duration=duration)
+        bg.save_frame(preview_path, t=1.0)
+        logger.info(f"Subtitle preview (disabled) saved to: {preview_path}")
+        response = {"preview_path": f"/subtitle-preview-image/{preview_name}"}
+        return utils.get_response(200, response)
+
+    margin_px = height * subtitle_margin
+    max_width = width * (1 - 2 * subtitle_margin) * 0.95
+
+    try:
+        wrapped_text, text_h, actual_font_size = wrap_text(
+            subtitle_text, max_width=max_width, font=font_path,
+            fontsize=int(font_size), auto_fit=subtitle_auto_fit
+        )
+    except Exception as e:
+        logger.warning(f"wrap_text failed for subtitle preview: {e}")
+        wrapped_text = subtitle_text
+        actual_font_size = int(font_size)
+
+    # Render subtitle using Pillow directly to correctly handle top-offset
+    # of fonts like MicrosoftYaHeiBold.ttc whose PIL bbox has positive 'top'
+    # values, which would otherwise cause the bottom line to be clipped when
+    # the clip is positioned near the video bottom.
+    lines = wrapped_text.split('\n') if wrapped_text else []
+    if not lines:
+        lines = ['']
+
+    try:
+        pil_font = ImageFont.truetype(font_path, int(actual_font_size))
+    except Exception as e:
+        logger.error(f"Failed to load font for subtitle preview: {e}")
+        raise HttpException(task_id="", status_code=400, message=f"Failed to load font: {str(e)}")
+
+    # Measure each line and accumulate heights with per-line top offset compensation.
+    # We treat each line as starting at y = 0, but we need to know the bbox's
+    # 'top' value (which can be positive for some fonts). We compensate by
+    # shifting each line's draw position upward by -top so the rendered glyphs
+    # align with the same baseline that an ImageClip would have.
+    line_gap = 4  # small vertical gap between lines
+    line_metrics = []  # each: {'height': int, 'top': int, 'width': int}
+    max_line_width = 0
+    for line in lines:
+        if not line.strip():
+            empty_height = int(actual_font_size * 1.2)
+            line_metrics.append({"height": empty_height, "top": 0, "width": 0})
+            continue
+        bbox = pil_font.getbbox(line, stroke_width=int(stroke_width) if stroke_width > 0 else 0)
+        height_line = bbox[3] - bbox[1]
+        line_metrics.append({
+            "height": height_line,
+            "top": bbox[1],
+            "width": bbox[2] - bbox[0],
+        })
+        max_line_width = max(max_line_width, bbox[2] - bbox[0])
+
+    # Compute total text block height including per-line top offsets so
+    # negative 'top' values are preserved (no line gets clipped at the top).
+    cursor_y = 0
+    positions = []  # (y_offset_within_image) for each line's draw position
+    for i, m in enumerate(line_metrics):
+        positions.append(cursor_y)
+        cursor_y += m["height"] + (line_gap if i < len(line_metrics) - 1 else 0)
+    total_height = cursor_y
+
+    if total_height <= 0 or max_line_width <= 0:
+        logger.warning(f"Zero-size subtitle image: {max_line_width}x{total_height}")
+        raise HttpException(task_id="", status_code=400, message="Subtitle image has zero size")
+
+    # Pad the image to leave room for negative 'top' offsets (e.g. descenders).
+    # Without this, lines whose top offset is negative would be clipped at the
+    # top of the image. We pre-shift all draw positions by -min_top so the
+    # smallest top offset maps to y=0.
+    min_top = min((m["top"] for m in line_metrics), default=0)
+    y_shift = -min_top if min_top < 0 else 0
+    img_height = total_height + y_shift
+    img_width = max_line_width
+
+    img = Image.new('RGBA', (img_width, img_height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    text_rgb = parse_color(text_fore_color)
+    stroke_rgb = parse_color(stroke_color)
+    int_stroke_width = int(stroke_width) if stroke_width > 0 else 0
+
+    for i, (line, m) in enumerate(zip(lines, line_metrics)):
+        y_pos = positions[i] + y_shift
+        if not line.strip():
+            continue
+        # Compensate for positive 'top' offset: shift draw position down by +top
+        # (which cancels the visual upward offset so the line's top sits at y_pos).
+        draw_y = y_pos - m["top"]
+        # Center each line horizontally within the image.
+        draw_x = (img_width - m["width"]) / 2
+        draw.text(
+            (draw_x, draw_y),
+            line,
+            font=pil_font,
+            fill=text_rgb,
+            stroke_width=int_stroke_width,
+            stroke_fill=stroke_rgb,
+        )
+
+    # Convert PIL image to ImageClip so we can composite it onto the video frame.
+    img_array = np.array(img)
+    txt_clip = ImageClip(img_array)
+    txt_clip.duration = 3.0
+    txt_clip.end = 3.0
+
+    logger.info(f"Subtitle image size: {img_width}x{img_height}, clip size: {txt_clip.w}x{txt_clip.h}")
+
+    if txt_clip.h <= 0 or txt_clip.w <= 0:
+        logger.warning(f"Zero-size subtitle clip: {txt_clip.w}x{txt_clip.h}")
+        txt_clip.close()
+        raise HttpException(task_id="", status_code=400, message="Subtitle clip has zero size")
+
+    if subtitle_position == "bottom":
+        y_pos = height - margin_px - txt_clip.h
+    elif subtitle_position == "top":
+        y_pos = margin_px
+    elif subtitle_position == "custom":
+        max_y = height - txt_clip.h - margin_px
+        min_y = margin_px
+        y_pos = (height - txt_clip.h) * (custom_position / 100)
+        y_pos = max(min_y, min(y_pos, max_y))
+    else:
+        y_pos = "center"
+
+    txt_clip = txt_clip.with_position(("center", y_pos))
+
+    preview_dir = utils.storage_dir("subtitle_previews", create=True)
+    preview_name = f"subtitle_preview_{utils.get_uuid()[:8]}.png"
+    preview_path = os.path.join(preview_dir, preview_name)
+
+    duration = 3.0
+    if normalized == '3:4':
+        content_h = 1440
+        pad_h = (height - content_h) // 2
+        content_bg = ColorClip(size=(width, content_h), color=(51, 51, 51), duration=duration)
+        bar = ColorClip(size=(width, pad_h), color=(20, 20, 20), duration=duration)
+        bg = CompositeVideoClip([
+            content_bg.with_position((0, pad_h)),
+            bar.with_position((0, 0)),
+            bar.with_position((0, height - pad_h)),
+        ], size=(width, height))
+    else:
+        bg = ColorClip(size=(width, height), color=(51, 51, 51), duration=duration)
+    composite = CompositeVideoClip([bg, txt_clip], size=(width, height))
+    composite.save_frame(preview_path, t=1.0)
+
+    txt_clip.close()
+    composite.close()
+    bg.close()
+
+    logger.info(f"Subtitle preview saved to: {preview_path}")
+
+    response = {"preview_path": f"/subtitle-preview-image/{preview_name}"}
+    return utils.get_response(200, response)
+
+
 @router.post("/scene-integration/scan", summary="Scan task directory for scene integration")
 def scan_scene_integration(request: Request, body: dict):
     """Scan task directory for scene integration"""

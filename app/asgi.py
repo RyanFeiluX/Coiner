@@ -79,6 +79,11 @@ app.mount(
     "/title-preview-image", StaticFiles(directory=title_preview_dir), name="title-preview"
 )
 
+subtitle_preview_dir = utils.storage_dir("subtitle_previews", create=True)
+app.mount(
+    "/subtitle-preview-image", StaticFiles(directory=subtitle_preview_dir), name="subtitle-preview"
+)
+
 public_dir = utils.public_dir()
 app.mount("/", StaticFiles(directory=public_dir, html=True), name="")
 
