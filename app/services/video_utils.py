@@ -112,6 +112,34 @@ def parse_color(color_str: str) -> tuple:
     # Default to black
     return COLOR_MAP["black"]
 
+
+def hex_to_ass_color(color_str: str) -> str:
+    """
+    Convert a color string to ASS color format (&HAABBGGRR).
+    
+    ASS format:
+    - AA = alpha (00 transparent, FF opaque)
+    - BB = blue component
+    - GG = green component
+    - RR = red component
+    
+    Args:
+        color_str: Color string in hex (#RRGGBB), rgb(), rgba(), or named color
+    
+    Returns:
+        ASS color string like "&H00RRGGBB" (alpha always 00 for non-transparent)
+    """
+    rgb = parse_color(color_str)
+    
+    # parse_color returns (r, g, b) or (r, g, b, a)
+    r = rgb[0]
+    g = rgb[1]
+    b = rgb[2]
+    
+    # ASS format: &HAABBGGRR
+    return f"&H00{b:02X}{g:02X}{r:02X}"
+
+
 from app.config import config
 import threading
 
@@ -1284,22 +1312,22 @@ def crop_clip_to_target(clip, target_width, target_height, max_scale=1.10):
     return clip
 
 
-def wrap_text(text, max_width, font="Arial", fontsize=60, auto_fit=False, min_font_ratio=0.85):
+def wrap_text(text, max_width, font="Arial", font_size_px=60, auto_fit=False, min_font_ratio=0.85):
     """Wrap text to fit within max_width.
     
     Args:
         text: Text to wrap
         max_width: Maximum width in pixels
         font: Path to font file
-        fontsize: Font size in points
+        font_size_px: Font size in pixels (already converted from points)
         auto_fit: If True, try reducing font size to fit on a single line before wrapping
         min_font_ratio: Minimum font size ratio when auto_fit is enabled (default 0.85 = 85%)
     
     Returns:
-        Tuple of (wrapped_text, text_height, actual_font_size)
+        Tuple of (wrapped_text, text_height, actual_font_size_px)
     """
-    actual_fontsize = max(fontsize, 1)
-    img_font = ImageFont.truetype(font, actual_fontsize)
+    actual_font_size_px = max(font_size_px, 1)
+    img_font = ImageFont.truetype(font, actual_font_size_px)
 
     def get_text_size(inner_text):
         inner_text = inner_text.strip()
@@ -1311,26 +1339,26 @@ def wrap_text(text, max_width, font="Arial", fontsize=60, auto_fit=False, min_fo
     width, height = get_text_size(text)
     
     # Auto-fit: try reducing font size to avoid line breaks
-    if auto_fit and width > max_width and fontsize > 1:
-        best_size = fontsize
+    if auto_fit and width > max_width and font_size_px > 1:
+        best_size_px = font_size_px
         for test_ratio in range(int(min_font_ratio * 100), 100):
-            test_size = int(fontsize * test_ratio / 100)
-            if test_size < 8:
+            test_size_px = int(font_size_px * test_ratio / 100)
+            if test_size_px < 8:
                 break
-            img_font = ImageFont.truetype(font, test_size)
+            img_font = ImageFont.truetype(font, test_size_px)
             w, h = get_text_size(text)
             if w <= max_width:
-                best_size = test_size
+                best_size_px = test_size_px
                 width, height = w, h
                 break
         
-        if best_size < fontsize:
-            actual_fontsize = best_size
+        if best_size_px < font_size_px:
+            actual_font_size_px = best_size_px
             # Re-create font at the fitted size
-            img_font = ImageFont.truetype(font, actual_fontsize)
+            img_font = ImageFont.truetype(font, actual_font_size_px)
     
     if width <= max_width:
-        return text, height, actual_fontsize
+        return text, height, actual_font_size_px
 
     lines = []
     current_line = text.strip()
@@ -1384,7 +1412,7 @@ def wrap_text(text, max_width, font="Arial", fontsize=60, auto_fit=False, min_fo
     wrapped_text = '\n'.join(lines)
     total_height = len(lines) * line_height
     
-    return wrapped_text, total_height, actual_fontsize
+    return wrapped_text, total_height, actual_font_size_px
 
 def analyze_video_params(video_path):
     """
