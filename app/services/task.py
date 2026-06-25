@@ -1270,6 +1270,18 @@ def start_multi_scene(task_id, params: VideoParams, stop_at: str = "video", task
     sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=70)
     
     # 4. Combine all scenes into final video
+    # Add silence prefix as first scene if needed
+    from app.config.config import silence_duration as config_silence_duration
+    if config_silence_duration > 0:
+        from app.services.video_target import create_silence_prefix_video
+        first_scene_video = scene_results[0]["combined_video_path"] if scene_results else None
+        silence_video_path = create_silence_prefix_video(task_id, params, config_silence_duration, first_scene_video)
+        if silence_video_path:
+            scene_results.insert(0, {
+                "combined_video_path": silence_video_path
+            })
+            logger.info(f"Added silence prefix scene: {silence_video_path} ({config_silence_duration}s)")
+    
     scene_synthesis_start_time = time.time()
     final_video_path = combine_all_scenes(task_id, params, scene_results)
     if not final_video_path:

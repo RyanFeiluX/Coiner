@@ -362,6 +362,11 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
 
         logger.info(f"Scenes in range: {len(scenes_in_range)}, rebuilt: {rebuilt_count}, valid: {len(valid_scenes)}")
         
+        # Get scene integration task directory for the final video
+        # Use the provided task_id parameter for the scene integration task
+        scene_integration_task_dir = utils.task_dir(task_id)
+        logger.info(f"Scene integration task directory: {scene_integration_task_dir}")
+        
         # Determine which audio and subtitle files to use
         subtitle_file = task_files["global_subtitle"]
         
@@ -381,7 +386,10 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         if scene_subtitles:
             # Use merge_scene_subtitles function to merge scene subtitles with time offset
             logger.info(f"Merging {len(scene_subtitles)} scene subtitles into global subtitle")
-            merged_subtitle_path = os.path.join(task_dir, "merged_subtitle.srt")
+            merged_subtitle_path = os.path.join(scene_integration_task_dir, "merged_subtitle.srt")
+            
+            # Get silence duration config for subtitle offset
+            from app.config.config import silence_duration as config_silence_duration
             
             try:
                 from app.services.subtitle import merge_scene_subtitles
@@ -395,10 +403,17 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
                     }
                     scene_results.append(scene_result)
                 
-                subtitle_file = merge_scene_subtitles(task_id, scene_results, merged_subtitle_path)
+                subtitle_file = merge_scene_subtitles(
+                    task_id, 
+                    scene_results, 
+                    merged_subtitle_path,
+                    silence_duration=config_silence_duration
+                )
                 
                 if not subtitle_file:
                     logger.error("Failed to merge subtitles")
+                else:
+                    logger.info(f"Subtitle offset applied: {config_silence_duration}s silence prefix")
             except Exception as e:
                 logger.error(f"Failed to merge subtitles: {e}")
         else:
@@ -406,11 +421,6 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         
         # Collect video paths
         video_paths = [s["video"] for s in valid_scenes]
-        
-        # Get scene integration task directory for the final video
-        # Use the provided task_id parameter for the scene integration task
-        scene_integration_task_dir = utils.task_dir(task_id)
-        logger.info(f"Scene integration task directory: {scene_integration_task_dir}")
         
         # Record the original video generation task ID (where scenes are located)
         original_task_id = os.path.basename(task_dir)
@@ -563,6 +573,18 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
                     "combined_video_path": video_path
                 }
                 scene_results.append(scene_result)
+            
+            # Add silence prefix as first scene if needed
+            from app.config.config import silence_duration as config_silence_duration
+            if config_silence_duration > 0:
+                from app.services.video_target import create_silence_prefix_video
+                first_scene_video = scene_results[0]["combined_video_path"] if scene_results else None
+                silence_video_path = create_silence_prefix_video(task_id, params, config_silence_duration, first_scene_video)
+                if silence_video_path:
+                    scene_results.insert(0, {
+                        "combined_video_path": silence_video_path
+                    })
+                    logger.info(f"Added silence prefix scene: {silence_video_path} ({config_silence_duration}s)")
             
             # Use combine_all_scenes function
             # Use scene integration task directory for temporary file
