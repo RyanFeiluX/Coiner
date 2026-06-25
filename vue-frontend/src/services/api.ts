@@ -244,6 +244,11 @@ export const apiService = {
     return response.data;
   },
   
+  previewSubtitle: async (params: any): Promise<ApiResponse> => {
+    const response = await api.post('/subtitle-preview', params);
+    return response.data;
+  },
+  
   // Cloned voices related
   getClonedVoices: async (): Promise<ApiResponse> => {
     const response = await api.get('/cloned-voices');

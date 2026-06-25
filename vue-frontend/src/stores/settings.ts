@@ -83,6 +83,7 @@ interface SubtitleSettings {
   outlineColor: string;
   outlineWidth: number;
   autoFit: boolean;
+  margin: number;
 }
 
 interface AppSettings {
@@ -207,7 +208,8 @@ export const useSettingsStore = defineStore('settings', {
       fontSize: 60,
       outlineColor: '#000000',
       outlineWidth: 1.5,
-      autoFit: false
+      autoFit: false,
+      margin: 0.05
     },
     
     // LLM configuration
@@ -318,6 +320,7 @@ export const useSettingsStore = defineStore('settings', {
             subtitle_enabled: this.subtitle.enable,
             subtitle_position: this.subtitle.position,
             subtitle_custom_position: parseFloat(this.subtitle.customPosition) || 70.0,
+            subtitle_margin: this.subtitle.margin,
             subtitle_auto_fit: this.subtitle.autoFit,
             font_name: this.subtitle.font,
             text_fore_color: this.subtitle.color,
@@ -490,7 +493,8 @@ export const useSettingsStore = defineStore('settings', {
               console.log('[SettingsStore] Updated subtitle.customPosition from config.ui:', this.subtitle.customPosition);
             }
             if (data.ui.subtitle_margin !== undefined) {
-              console.log('[SettingsStore] subtitle_margin from config.ui:', data.ui.subtitle_margin);
+              this.subtitle.margin = Number(data.ui.subtitle_margin);
+              console.log('[SettingsStore] Updated subtitle.margin from config.ui:', this.subtitle.margin);
             }
             if (typeof data.ui.subtitle_auto_fit === 'boolean') {
               this.subtitle.autoFit = data.ui.subtitle_auto_fit;
