@@ -318,15 +318,22 @@
           </div>
           
           <div class="preview-section">
-            <h3>{{ t('Preview') }}</h3>
+            <h3>{{ t('Preview') }} <span v-if="isLoadingPreview" style="font-size:12px;color:#909399;font-weight:normal;">(loading...)</span></h3>
             <div class="preview-container">
               <div class="preview-video-frame" :style="previewFrameStyle">
                 <div 
                   class="preview-title"
                   :style="previewStyle"
+                  v-show="!previewImageUrl"
                 >
                   {{ form.titleText || scriptStore.videoTitle || t('Preview Title') }}
                 </div>
+                <img 
+                  v-if="previewImageUrl" 
+                  :src="previewImageUrl" 
+                  class="preview-image"
+                  @error="previewImageUrl = null"
+                />
               </div>
             </div>
           </div>
@@ -385,7 +392,7 @@
 </style>
 
 <script setup lang="ts">
-import { reactive, watch, onMounted, computed } from 'vue';
+import { reactive, ref, watch, onMounted, computed } from 'vue';
 import { useI18nStore } from '../stores/i18n';
 import { useSettingsStore } from '../stores/settings';
 import { useScriptStore } from '../stores/script';
@@ -460,6 +467,54 @@ const form = reactive({
   titleAlign: settingsStore.video.title.align || 'center'
 });
 
+const previewImageUrl = ref<string | null>(null);
+const isLoadingPreview = ref(false);
+let previewTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function updateTitlePreview() {
+  if (!form.titleEnabled) return;
+  isLoadingPreview.value = true;
+  try {
+    const aspect = settingsStore.video.aspect;
+    const res = await apiService.previewTitle({
+      title_enabled: form.titleEnabled,
+      title_text: form.titleText || scriptStore.videoTitle || 'Preview Title',
+      title_font_name: form.titleFont,
+      title_font_size: form.titleFontSize,
+      title_text_color: form.titleColor,
+      title_stroke_color: form.titleStrokeColor,
+      title_stroke_width: form.titleStrokeWidth,
+      title_background_color: form.titleBackgroundColor,
+      title_position: form.titlePosition,
+      title_margin: form.titleMargin / 100,
+      title_margin_left: form.titleMarginLeft / 100,
+      title_margin_right: form.titleMarginRight / 100,
+      title_align: form.titleAlign,
+      title_animation: form.titleAnimation,
+      title_animation_duration: form.titleAnimationDuration,
+      video_aspect: aspect,
+    });
+    if (res.status === 200 && res.data?.preview_path) {
+      previewImageUrl.value = `http://localhost:8000${res.data.preview_path}?t=${Date.now()}`;
+    }
+  } catch (e) {
+    console.error('[TitlePreview] Failed to generate preview:', e);
+  } finally {
+    isLoadingPreview.value = false;
+  }
+}
+
+watch(
+  () => ({ ...form }),
+  () => {
+    if (previewTimer) clearTimeout(previewTimer);
+    previewTimer = setTimeout(updateTitlePreview, 300);
+  },
+  { deep: true }
+);
+
+onMounted(() => { updateTitlePreview(); });
+
 const isLightColor = (colorValue: string): boolean => {
   if (colorValue === 'transparent') return false;
   const hex = colorValue.startsWith('#') ? colorValue : '#000000';
@@ -511,8 +566,9 @@ const previewStyle = computed(() => {
   const marginLeftPercent = form.titleMarginLeft;
   const marginRightPercent = form.titleMarginRight;
   
-  // Scale proportionally to preview frame vs real video (1080px height reference).
-  // Matches backend: font_size_px = fontSize * videoHeight / 1080  (title.py:162)
+  // PlayResY=1080 is the ASS reference height used in the backend (title.py:161-162).
+  // Backend: font_size_px = fontSize * videoHeight / 1080  (converts pt→px scaled to video res)
+  // Preview: scaledFontSize = fontSize * previewHeight / 1080  (same pt→px, scaled to preview)
   const previewHeight = parseInt(previewFrameStyle.value.height);
   const scaleFactor = previewHeight / 1080;
   const scaledFontSize = Math.round(form.titleFontSize * scaleFactor);
@@ -535,7 +591,6 @@ const previewStyle = computed(() => {
   
   const maxWidthPercent = 100 - marginLeftPercent - marginRightPercent;
   
-  const scaledStrokeWidth = Math.max(1, Math.round(form.titleStrokeWidth * scaleFactor));
   const scaledPaddingV = Math.max(2, Math.round(10 * scaleFactor));
   const scaledPaddingH = Math.max(4, Math.round(20 * scaleFactor));
   const scaledBorderRadius = Math.max(2, Math.round(8 * scaleFactor));
@@ -557,9 +612,7 @@ const previewStyle = computed(() => {
     fontFamily: `${fontFamilyValue} !important`,
     color: form.titleColor,
     fontSize: `${scaledFontSize}px`,
-    textShadow: form.titleStrokeColor !== 'transparent' 
-      ? `0 0 ${scaledStrokeWidth}px ${form.titleStrokeColor}, 0 0 ${scaledStrokeWidth}px ${form.titleStrokeColor}`
-      : 'none',
+    lineHeight: '1',
     backgroundColor: form.titleBackgroundColor === 'transparent' ? 'transparent' : form.titleBackgroundColor,
     padding: form.titleBackgroundColor !== 'transparent' ? `${scaledPaddingV}px ${scaledPaddingH}px` : '0',
     borderRadius: form.titleBackgroundColor !== 'transparent' ? `${scaledBorderRadius}px` : '0',
@@ -1185,5 +1238,14 @@ defineExpose({
 .preview-title {
   color: #ffffff;
   font-family: inherit;
+}
+
+.preview-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
 }
 </style>
