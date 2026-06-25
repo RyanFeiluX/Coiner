@@ -560,7 +560,7 @@ def preview_subtitle(request: Request, body: dict):
     subtitle_enabled = body.get('subtitle_enabled', True)
     subtitle_text = body.get('subtitle_text', '这是一段示例字幕文字\n用于展示字幕效果')
     font_name = body.get('font_name', 'MicrosoftYaHeiBold.ttc')
-    font_size = body.get('font_size', 60)
+    font_size_pt = int(body.get('font_size', 60))
     text_fore_color = body.get('text_fore_color', '#FFFF00')
     stroke_color = body.get('stroke_color', '#000000')
     stroke_width = body.get('stroke_width', 1.5)
@@ -571,7 +571,7 @@ def preview_subtitle(request: Request, body: dict):
     if subtitle_margin is None:
         subtitle_margin = config.ui.get("subtitle_margin", 0.05)
 
-    logger.info(f"Subtitle preview request - text: '{subtitle_text}', font: '{font_name}', position: {subtitle_position}, margin: {subtitle_margin}")
+    logger.info(f"Subtitle preview request - text: '{subtitle_text}', font: '{font_name}', font_size_pt: {font_size_pt}, position: {subtitle_position}, margin: {subtitle_margin}")
 
     font_path = _get_valid_font_path(font_name, subtitle_text)
     logger.info(f"Resolved font path: '{font_path}', exists: {os.path.exists(font_path)}")
@@ -617,18 +617,21 @@ def preview_subtitle(request: Request, body: dict):
         response = {"preview_path": f"/subtitle-preview-image/{preview_name}"}
         return utils.get_response(200, response)
 
+    _play_res_y = 1080
+    font_size_px = max(1, int(font_size_pt * height / _play_res_y))
+
     margin_px = height * subtitle_margin
     max_width = width * (1 - 2 * subtitle_margin) * 0.95
 
     try:
-        wrapped_text, text_h, actual_font_size = wrap_text(
+        wrapped_text, text_h, actual_font_size_px = wrap_text(
             subtitle_text, max_width=max_width, font=font_path,
-            fontsize=int(font_size), auto_fit=subtitle_auto_fit
+            fontsize=font_size_px, auto_fit=subtitle_auto_fit
         )
     except Exception as e:
         logger.warning(f"wrap_text failed for subtitle preview: {e}")
         wrapped_text = subtitle_text
-        actual_font_size = int(font_size)
+        actual_font_size_px = font_size_px
 
     # Render subtitle using Pillow directly to correctly handle top-offset
     # of fonts like MicrosoftYaHeiBold.ttc whose PIL bbox has positive 'top'
@@ -639,7 +642,7 @@ def preview_subtitle(request: Request, body: dict):
         lines = ['']
 
     try:
-        pil_font = ImageFont.truetype(font_path, int(actual_font_size))
+        pil_font = ImageFont.truetype(font_path, actual_font_size_px)
     except Exception as e:
         logger.error(f"Failed to load font for subtitle preview: {e}")
         raise HttpException(task_id="", status_code=400, message=f"Failed to load font: {str(e)}")
@@ -654,7 +657,7 @@ def preview_subtitle(request: Request, body: dict):
     max_line_width = 0
     for line in lines:
         if not line.strip():
-            empty_height = int(actual_font_size * 1.2)
+            empty_height = int(actual_font_size_px * 1.2)
             line_metrics.append({"height": empty_height, "top": 0, "width": 0})
             continue
         bbox = pil_font.getbbox(line, stroke_width=int(stroke_width) if stroke_width > 0 else 0)

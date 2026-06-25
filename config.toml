@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.7.0"
+project_version = "2.7.1"
 
 [app]
 host_visible = false
@@ -90,15 +90,15 @@ bgm_type = "random"
 bgm_volume = 0.1
 subtitle_enabled = true
 subtitle_position = "custom"
-subtitle_custom_position = 73
+subtitle_custom_position = 85
 subtitle_margin = 0.02
 subtitle_auto_fit = true
 font_name = "MicrosoftYaHeiBold.ttc"
 text_fore_color = "rgba(9, 240, 101, 0.95)"
 text_background_color = true
-font_size = 54
+font_size = 25
 stroke_color = "#000000"
-stroke_width = 1.5
+stroke_width = 1
 output_bg_color = "blue"
 title_enabled = true
 title_text = "提示词\n背后的本质"

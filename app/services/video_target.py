@@ -58,7 +58,7 @@ def _get_font_family_name(font_path: str) -> str:
 
 
 def _srt_to_ass(srt_path: str, ass_path: str, video_height: int,
-                font_name: str = "Arial", font_size: int = 60,
+                font_name: str = "Arial", font_size_px: int = 60,
                 primary_color: str = "&H00FFFFFF",
                 outline_color: str = "&H00000000",
                 outline_width: int = 2,
@@ -73,7 +73,7 @@ def _srt_to_ass(srt_path: str, ass_path: str, video_height: int,
         ass_path: Path to write the generated ASS file.
         video_height: Video height in pixels (used as PlayResY).
         font_name: Font family name for the default style.
-        font_size: Font size in points.
+        font_size_px: Font size in pixels (already converted from points).
         primary_color: ASS colour string for the text (AABBGGRR).
         outline_color: ASS colour string for the outline.
         outline_width: Outline thickness.
@@ -146,7 +146,7 @@ WrapStyle: 0
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{ass_font_name},{font_size},{primary_color},&H000000FF,{outline_color},&H80000000,0,0,0,0,100,100,0,0,1,{outline_width},1,{alignment},20,20,{margin_v},1
+Style: Default,{ass_font_name},{font_size_px},{primary_color},&H000000FF,{outline_color},&H80000000,0,0,0,0,100,100,0,0,1,{outline_width},1,{alignment},20,20,{margin_v},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -479,7 +479,7 @@ def _ffmpeg_fast_encode(
                 ass_path=_temp_ass_file,
                 video_height=target_height,
                 font_name=subtitle_params.get("font_name", "Arial"),
-                font_size=subtitle_params.get("font_size", 60),
+                font_size_px=subtitle_params.get("font_size", 60),
                 primary_color=subtitle_params.get("primary_color", "&H00FFFFFF"),
                 outline_color=subtitle_params.get("outline_color", "&H00000000"),
                 outline_width=subtitle_params.get("outline_width", 2),
@@ -835,6 +835,10 @@ def process_final_video(
                     max_width = video_width * (1 - 2 * subtitle_margin) * 0.95
                     subtitle_auto_fit = ui_config.get("subtitle_auto_fit", False)
                     
+                    _play_res_y = 1080
+                    font_size_pt = int(params.font_size)
+                    font_size_px = max(1, int(font_size_pt * video_height / _play_res_y))
+                    
                     for item in subtitle_items:
                         index, time_str, text = item
                         start_end = time_str.split(" --> ")
@@ -866,7 +870,7 @@ def process_final_video(
                             try:
                                 wrapped_text, text_h, _ = wrap_text(
                                     text, max_width=max_width, font=font_to_use, 
-                                    fontsize=int(params.font_size), auto_fit=subtitle_auto_fit
+                                    font_size_px=font_size_px, auto_fit=subtitle_auto_fit
                                 )
                             except Exception as e:
                                 logger.warning(f"wrap_text failed for subtitle {index}: {e}")
@@ -888,7 +892,7 @@ def process_final_video(
                                 txt_clip = TextClip(
                                     text=wrapped_text,
                                     font=font_to_use,
-                                    font_size=int(params.font_size),
+                                    font_size=font_size_px,
                                     color=parse_color(params.text_fore_color),
                                     bg_color=bg_color,
                                     stroke_color=parse_color(params.stroke_color),
@@ -1005,10 +1009,22 @@ def process_final_video(
             # Use font family name (libass can't resolve filenames like 'STHeitiMedium.ttc')
             font_family = _get_font_family_name(font_path) if font_path else "Arial"
             
+            _ui_cfg = load_config().get("ui", {})
+            _video_height = video_clip.size[1] if video_clip else 1920
+            
+            font_size_pt = int(getattr(params, 'font_size', 60))
+            _play_res_y = 1080
+            font_size_px = max(1, int(font_size_pt * _video_height / _play_res_y))
+            
+            from app.services.video_utils import hex_to_ass_color
+            
+            text_fore_color = getattr(params, 'text_fore_color', '#FFFFFF')
+            primary_color = hex_to_ass_color(text_fore_color)
+            
             sub_params = {
                 "font_name": font_family,
-                "font_size": int(getattr(params, 'font_size', 60)),
-                "primary_color": "&H00FFFFFF",
+                "font_size": font_size_px,
+                "primary_color": primary_color,
                 "fonts_dir": os.path.dirname(font_path) if font_path else None,
             }
             
@@ -1016,15 +1032,12 @@ def process_final_video(
             align_map = {"bottom": 2, "top": 8, "center": 4, "custom": 2}
             sub_params["alignment"] = align_map.get(pos, 2)
             
-            _ui_cfg = load_config().get("ui", {})
-            _video_height = video_clip.size[1] if video_clip else 1920
-            
             if pos == 'custom':
                 # Approximate MoviePy custom position logic in FFmpeg path.
                 # MoviePy: custom_y = (video_height - txt_clip.h) * (custom_position / 100)
-                # We estimate txt_clip.h ≈ font_size * 1.5 for a typical line.
+                # We estimate txt_clip.h ≈ font_size_px * 1.5 for a typical line.
                 custom_pos = float(getattr(params, 'custom_position', 70.0))
-                estimated_h = int(sub_params.get("font_size", 60) * 1.5)
+                estimated_h = int(font_size_px * 1.5)
                 target_y = int((_video_height - estimated_h) * (custom_pos / 100))
                 sub_params["margin_v"] = _video_height - target_y - estimated_h
                 if sub_params["margin_v"] < 0:
@@ -1036,7 +1049,7 @@ def process_final_video(
             stroke_w = int(getattr(params, 'stroke_width', 0) or 0)
             if stroke_w > 0:
                 sc = getattr(params, 'stroke_color', 'black')
-                sub_params["outline_color"] = f"&H00{sc}" if not sc.startswith('&H') else sc
+                sub_params["outline_color"] = hex_to_ass_color(sc)
                 sub_params["outline_width"] = stroke_w
         
         bgm_vol = float(getattr(params, 'bgm_volume', 0.2))
