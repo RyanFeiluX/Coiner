@@ -74,6 +74,11 @@ app.mount(
     "/tasks", StaticFiles(directory=task_dir, html=True, follow_symlink=True), name=""
 )
 
+title_preview_dir = utils.storage_dir("title_previews", create=True)
+app.mount(
+    "/title-preview-image", StaticFiles(directory=title_preview_dir), name="title-preview"
+)
+
 public_dir = utils.public_dir()
 app.mount("/", StaticFiles(directory=public_dir, html=True), name="")
 

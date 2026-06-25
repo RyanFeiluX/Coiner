@@ -471,6 +471,7 @@ def preview_title(request: Request, body: dict):
     from app.models.schema import VideoParams
     from app.models.schema import VideoAspect
     from loguru import logger
+    from moviepy import ColorClip, CompositeVideoClip
     
     params = VideoParams()
     params.title_enabled = body.get('title_enabled', True)
@@ -497,12 +498,21 @@ def preview_title(request: Request, body: dict):
     logger.info(f"Available fonts: {os.listdir(utils.font_dir())}")
     
     video_aspect = body.get('video_aspect', '9:16')
-    if video_aspect == '9:16':
+    aspect_map = {
+        'portrait': '9:16', 'portrait_9_16': '9:16',
+        'landscape': '16:9', 'landscape_16_9': '16:9',
+        'square': '1:1', 'portrait_3_4': '3:4',
+        '1:1': '1:1', '9:16': '9:16', '16:9': '16:9', '3:4': '3:4',
+    }
+    normalized = aspect_map.get(video_aspect, '9:16')
+    if normalized == '9:16':
         width, height = 1080, 1920
-    elif video_aspect == '16:9':
+    elif normalized == '16:9':
         width, height = 1920, 1080
-    elif video_aspect == '1:1':
+    elif normalized == '1:1':
         width, height = 1080, 1080
+    elif normalized == '3:4':
+        width, height = 1080, 1440
     else:
         width, height = 1080, 1920
     
@@ -512,13 +522,17 @@ def preview_title(request: Request, body: dict):
         raise HttpException(task_id="", status_code=400, message="Failed to create title clip")
     
     preview_dir = utils.storage_dir("title_previews", create=True)
-    preview_path = os.path.join(preview_dir, f"title_preview_{utils.get_uuid()[:8]}.png")
+    preview_path = os.path.join(preview_dir, "title_preview.png")
     
-    title_clip.save_frame(preview_path, t=0)
+    # Render title on full video frame so preview image matches video proportions
+    duration = getattr(title_clip, 'duration', None) or 5.0
+    bg = ColorClip(size=(width, height), color=(51, 51, 51), duration=duration)
+    composite = CompositeVideoClip([bg, title_clip], size=(width, height))
+    composite.save_frame(preview_path, t=1.0)
     
     logger.info(f"Title preview saved to: {preview_path}")
     
-    response = {"preview_path": preview_path}
+    response = {"preview_path": "/title-preview-image/title_preview.png"}
     return utils.get_response(200, response)
 
 

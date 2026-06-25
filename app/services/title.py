@@ -230,23 +230,35 @@ def create_title_clip(
     
     logger.info(f"Wrapped text: '{chr(10).join(lines)}'")
     
-    # Calculate total dimensions and line heights
-    line_heights = []
+    # Calculate total dimensions and line metrics.
+    # PIL's textbbox reports glyph bounds relative to the anchor point; for some
+    # fonts (e.g. MicrosoftYaHeiBold.ttc) the top offset can be positive, meaning
+    # the glyph starts below y=0. We record each line's height and top offset so
+    # we can shift the drawing position and avoid clipping the top/bottom.
+    line_metrics = []  # Each item: {'height': int, 'top': int, 'width': int}
     max_line_width = 0
+    line_gap = 4  # Small vertical gap between lines
+    
+    def _measure_line(line: str):
+        if not line.strip():
+            # Empty line: reserve a line based on font size
+            empty_height = int(font_size_px * 1.2)
+            return {"height": empty_height, "top": 0, "width": 0}
+        bbox = temp_draw.textbbox((0, 0), line, font=font, stroke_width=stroke_width)
+        return {
+            "height": bbox[3] - bbox[1],
+            "top": bbox[1],
+            "width": bbox[2] - bbox[0],
+        }
     
     for line in lines:
-        if not line.strip():
-            line_heights.append(font_size_px * 1.2)
-            continue
-        bbox = temp_draw.textbbox((0, 0), line, font=font, stroke_width=stroke_width)
-        line_width = bbox[2] - bbox[0]
-        line_height = bbox[3] - bbox[1]
-        
-        max_line_width = max(max_line_width, line_width)
-        line_heights.append(line_height + 4)  # Add small padding
+        metrics = _measure_line(line)
+        line_metrics.append(metrics)
+        max_line_width = max(max_line_width, metrics["width"])
     
-    # Calculate total height
-    total_height = int(sum(line_heights))
+    # Total height = sum of content heights + gaps between lines
+    total_height = sum(m["height"] for m in line_metrics) + line_gap * max(0, len(lines) - 1)
+    total_height = int(total_height)
     
     # To match preview: use max_width (the available width) as img_width
     # This ensures we have a block that fills the available width, just like the preview
@@ -274,13 +286,12 @@ def create_title_clip(
     logger.info(f"Drawing {len(lines)} lines with title_align={params.title_align}:")
     current_y = 0
     for i, line in enumerate(lines):
-        # Calculate y position increment even if it's empty
-        line_height = line_heights[i]
+        metrics = line_metrics[i]
+        line_height = metrics["height"]
+        top_offset = metrics["top"]
         
         if line.strip():
-            # Get line dimensions
-            bbox = draw.textbbox((0, 0), line, font=font, stroke_width=stroke_width)
-            line_width = bbox[2] - bbox[0]
+            line_width = metrics["width"]
             
             # Calculate x position for this line based on alignment
             if params.title_align == "left":
@@ -290,19 +301,23 @@ def create_title_clip(
             else:  # center
                 x = (img_width - line_width) // 2
             
-            logger.info(f"  Line {i}: '{line}', line_width={line_width}, x={x}, current_y={current_y}")
+            # Shift the anchor up by the top offset so the actual glyph content
+            # starts exactly at current_y instead of being pushed below the clip.
+            draw_y = current_y - top_offset
+            logger.info(f"  Line {i}: '{line}', line_width={line_width}, x={x}, current_y={current_y}, draw_y={draw_y}")
             
             # Draw text with stroke
             if stroke_color and stroke_width > 0:
-                # Draw stroke
-                draw.text((x, current_y), line, font=font, fill=stroke_color, 
+                draw.text((x, draw_y), line, font=font, fill=stroke_color,
                           stroke_width=stroke_width, stroke_fill=stroke_color)
             
             # Draw text on top
-            draw.text((x, current_y), line, font=font, fill=text_color)
+            draw.text((x, draw_y), line, font=font, fill=text_color)
         
         # Always advance y, even for empty lines!
         current_y += line_height
+        if i < len(lines) - 1:
+            current_y += line_gap
     
     logger.info(f"PIL image dimensions: width={img_width}, height={img_height}")
     
