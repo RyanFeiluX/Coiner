@@ -57,13 +57,156 @@ def _get_font_family_name(font_path: str) -> str:
         return os.path.splitext(os.path.basename(font_path))[0]
 
 
+def create_silence_prefix_video(task_id: str, params, duration: float = 0.5, first_scene_video_path: str = None) -> str:
+    """
+    Create a silence prefix video clip as a standalone scene using FFmpeg.
+    
+    Args:
+        task_id: Task ID for file paths
+        params: Video parameters (for resolution, background color, etc.)
+        duration: Duration of silence prefix in seconds
+        first_scene_video_path: Path to the first scene video (used to get first frame)
+        
+    Returns:
+        Path to the silence prefix video file, or None if failed
+    """
+    try:
+        output_path = os.path.join(utils.task_dir(task_id), "silence_prefix.mp4")
+        
+        if first_scene_video_path and os.path.exists(first_scene_video_path):
+            import tempfile
+            temp_dir = tempfile.gettempdir()
+            first_frame_path = os.path.join(temp_dir, f"coiner_silence_frame_{task_id}.png")
+            
+            extract_cmd = [
+                _get_ffmpeg_exe(),
+                '-i', first_scene_video_path,
+                '-vframes', '1',
+                '-q:v', '2',
+                '-y',
+                first_frame_path
+            ]
+            
+            logger.info(f"Extracting first frame from: {first_scene_video_path}")
+            
+            extract_result = subprocess.run(
+                extract_cmd,
+                capture_output=True,
+                text=True
+            )
+            
+            if extract_result.returncode != 0 or not os.path.exists(first_frame_path):
+                logger.error(f"Failed to extract first frame (rc={extract_result.returncode}): {extract_result.stderr[-300:]}")
+                return None
+            
+            ffmpeg_cmd = [
+                _get_ffmpeg_exe(),
+                '-loop', '1',
+                '-i', first_frame_path,
+                '-f', 'lavfi',
+                '-i', f'anullsrc=channel_layout=stereo:sample_rate=44100:d={duration}',
+                '-c:v', get_video_codec(),
+                '-c:a', audio_codec,
+                '-pix_fmt', 'yuv420p',
+                '-t', str(duration),
+                '-shortest',
+                '-y',
+                output_path
+            ]
+            logger.info(f"Creating silence prefix video from first frame: {duration}s, frame: {first_frame_path}")
+        else:
+            target_width = 1080
+            target_height = 1920
+            
+            if hasattr(params, 'video_aspect') and params.video_aspect:
+                from app.models.schema import VideoAspect
+                video_aspect = params.video_aspect
+                if isinstance(video_aspect, str):
+                    try:
+                        video_aspect = VideoAspect(video_aspect)
+                    except ValueError:
+                        video_aspect = None
+                
+                if video_aspect == VideoAspect.portrait_3_4:
+                    target_width, target_height = 1080, 1440
+                elif video_aspect == VideoAspect.landscape_16_9:
+                    target_width, target_height = 1920, 1080
+                elif video_aspect == VideoAspect.square:
+                    target_width, target_height = 1080, 1080
+            
+            output_bg_color = getattr(params, 'output_bg_color', None) or 'black'
+            bg_color = parse_color(output_bg_color)
+            
+            if isinstance(bg_color, (list, tuple)):
+                hex_color = '#{:02x}{:02x}{:02x}'.format(
+                    int(bg_color[0]), int(bg_color[1]), int(bg_color[2])
+                )
+            else:
+                hex_color = 'black'
+            
+            ffmpeg_cmd = [
+                _get_ffmpeg_exe(),
+                '-f', 'lavfi',
+                '-i', f'color=c={hex_color}:s={target_width}x{target_height}:d={duration}',
+                '-f', 'lavfi',
+                '-i', f'anullsrc=channel_layout=stereo:sample_rate=44100:d={duration}',
+                '-c:v', get_video_codec(),
+                '-c:a', audio_codec,
+                '-pix_fmt', 'yuv420p',
+                '-shortest',
+                '-y',
+                output_path
+            ]
+            logger.info(f"Creating silence prefix video with FFmpeg: {duration}s, {target_width}x{target_height}, color={hex_color}")
+        
+        result = subprocess.run(
+            ffmpeg_cmd,
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode != 0:
+            logger.error(f"FFmpeg silence prefix creation failed (rc={result.returncode}): {result.stderr[-500:]}")
+            try:
+                if first_scene_video_path and os.path.exists(first_frame_path):
+                    os.remove(first_frame_path)
+            except:
+                pass
+            return None
+        
+        if not os.path.exists(output_path):
+            logger.error(f"Silence prefix video not created: {output_path}")
+            return None
+        
+        try:
+            if first_scene_video_path and 'first_frame_path' in locals() and os.path.exists(first_frame_path):
+                os.remove(first_frame_path)
+        except:
+            pass
+        
+        try:
+            from moviepy import VideoFileClip
+            clip = VideoFileClip(output_path)
+            actual_duration = clip.duration
+            clip.close()
+            logger.info(f"Created silence prefix video: {output_path} (actual duration: {actual_duration:.3f}s, requested: {duration}s)")
+        except Exception as e:
+            logger.warning(f"Could not verify silence prefix duration: {e}")
+        
+        return output_path
+        
+    except Exception as e:
+        logger.error(f"Failed to create silence prefix video: {e}")
+        return None
+
+
 def _srt_to_ass(srt_path: str, ass_path: str, video_height: int,
                 font_name: str = "Arial", font_size_px: int = 60,
                 primary_color: str = "&H00FFFFFF",
                 outline_color: str = "&H00000000",
                 outline_width: int = 2,
                 alignment: int = 2,
-                margin_v: int = 30) -> bool:
+                margin_v: int = None) -> bool:
     """
     Convert an SRT subtitle file to ASS with PlayResY matching video height,
     so FontSize is interpreted as video-pixel-relative units (1pt ≈ 1px at 72 DPI).
@@ -135,6 +278,10 @@ def _srt_to_ass(srt_path: str, ass_path: str, video_height: int,
             return False
 
         # ── Write ASS ──
+        # Set default margin_v based on video height (5% of video height, matching MoviePy path)
+        if margin_v is None:
+            margin_v = max(30, int(video_height * 0.05))
+        
         # Escape backslashes for the ASS style value
         ass_font_name = font_name.replace("\\", "\\\\")
 
@@ -484,7 +631,7 @@ def _ffmpeg_fast_encode(
                 outline_color=subtitle_params.get("outline_color", "&H00000000"),
                 outline_width=subtitle_params.get("outline_width", 2),
                 alignment=subtitle_params.get("alignment", 2),
-                margin_v=subtitle_params.get("margin_v", 30),
+                margin_v=subtitle_params.get("margin_v", None),
             )
             if os.path.exists(_temp_ass_file):
                 sub_file_to_use = _temp_ass_file
@@ -758,25 +905,9 @@ def process_final_video(
                 ])
                 logger.info(f"Added pillarbox for 3:4 -> 9:16: {clip_w}x{clip_h} -> {target_width}x{target_height}")
         
-        # Load config for silence duration
-        from app.config.config import silence_duration as config_silence_duration
+        # Silence prefix is now added as a standalone scene before combine_all_scenes()
+        # No need to add it here anymore
         silence_duration = 0
-        
-        # Add Silence Prefix FIRST
-        if config_silence_duration > 0:
-            from app.utils.composite_clip_factory import safe_concatenate_videoclips, ensure_clip_duration
-            
-            video_clip = ensure_clip_duration(video_clip)
-            
-            first_frame = video_clip.get_frame(0)
-            if len(first_frame.shape) == 2:
-                first_frame = np.stack([first_frame] * 3, axis=-1)
-            
-            still_frame_clip = ImageClip(first_frame, duration=config_silence_duration)
-            video_clip = safe_concatenate_videoclips([still_frame_clip, video_clip])
-            silence_duration = config_silence_duration
-            
-            logger.info(f"Silence Prefix prepended: {silence_duration}s clean still frame")
         
         # Add title AFTER Silence Prefix
         if hasattr(params, 'title_enabled') and params.title_enabled and hasattr(params, 'title_text') and params.title_text:
@@ -1054,19 +1185,25 @@ def process_final_video(
         
         bgm_vol = float(getattr(params, 'bgm_volume', 0.2))
         
-        # ── Hybrid path: FFmpeg (silence+pillarbox+subs+BGM) + MoviePy (title only) ──
-        if has_title and combined_video_path and os.path.exists(combined_video_path):
+        # ── Hybrid path: FFmpeg (pillarbox+subs+BGM) + MoviePy (title only) ──
+        # Silence prefix is now added as a standalone scene before combine_all_scenes()
+        # So hybrid path is safe to use - combined_video_path already has the silence prefix
+        use_hybrid_path = has_title and combined_video_path and os.path.exists(combined_video_path)
+        
+        if use_hybrid_path:
             import uuid
             temp_no_title = os.path.join(
                 os.path.dirname(output_file),
                 f".no_title_{uuid.uuid4().hex[:8]}.mp4"
             )
             
-            logger.info("Hybrid path: encoding base video via FFmpeg (silence+pillarbox+subs+BGM)...")
+            logger.info("Hybrid path: encoding base video via FFmpeg (pillarbox+subs+BGM)...")
+            logger.info("Hybrid path: silence prefix already added as scene, skipping FFmpeg silence")
+            
             ffmpeg_ok = _ffmpeg_fast_encode(
                 video_path=combined_video_path,
                 output_file=temp_no_title,
-                silence_duration=silence_duration,
+                silence_duration=0,
                 pillarbox=is_pillarbox,
                 pillarbox_bg_color=getattr(params, 'output_bg_color', None) or 'black',
                 subtitle_file=actual_sub_file,
@@ -1087,10 +1224,9 @@ def process_final_video(
                     from app.services.title import add_title_to_video
                     new_clip = add_title_to_video(new_clip, params)
                     
-                    # Swap clips — close old modified clip, keep new hybrid one
                     video_clip.close()
                     video_clip = new_clip
-                    new_clip = None  # prevent double-close
+                    new_clip = None
                     logger.success("Hybrid path: title overlay applied successfully, proceeding to MoviePy write")
                 except Exception as e:
                     logger.warning(f"Hybrid title overlay failed: {e}, falling back to full MoviePy")
