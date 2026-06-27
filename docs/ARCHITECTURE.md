@@ -218,7 +218,7 @@ Two task manager implementations:
 - Video clip combination
 - Subtitle overlay
 - Audio mixing
-- EBU R128 loudness normalization (loudnorm, -16 LUFS) at final encode
+- EBU R128 loudness normalization (loudnorm two-pass linear, -16 LUFS) at final encode
 - Transition effects
 - Quality presets (CPU/GPU)
 
@@ -454,11 +454,11 @@ Two task manager implementations:
 |        + bgm          |    (single streaming pass, ~3 min)       |
 |  Output: final.mp4    |  - Has title → Hybrid FFmpeg+MoviePy     |
 |                       |    1. FFmpeg: silence+pillarbox+subs+BGM |
-|                       |       +loudnorm → temp file (~3 min)     |
+|                       |       +loudnorm (2-pass) → temp file      |
 |                       |    2. MoviePy: load temp + title overlay |
 |                       |       → fast write (~1 min, ~4 min total)|
 |                       |  - Fallback → MoviePy write_videofile   |
-|                       |    with -af loudnorm in ffmpeg_params    |
+|                       |    with -af loudnorm (single-pass)       |
 |                       |                                           |
 |  +-----------------+  |                                           |
 |  | FFmpeg (base)   |  |                                           |
@@ -561,13 +561,13 @@ Two task manager implementations:
 |  Input: trimmed.mp4   |  Dual encoding path:                     |
 |        + subtitles    |  - No title → FFmpeg filter_complex      |
 |        + bgm          |    (single streaming pass, ~3 min)       |
-|  Output: final.mp4    |  - Has title → Hybrid FFmpeg+MoviePy     |
+|  Output: final.mp4   |  - Has title → Hybrid FFmpeg+MoviePy     |
 |                       |    1. FFmpeg: silence+pillarbox+subs+BGM |
-|                       |       +loudnorm → temp file (~3 min)     |
+|                       |       +loudnorm (2-pass) → temp file     |
 |                       |    2. MoviePy: load temp + title overlay |
 |                       |       → fast write (~1 min, ~4 min total)|
 |                       |  - Fallback → MoviePy write_videofile   |
-|                       |    with -af loudnorm in ffmpeg_params    |
+|                       |    with -af loudnorm (single-pass)       |
 |                       |                                           |
 |  +-----------------+  |                                           |
 |  | FFmpeg (base)   |  |                                           |

@@ -57,7 +57,7 @@ def _get_font_family_name(font_path: str) -> str:
         return os.path.splitext(os.path.basename(font_path))[0]
 
 
-def create_silence_prefix_video(task_id: str, params, duration: float = 0.5, first_scene_video_path: str = None) -> str:
+def create_silence_prefix_video(task_id: str, params, duration: float = 0.5, first_scene_video_path: str = None, sample_rate: int = 44100, channels: int = 2) -> str:
     """
     Create a silence prefix video clip as a standalone scene using FFmpeg.
     
@@ -66,6 +66,8 @@ def create_silence_prefix_video(task_id: str, params, duration: float = 0.5, fir
         params: Video parameters (for resolution, background color, etc.)
         duration: Duration of silence prefix in seconds
         first_scene_video_path: Path to the first scene video (used to get first frame)
+        sample_rate: Audio sample rate in Hz (must match scene videos for stream-copy)
+        channels: Number of audio channels (must match scene videos for stream-copy)
         
     Returns:
         Path to the silence prefix video file, or None if failed
@@ -104,8 +106,9 @@ def create_silence_prefix_video(task_id: str, params, duration: float = 0.5, fir
                 '-loop', '1',
                 '-i', first_frame_path,
                 '-f', 'lavfi',
-                '-i', f'anullsrc=channel_layout=stereo:sample_rate=44100:d={duration}',
+                '-i', f'anoisesrc=c=pink:a=0.0005:r={sample_rate}:d={duration}',
                 '-c:v', get_video_codec(),
+                '-r', str(fps),
                 '-c:a', audio_codec,
                 '-pix_fmt', 'yuv420p',
                 '-t', str(duration),
@@ -113,7 +116,7 @@ def create_silence_prefix_video(task_id: str, params, duration: float = 0.5, fir
                 '-y',
                 output_path
             ]
-            logger.info(f"Creating silence prefix video from first frame: {duration}s, frame: {first_frame_path}")
+            logger.info(f"Creating silence prefix video from first frame: {duration}s, {sample_rate}Hz, frame: {first_frame_path}")
         else:
             target_width = 1080
             target_height = 1920
@@ -149,15 +152,16 @@ def create_silence_prefix_video(task_id: str, params, duration: float = 0.5, fir
                 '-f', 'lavfi',
                 '-i', f'color=c={hex_color}:s={target_width}x{target_height}:d={duration}',
                 '-f', 'lavfi',
-                '-i', f'anullsrc=channel_layout=stereo:sample_rate=44100:d={duration}',
+                '-i', f'anoisesrc=c=pink:a=0.0005:r={sample_rate}:d={duration}',
                 '-c:v', get_video_codec(),
+                '-r', str(fps),
                 '-c:a', audio_codec,
                 '-pix_fmt', 'yuv420p',
                 '-shortest',
                 '-y',
                 output_path
             ]
-            logger.info(f"Creating silence prefix video with FFmpeg: {duration}s, {target_width}x{target_height}, color={hex_color}")
+            logger.info(f"Creating silence prefix video with FFmpeg: {duration}s, {target_width}x{target_height}, {sample_rate}Hz, color={hex_color}")
         
         result = subprocess.run(
             ffmpeg_cmd,
@@ -311,6 +315,219 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     except Exception as e:
         logger.error(f"Failed to convert SRT to ASS: {e}")
         return False
+
+
+def burn_subtitles_to_scene_video(
+    scene_video_path: str,
+    subtitle_file: str,
+    output_path: str,
+    params,
+) -> bool:
+    """
+    Burn subtitles into a single scene video using FFmpeg.
+
+    The audio stream is copied without re-encoding. Video is re-encoded
+    with the same codec settings as build_scene_video so that the output
+    remains compatible with the stream-copy concat fast-path.
+
+    Args:
+        scene_video_path: Path to the scene video (e.g. combined.mp4)
+        subtitle_file: Path to the scene subtitle file (SRT format)
+        output_path: Path for the output video with burned-in subtitles
+        params: VideoParams object with font, color, position settings
+
+    Returns:
+        True on success, False on failure
+    """
+    from app.services.title import _get_valid_font_path
+    from app.services.video_utils import hex_to_ass_color, get_video_codec, get_video_encoding_params
+
+    if not scene_video_path or not os.path.exists(scene_video_path):
+        logger.error(f"Scene video not found: {scene_video_path}")
+        return False
+
+    if not subtitle_file or not os.path.exists(subtitle_file):
+        logger.warning(f"Subtitle file not found, skipping burn-in: {subtitle_file}")
+        return False
+
+    ffmpeg_exe = _get_ffmpeg_exe()
+
+    try:
+        clip = VideoFileClip(scene_video_path)
+        video_width = clip.size[0]
+        video_height = clip.size[1]
+        close_clip(clip)
+    except Exception as e:
+        logger.error(f"Failed to get scene video dimensions: {e}")
+        return False
+
+    font_path = _get_valid_font_path(getattr(params, 'font_name', 'STHeitiMedium.ttc'))
+    font_family = _get_font_family_name(font_path) if font_path else "Arial"
+
+    font_size_pt = int(getattr(params, 'font_size', 60))
+    _play_res_y = 1080
+    font_size_px = max(1, int(font_size_pt * video_height / _play_res_y))
+
+    text_fore_color = getattr(params, 'text_fore_color', '#FFFFFF')
+    primary_color = hex_to_ass_color(text_fore_color)
+
+    sub_params = {
+        "font_name": font_family,
+        "font_size": font_size_px,
+        "primary_color": primary_color,
+        "fonts_dir": os.path.dirname(font_path) if font_path else None,
+    }
+
+    pos = getattr(params, 'subtitle_position', 'bottom')
+    align_map = {"bottom": 2, "top": 8, "center": 4, "custom": 2}
+    sub_params["alignment"] = align_map.get(pos, 2)
+
+    _ui_cfg = load_config().get("ui", {})
+    if pos == 'custom':
+        custom_pos = float(getattr(params, 'custom_position', 70.0))
+        estimated_h = int(font_size_px * 1.5)
+        target_y = int((video_height - estimated_h) * (custom_pos / 100))
+        sub_params["margin_v"] = video_height - target_y - estimated_h
+        if sub_params["margin_v"] < 0:
+            sub_params["margin_v"] = 0
+    else:
+        margin_ratio = _ui_cfg.get("subtitle_margin", 0.05)
+        sub_params["margin_v"] = int(video_height * margin_ratio)
+
+    stroke_w = int(getattr(params, 'stroke_width', 0) or 0)
+    if stroke_w > 0:
+        sc = getattr(params, 'stroke_color', 'black')
+        sub_params["outline_color"] = hex_to_ass_color(sc)
+        sub_params["outline_width"] = stroke_w
+
+    import tempfile
+    _temp_ass_file = tempfile.mktemp(suffix=".ass", prefix="coiner_scene_sub_")
+    _srt_to_ass(
+        srt_path=subtitle_file,
+        ass_path=_temp_ass_file,
+        video_height=video_height,
+        font_name=sub_params.get("font_name", "Arial"),
+        font_size_px=sub_params.get("font_size", 60),
+        primary_color=sub_params.get("primary_color", "&H00FFFFFF"),
+        outline_color=sub_params.get("outline_color", "&H00000000"),
+        outline_width=sub_params.get("outline_width", 2),
+        alignment=sub_params.get("alignment", 2),
+        margin_v=sub_params.get("margin_v", None),
+    )
+
+    sub_file_to_use = _temp_ass_file if os.path.exists(_temp_ass_file) else subtitle_file
+
+    try:
+        escaped_sub = (sub_file_to_use
+                       .replace("\\", "/")
+                       .replace(":", "\\:")
+                       .replace("'", "\\'"))
+
+        fonts_dir_option = ""
+        fonts_dir = sub_params.get("fonts_dir")
+        if fonts_dir and os.path.isdir(fonts_dir):
+            escaped_dir = (fonts_dir
+                          .replace("\\", "/")
+                          .replace(":", "\\:")
+                          .replace("'", "\\'"))
+            fonts_dir_option = f":fontsdir='{escaped_dir}'"
+
+        codec = get_video_codec()
+        enc_params = get_video_encoding_params()
+
+        cmd = [
+            ffmpeg_exe, "-y",
+            "-i", scene_video_path,
+            "-vf", f"subtitles='{escaped_sub}'{fonts_dir_option}",
+            "-c:v", codec,
+        ]
+
+        if codec == "libx264":
+            cmd.extend(["-crf", str(enc_params["crf"]), "-preset", enc_params["preset"]])
+        elif codec in ("h264_nvenc", "h264_amf", "h264_qsv"):
+            cmd.extend(["-b:v", enc_params["bitrate"], "-preset", enc_params["preset"]])
+        else:
+            cmd.extend(["-crf", str(enc_params.get("crf", 18)), "-preset", enc_params.get("preset", "medium")])
+
+        cmd.extend([
+            "-c:a", "copy",
+            "-pix_fmt", "yuv420p",
+            "-fps_mode", "cfr",
+            "-r", str(fps),
+            output_path
+        ])
+
+        logger.info(f"Burning subtitles into scene video: {os.path.basename(scene_video_path)}")
+        logger.debug(f"FFmpeg subtitle burn cmd: {' '.join(cmd[:8])}...")
+
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+
+        if result.returncode != 0:
+            stderr_tail = result.stderr[-500:] if result.stderr else ""
+            logger.error(f"FFmpeg subtitle burn failed (rc={result.returncode}): {stderr_tail}")
+            if os.path.exists(output_path):
+                try:
+                    os.remove(output_path)
+                except OSError:
+                    pass
+            return False
+
+        if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+            logger.error("Subtitle burn produced empty output")
+            return False
+
+        size_mb = os.path.getsize(output_path) / 1024 / 1024
+        logger.success(f"Subtitles burned into scene video: {output_path} ({size_mb:.1f} MB)")
+        return True
+
+    except subprocess.TimeoutExpired:
+        logger.error("FFmpeg subtitle burn timed out (600s)")
+        return False
+    except Exception as e:
+        logger.error(f"Failed to burn subtitles into scene video: {e}")
+        return False
+    finally:
+        if _temp_ass_file and os.path.exists(_temp_ass_file):
+            try:
+                os.remove(_temp_ass_file)
+            except OSError:
+                pass
+
+
+def analyze_audio_params(video_path: str) -> dict:
+    """
+    Analyze audio parameters from a video file using ffprobe.
+    
+    Args:
+        video_path: Path to the video file
+        
+    Returns:
+        dict with keys: sample_rate, channels, codec
+    """
+    import json
+    try:
+        ffmpeg_exe = _get_ffmpeg_exe()
+        ffprobe_exe = ffmpeg_exe.replace("ffmpeg", "ffprobe")
+        cmd = [
+            ffprobe_exe,
+            "-v", "quiet",
+            "-print_format", "json",
+            "-show_streams",
+            video_path
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        if result.returncode == 0:
+            data = json.loads(result.stdout)
+            for stream in data.get("streams", []):
+                if stream.get("codec_type") == "audio":
+                    return {
+                        "sample_rate": int(stream.get("sample_rate", 44100)),
+                        "channels": int(stream.get("channels", 2)),
+                        "codec": stream.get("codec_name", "aac")
+                    }
+    except Exception as e:
+        logger.debug(f"Failed to analyze audio params: {e}")
+    return {"sample_rate": 44100, "channels": 2, "codec": "aac"}
 
 
 def concat_videos_stream_copy(
@@ -542,10 +759,91 @@ def finalize_video(
     return combined_video_path
 
 
+def _measure_loudnorm_params(
+    video_path: str,
+    bgm_file: str = None,
+    bgm_volume: float = 0.2,
+    silence_duration: float = 0,
+    bgm_delay: float = 0,
+    ffmpeg_exe: str = "ffmpeg",
+) -> dict:
+    """
+    First pass of two-pass loudness normalization.
+    Measures overall loudness of the final mixed audio so the second pass
+    can apply linear gain instead of dynamic normalization (which would
+    amplify silence prefix).
+
+    Returns dict with keys: input_i, input_tp, input_lra, input_thresh, target_offset
+    Returns None if measurement fails.
+    """
+    import subprocess
+    import json
+
+    try:
+        filter_parts = []
+        inputs = ["-i", video_path]
+
+        if bgm_file and os.path.exists(bgm_file):
+            inputs.extend(["-stream_loop", "-1", "-i", bgm_file])
+
+            first_label = "0:a"
+
+            bgm_delay_ms = int((bgm_delay or silence_duration) * 1000)
+            bgm_filter = f"[1:a]volume={bgm_volume}"
+            if bgm_delay_ms > 0:
+                bgm_filter += f",adelay={bgm_delay_ms}|{bgm_delay_ms}"
+            bgm_filter += "[1a_vol]"
+            filter_parts.append(bgm_filter)
+
+            filter_parts.append(
+                f"[{first_label}][1a_vol]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[a_mixed]"
+            )
+            filter_parts.append(
+                f"[a_mixed]loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json"
+            )
+        else:
+            if silence_duration > 0:
+                filter_parts.append(
+                    f"[0:a]adelay={int(silence_duration * 1000)}|{int(silence_duration * 1000)},loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json"
+                )
+            else:
+                filter_parts.append(
+                    f"[0:a]loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json"
+                )
+
+        filter_complex = ";".join(filter_parts)
+
+        cmd = [ffmpeg_exe, "-y"] + inputs + [
+            "-filter_complex", filter_complex,
+            "-f", "null",
+            "-"
+        ]
+
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+
+        stderr = result.stderr
+        json_start = stderr.rfind("{")
+        json_end = stderr.rfind("}") + 1
+
+        if json_start >= 0 and json_end > json_start:
+            json_str = stderr[json_start:json_end]
+            params = json.loads(json_str)
+            logger.debug(f"Loudnorm measurement: {params}")
+            return params
+
+        logger.warning("Failed to parse loudnorm measurement JSON, falling back to single-pass")
+        return None
+
+    except Exception as e:
+        logger.warning(f"Loudnorm measurement failed: {e}, falling back to single-pass")
+        return None
+
+
 def _ffmpeg_fast_encode(
     video_path: str,
     output_file: str,
     silence_duration: float = 0,
+    bgm_delay: float = 0,
     pillarbox: bool = False,
     pillarbox_bg_color: str = "black",
     subtitle_file: str = None,
@@ -566,7 +864,8 @@ def _ffmpeg_fast_encode(
     Args:
         video_path: Path to the combined scene video
         output_file: Output file path
-        silence_duration: Seconds of still-frame prefix to prepend
+        silence_duration: Seconds of still-frame prefix to prepend (use 0 when already in video)
+        bgm_delay: Seconds of delay to apply to BGM start (independent of silence_duration)
         pillarbox: Whether to add pillarbox bars (3:4 in 9:16)
         pillarbox_bg_color: Background color for pillarbox
         subtitle_file: Path to SRT/ASS subtitle file to burn in
@@ -690,24 +989,46 @@ def _ffmpeg_fast_encode(
         bgm_input_idx = len(inputs) // 2  # input index for BGM
         inputs.extend(["-stream_loop", "-1", "-i", bgm_file])
         
-        # Adjust BGM volume
-        filter_parts.append(
-            f"[{bgm_input_idx}:a]volume={bgm_volume}[bgm_vol]"
-        )
+        bgm_delay_ms = int((bgm_delay or silence_duration) * 1000)
+        bgm_filter = f"[{bgm_input_idx}:a]volume={bgm_volume}"
+        if bgm_delay_ms > 0:
+            bgm_filter += f",adelay={bgm_delay_ms}|{bgm_delay_ms}"
+        bgm_filter += "[bgm_vol]"
+        filter_parts.append(bgm_filter)
         
         # Mix with existing video audio (if any)
+        # normalize=0 prevents automatic volume normalization that would
+        # attenuate voice start when transitioning from silence (only BGM) to voice (2 inputs)
         filter_parts.append(
-            f"[{audio_label}][bgm_vol]amix=inputs=2:duration=first:dropout_transition=3[a_mixed]"
+            f"[{audio_label}][bgm_vol]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[a_mixed]"
         )
         audio_label = "a_mixed"
     
-    # 5. EBU R128 loudness normalization — ensures consistent perceived loudness
-    #    across platforms (WeChat, Douyin, etc.) that apply different normalization.
-    #    Target -16 LUFS is standard for social media / streaming.
-    #    Single-pass mode: low latency, no extra analysis run needed.
-    filter_parts.append(
-        f"[{audio_label}]loudnorm=I=-16:TP=-1.5:LRA=11[a_loudnorm]"
+    # 5. EBU R128 loudness normalization (two-pass / linear mode)
+    #    First pass measures overall loudness, second pass applies fixed linear gain.
+    #    This prevents dynamic gain from amplifying silence prefix (single-pass issue).
+    loudnorm_params = _measure_loudnorm_params(
+        video_path=video_path,
+        bgm_file=bgm_file,
+        bgm_volume=bgm_volume,
+        silence_duration=silence_duration,
+        bgm_delay=bgm_delay,
+        ffmpeg_exe=ffmpeg_exe,
     )
+    if loudnorm_params:
+        filter_parts.append(
+            f"[{audio_label}]loudnorm=I=-14:TP=-1.5:LRA=11"
+            f":measured_I={loudnorm_params['input_i']}"
+            f":measured_TP={loudnorm_params['input_tp']}"
+            f":measured_LRA={loudnorm_params['input_lra']}"
+            f":measured_thresh={loudnorm_params['input_thresh']}"
+            f":offset={loudnorm_params['target_offset']}"
+            f":linear=true:print_format=summary[a_loudnorm]"
+        )
+    else:
+        filter_parts.append(
+            f"[{audio_label}]loudnorm=I=-14:TP=-1.5:LRA=11[a_loudnorm]"
+        )
     audio_label = "a_loudnorm"
     
     # Build -filter_complex string
@@ -744,7 +1065,22 @@ def _ffmpeg_fast_encode(
         "-pix_fmt", "yuv420p",
         "-fps_mode", "cfr",
         "-r", str(fps),
-        "-shortest",
+    ])
+    
+    # Get video duration to control output length (instead of -shortest which may truncate)
+    video_duration = 0
+    try:
+        clip = VideoFileClip(video_path)
+        video_duration = clip.duration
+        clip.close()
+    except Exception as e:
+        logger.debug(f"Failed to get video duration: {e}")
+    
+    # Use -t to ensure output matches video duration (prevents truncation by -shortest)
+    if video_duration > 0:
+        cmd.extend(["-t", str(video_duration)])
+    
+    cmd.extend([
         "-movflags", "+faststart",
         output_file
     ])
@@ -818,6 +1154,8 @@ def process_final_video(
     task_create_time: float = None,
     task_start_time: float = None,
     scene_synthesis_start_time: float = None,
+    skip_subtitles: bool = False,
+    silence_duration: float = 0,
 ):
     """
     Shared function to process combined video after scene generation.
@@ -836,6 +1174,7 @@ def process_final_video(
         task_create_time: Optional task creation time (time.time()). Used for "Task lifecycle" log.
         task_start_time: Optional task running start time (time.time()). Used for "Task running duration" log.
         scene_synthesis_start_time: Optional scene synthesis start time (time.time()). Used for "Scene synthesis duration" log.
+        skip_subtitles: If True, skip subtitle burn-in entirely (subtitles already embedded in video)
     
     Returns:
         Final video path or None if failed
@@ -906,7 +1245,8 @@ def process_final_video(
                 logger.info(f"Added pillarbox for 3:4 -> 9:16: {clip_w}x{clip_h} -> {target_width}x{target_height}")
         
         # Silence prefix is now added as a standalone scene before combine_all_scenes()
-        # No need to add it here anymore
+        # Keep the value for BGM delay calculation
+        original_silence_duration = silence_duration
         silence_duration = 0
         
         # Add title AFTER Silence Prefix
@@ -921,8 +1261,8 @@ def process_final_video(
             except Exception as e:
                 logger.error(f"Failed to add title: {e}")
         
-        # Add subtitle if enabled
-        if params.subtitle_enabled:
+        # Add subtitle if enabled (and not already pre-burned into scene videos)
+        if params.subtitle_enabled and not skip_subtitles:
             # Merge subtitles from scenes if no subtitle file provided
             using_merged_subtitle = False
             if not subtitle_file and scene_results:
@@ -1062,7 +1402,9 @@ def process_final_video(
                         logger.success("Subtitles added to video")
                 except Exception as e:
                     logger.error(f"Failed to add subtitles: {e}")
-        
+        elif skip_subtitles:
+            logger.info("Skipping subtitle addition - subtitles already pre-burned into scene videos")
+
         # Add BGM
         logger.info(f"Getting BGM file: bgm_type={getattr(params, 'bgm_type', 'none')}, bgm_file={getattr(params, 'bgm_file', '')}")
         bgm_file = None
@@ -1133,7 +1475,7 @@ def process_final_video(
         
         sub_params = None
         actual_sub_file = subtitle_file if subtitle_file and os.path.exists(subtitle_file) else None
-        if actual_sub_file and params.subtitle_enabled:
+        if actual_sub_file and params.subtitle_enabled and not skip_subtitles:
             from app.services.title import _get_valid_font_path
             font_path = _get_valid_font_path(getattr(params, 'font_name', 'STHeitiMedium.ttc'))
             
@@ -1204,6 +1546,7 @@ def process_final_video(
                 video_path=combined_video_path,
                 output_file=temp_no_title,
                 silence_duration=0,
+                bgm_delay=original_silence_duration,
                 pillarbox=is_pillarbox,
                 pillarbox_bg_color=getattr(params, 'output_bg_color', None) or 'black',
                 subtitle_file=actual_sub_file,
@@ -1246,7 +1589,8 @@ def process_final_video(
             ffmpeg_success = _ffmpeg_fast_encode(
                 video_path=combined_video_path,
                 output_file=output_file,
-                silence_duration=silence_duration,
+                silence_duration=0,
+                bgm_delay=original_silence_duration,
                 pillarbox=is_pillarbox,
                 pillarbox_bg_color=getattr(params, 'output_bg_color', None) or 'black',
                 subtitle_file=actual_sub_file,
@@ -1275,7 +1619,7 @@ def process_final_video(
         # EBU R128 loudness normalization for consistent playback on WeChat etc.
         # Must force audio re-encoding (-c:a aac) because MoviePy muxes pre-encoded
         # temp audio with -c:a copy by default, which is incompatible with -af filters.
-        ffmpeg_params.extend(["-c:a", audio_codec, "-af", "loudnorm=I=-16:TP=-1.5:LRA=11"])
+        ffmpeg_params.extend(["-c:a", audio_codec, "-af", "loudnorm=I=-14:TP=-1.5:LRA=11"])
         
         progress_monitor = create_encoding_progress_monitor(
             task_id=task_id,

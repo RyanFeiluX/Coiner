@@ -367,57 +367,8 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         scene_integration_task_dir = utils.task_dir(task_id)
         logger.info(f"Scene integration task directory: {scene_integration_task_dir}")
         
-        # Determine which audio and subtitle files to use
-        subtitle_file = task_files["global_subtitle"]
-        
         # Initialize audio_file as None (scene videos already contain audio)
         audio_file = None
-        
-        if not subtitle_file:
-            logger.info("No global subtitle found, searching for scene subtitles...")
-            # Collect subtitles from scene directories
-            scene_subtitles = []
-            for scene in valid_scenes:
-                scene_subtitle = scene.get("subtitle")
-                if scene_subtitle and os.path.exists(scene_subtitle):
-                    scene_subtitles.append(scene_subtitle)
-                    logger.info(f"Found scene subtitle: {scene_subtitle}")
-    
-        if scene_subtitles:
-            # Use merge_scene_subtitles function to merge scene subtitles with time offset
-            logger.info(f"Merging {len(scene_subtitles)} scene subtitles into global subtitle")
-            merged_subtitle_path = os.path.join(scene_integration_task_dir, "merged_subtitle.srt")
-            
-            # Get silence duration config for subtitle offset
-            from app.config.config import silence_duration as config_silence_duration
-            
-            try:
-                from app.services.subtitle import merge_scene_subtitles
-                # Create scene_results list with duration info
-                scene_results = []
-                for i, scene in enumerate(valid_scenes):
-                    scene_result = {
-                        "scene_index": i,
-                        "subtitle_path": scene.get("subtitle"),
-                        "combined_video_path": scene.get("video")
-                    }
-                    scene_results.append(scene_result)
-                
-                subtitle_file = merge_scene_subtitles(
-                    task_id, 
-                    scene_results, 
-                    merged_subtitle_path,
-                    silence_duration=config_silence_duration
-                )
-                
-                if not subtitle_file:
-                    logger.error("Failed to merge subtitles")
-                else:
-                    logger.info(f"Subtitle offset applied: {config_silence_duration}s silence prefix")
-            except Exception as e:
-                logger.error(f"Failed to merge subtitles: {e}")
-        else:
-            logger.info("No scene subtitles found, will proceed without subtitles")
         
         # Collect video paths
         video_paths = [s["video"] for s in valid_scenes]
@@ -552,6 +503,84 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         logger.info(f"title_animation: {params.title_animation}")
         logger.info(f"=== Title Configuration End ===")
         
+        # Create silence prefix video BEFORE subtitle burning
+        # This ensures the silence prefix uses the ORIGINAL first frame (without subtitles)
+        from app.config.config import silence_duration as config_silence_duration
+        silence_video_path = None
+        if config_silence_duration > 0 and video_paths:
+            from app.services.video_target import create_silence_prefix_video, analyze_audio_params
+            first_scene_video = video_paths[0]
+            
+            # Analyze first scene audio parameters to ensure silence prefix matches
+            audio_params = analyze_audio_params(first_scene_video)
+            audio_sample_rate = audio_params.get('sample_rate', 44100)
+            audio_channels = audio_params.get('channels', 2)
+            logger.info(f"Scene audio parameters: {audio_sample_rate}Hz, {audio_channels} channels")
+            
+            silence_video_path = create_silence_prefix_video(
+                task_id, 
+                params, 
+                config_silence_duration, 
+                first_scene_video,
+                sample_rate=audio_sample_rate,
+                channels=audio_channels
+            )
+            if silence_video_path:
+                logger.info(f"Silence prefix video created: {silence_video_path} ({config_silence_duration}s)")
+            else:
+                logger.warning("Failed to create silence prefix video")
+        
+        # Burn subtitles into each scene video (pre-synthesis)
+        # This eliminates audio-subtitle sync issues because subtitles are
+        # embedded directly into each scene's video track before concatenation.
+        if params.subtitle_enabled:
+            logger.info("Pre-burning subtitles into individual scene videos...")
+            burned_count = 0
+            skipped_count = 0
+            failed_count = 0
+            
+            for scene in valid_scenes:
+                scene_video = scene.get("video")
+                scene_subtitle = scene.get("subtitle")
+                
+                if not scene_video or not os.path.exists(scene_video):
+                    skipped_count += 1
+                    continue
+                
+                if not scene_subtitle or not os.path.exists(scene_subtitle):
+                    logger.info(f"Scene {scene['scene_num']}: no subtitle file, skipping burn-in")
+                    skipped_count += 1
+                    continue
+                
+                scene_num = scene["scene_num"]
+                scene_sub_video_path = os.path.join(scene_integration_task_dir, f"scene_{scene_num:02d}_with_subs.mp4")
+                
+                try:
+                    from app.services.video_target import burn_subtitles_to_scene_video
+                    
+                    success = burn_subtitles_to_scene_video(
+                        scene_video_path=scene_video,
+                        subtitle_file=scene_subtitle,
+                        output_path=scene_sub_video_path,
+                        params=params,
+                    )
+                    
+                    if success and os.path.exists(scene_sub_video_path):
+                        scene["video"] = scene_sub_video_path
+                        burned_count += 1
+                        logger.success(f"Scene {scene['scene_num']}: subtitles burned successfully")
+                    else:
+                        logger.warning(f"Scene {scene['scene_num']}: subtitle burn failed, using original video (no subtitles)")
+                        failed_count += 1
+                except Exception as e:
+                    logger.error(f"Scene {scene['scene_num']}: error burning subtitles - {e}, using original video")
+                    failed_count += 1
+            
+            # Update video paths with burned versions
+            video_paths = [s["video"] for s in valid_scenes]
+            
+            logger.info(f"Scene subtitle pre-burn complete: {burned_count} burned, {skipped_count} skipped, {failed_count} failed")
+        
         sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=20)
         
         if progress_callback:
@@ -560,10 +589,10 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         # For scene integration tasks (target video level), use combine_all_scenes
         logger.info(f"Combining {len(video_paths)} scene videos using combine_all_scenes for scene integration task")
         
-        sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=40)
+        sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=45)
         
         if progress_callback:
-            progress_callback(40, "Combining scene videos...")
+            progress_callback(45, "Combining scene videos...")
         
         try:
             # Create scene_results list for combine_all_scenes and process_final_video
@@ -574,17 +603,13 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
                 }
                 scene_results.append(scene_result)
             
-            # Add silence prefix as first scene if needed
-            from app.config.config import silence_duration as config_silence_duration
-            if config_silence_duration > 0:
-                from app.services.video_target import create_silence_prefix_video
-                first_scene_video = scene_results[0]["combined_video_path"] if scene_results else None
-                silence_video_path = create_silence_prefix_video(task_id, params, config_silence_duration, first_scene_video)
-                if silence_video_path:
-                    scene_results.insert(0, {
-                        "combined_video_path": silence_video_path
-                    })
-                    logger.info(f"Added silence prefix scene: {silence_video_path} ({config_silence_duration}s)")
+            # Add silence prefix as first scene if it was already created earlier
+            # (silence prefix is created BEFORE subtitle burning to avoid subtitles in first frame)
+            if silence_video_path and os.path.exists(silence_video_path):
+                scene_results.insert(0, {
+                    "combined_video_path": silence_video_path
+                })
+                logger.info(f"Added silence prefix scene: {silence_video_path} ({config_silence_duration}s)")
             
             # Use combine_all_scenes function
             # Use scene integration task directory for temporary file
@@ -623,12 +648,13 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
             set_task_completed()
             return None
         
-        sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=60)
+        sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=70)
         
         if progress_callback:
-            progress_callback(60, "Generating final video...")
+            progress_callback(70, "Generating final video...")
         
-        # Use the shared process_final_video function to handle silence prefix, title, subtitles, and BGM
+        # Use the shared process_final_video function to handle silence prefix, title, and BGM
+        # (subtitles are already pre-burned into each scene video)
         try:
             from app.services.video_target import process_final_video
             output_path = process_final_video(
@@ -636,13 +662,15 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
                 params=params,
                 scene_results=scene_results,
                 combined_video_path=combined_video_path,
-                subtitle_file=subtitle_file,
+                subtitle_file=None,
                 audio_file=audio_file,
                 output_file=output_path,
                 progress_callback=progress_callback,
                 task_create_time=task_create_time,
                 task_start_time=start_time,
                 scene_synthesis_start_time=scene_synthesis_start_time,
+                skip_subtitles=True,
+                silence_duration=config_silence_duration,
             )
             
             if output_path and os.path.exists(output_path):

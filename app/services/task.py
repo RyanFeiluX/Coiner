@@ -1273,9 +1273,26 @@ def start_multi_scene(task_id, params: VideoParams, stop_at: str = "video", task
     # Add silence prefix as first scene if needed
     from app.config.config import silence_duration as config_silence_duration
     if config_silence_duration > 0:
-        from app.services.video_target import create_silence_prefix_video
+        from app.services.video_target import create_silence_prefix_video, analyze_audio_params
         first_scene_video = scene_results[0]["combined_video_path"] if scene_results else None
-        silence_video_path = create_silence_prefix_video(task_id, params, config_silence_duration, first_scene_video)
+        
+        # Analyze first scene audio parameters to ensure silence prefix matches
+        audio_sample_rate = 44100
+        audio_channels = 2
+        if first_scene_video:
+            audio_params = analyze_audio_params(first_scene_video)
+            audio_sample_rate = audio_params.get('sample_rate', 44100)
+            audio_channels = audio_params.get('channels', 2)
+            logger.info(f"Scene audio parameters: {audio_sample_rate}Hz, {audio_channels} channels")
+        
+        silence_video_path = create_silence_prefix_video(
+            task_id, 
+            params, 
+            config_silence_duration, 
+            first_scene_video,
+            sample_rate=audio_sample_rate,
+            channels=audio_channels
+        )
         if silence_video_path:
             scene_results.insert(0, {
                 "combined_video_path": silence_video_path
@@ -1327,6 +1344,7 @@ def start_multi_scene(task_id, params: VideoParams, stop_at: str = "video", task
             task_create_time=task_create_time,
             task_start_time=task_start_time,
             scene_synthesis_start_time=scene_synthesis_start_time,
+            silence_duration=config_silence_duration,
         )
         
         if output_path and os.path.exists(output_path):
