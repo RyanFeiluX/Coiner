@@ -12,6 +12,7 @@ from moviepy import (
     TextClip,
     AudioClip,
     ColorClip,
+    ImageClip,
 )
 from app.utils.composite_clip_factory import create_composite_video_clip, safe_concatenate_videoclips, ensure_clip_duration
 from app.config.config import load_config
@@ -57,9 +58,40 @@ def _get_font_family_name(font_path: str) -> str:
         return os.path.splitext(os.path.basename(font_path))[0]
 
 
+def _generate_pink_noise(duration: float, sample_rate: int, amplitude: float = 0.0005) -> "np.ndarray":
+    """
+    Generate pink noise using FFT-based 1/f filtering.
+    
+    Pink noise (1/f spectrum) at very low amplitude prevents AAC encoder
+    from producing clicks/pops on the transition from silence to voice.
+    
+    Args:
+        duration: Duration in seconds
+        sample_rate: Sample rate in Hz
+        amplitude: Peak amplitude (default 0.0005 for near-silence)
+        
+    Returns:
+        1D numpy array of audio samples
+    """
+    import numpy as np
+    n = int(duration * sample_rate)
+    if n <= 0:
+        return np.array([], dtype=np.float64)
+
+    white = np.random.randn(n)
+    fft = np.fft.rfft(white)
+    freqs = np.fft.rfftfreq(n, d=1 / sample_rate)
+    freqs[0] = freqs[1] if len(freqs) > 1 else 1  # avoid DC division by zero
+    pink = np.fft.irfft(fft / np.sqrt(freqs + 1e-10), n=n)
+    peak = np.max(np.abs(pink))
+    if peak > 0:
+        pink = pink / peak * amplitude
+    return pink
+
+
 def create_silence_prefix_video(task_id: str, params, duration: float = 0.5, first_scene_video_path: str = None, sample_rate: int = 44100, channels: int = 2) -> str:
     """
-    Create a silence prefix video clip as a standalone scene using FFmpeg.
+    Create a silence prefix video clip as a standalone scene using MoviePy.
     
     Args:
         task_id: Task ID for file paths
@@ -72,55 +104,23 @@ def create_silence_prefix_video(task_id: str, params, duration: float = 0.5, fir
     Returns:
         Path to the silence prefix video file, or None if failed
     """
+    import numpy as np
     try:
         output_path = os.path.join(utils.task_dir(task_id), "silence_prefix.mp4")
-        
+
+        # ── A. Create the video clip ──
         if first_scene_video_path and os.path.exists(first_scene_video_path):
-            import tempfile
-            temp_dir = tempfile.gettempdir()
-            first_frame_path = os.path.join(temp_dir, f"coiner_silence_frame_{task_id}.png")
-            
-            extract_cmd = [
-                _get_ffmpeg_exe(),
-                '-i', first_scene_video_path,
-                '-vframes', '1',
-                '-q:v', '2',
-                '-y',
-                first_frame_path
-            ]
-            
-            logger.info(f"Extracting first frame from: {first_scene_video_path}")
-            
-            extract_result = subprocess.run(
-                extract_cmd,
-                capture_output=True,
-                text=True
-            )
-            
-            if extract_result.returncode != 0 or not os.path.exists(first_frame_path):
-                logger.error(f"Failed to extract first frame (rc={extract_result.returncode}): {extract_result.stderr[-300:]}")
-                return None
-            
-            ffmpeg_cmd = [
-                _get_ffmpeg_exe(),
-                '-loop', '1',
-                '-i', first_frame_path,
-                '-f', 'lavfi',
-                '-i', f'anoisesrc=c=pink:a=0.0005:r={sample_rate}:d={duration}',
-                '-c:v', get_video_codec(),
-                '-r', str(fps),
-                '-c:a', audio_codec,
-                '-pix_fmt', 'yuv420p',
-                '-t', str(duration),
-                '-shortest',
-                '-y',
-                output_path
-            ]
-            logger.info(f"Creating silence prefix video from first frame: {duration}s, {sample_rate}Hz, frame: {first_frame_path}")
+            scene = VideoFileClip(first_scene_video_path)
+            try:
+                frame = scene.get_frame(0)
+            finally:
+                scene.close()
+            video_clip = ImageClip(frame, duration=duration)
+            logger.info(f"Creating silence prefix video from first frame: {first_scene_video_path}")
         else:
             target_width = 1080
             target_height = 1920
-            
+
             if hasattr(params, 'video_aspect') and params.video_aspect:
                 from app.models.schema import VideoAspect
                 video_aspect = params.video_aspect
@@ -129,76 +129,95 @@ def create_silence_prefix_video(task_id: str, params, duration: float = 0.5, fir
                         video_aspect = VideoAspect(video_aspect)
                     except ValueError:
                         video_aspect = None
-                
+
                 if video_aspect == VideoAspect.portrait_3_4:
                     target_width, target_height = 1080, 1440
                 elif video_aspect == VideoAspect.landscape_16_9:
                     target_width, target_height = 1920, 1080
                 elif video_aspect == VideoAspect.square:
                     target_width, target_height = 1080, 1080
-            
+
             output_bg_color = getattr(params, 'output_bg_color', None) or 'black'
             bg_color = parse_color(output_bg_color)
-            
+
             if isinstance(bg_color, (list, tuple)):
-                hex_color = '#{:02x}{:02x}{:02x}'.format(
-                    int(bg_color[0]), int(bg_color[1]), int(bg_color[2])
-                )
+                color_rgb = tuple(int(c) for c in bg_color[:3])
             else:
-                hex_color = 'black'
-            
-            ffmpeg_cmd = [
-                _get_ffmpeg_exe(),
-                '-f', 'lavfi',
-                '-i', f'color=c={hex_color}:s={target_width}x{target_height}:d={duration}',
-                '-f', 'lavfi',
-                '-i', f'anoisesrc=c=pink:a=0.0005:r={sample_rate}:d={duration}',
-                '-c:v', get_video_codec(),
-                '-r', str(fps),
-                '-c:a', audio_codec,
-                '-pix_fmt', 'yuv420p',
-                '-shortest',
-                '-y',
-                output_path
-            ]
-            logger.info(f"Creating silence prefix video with FFmpeg: {duration}s, {target_width}x{target_height}, {sample_rate}Hz, color={hex_color}")
-        
-        result = subprocess.run(
-            ffmpeg_cmd,
-            capture_output=True,
-            text=True
-        )
-        
-        if result.returncode != 0:
-            logger.error(f"FFmpeg silence prefix creation failed (rc={result.returncode}): {result.stderr[-500:]}")
+                color_rgb = (0, 0, 0)
+
+            video_clip = ColorClip(size=(target_width, target_height), color=color_rgb, duration=duration)
+            logger.info(f"Creating silence prefix video with color: {duration}s, {target_width}x{target_height}, color={color_rgb}")
+
+        # ── B. Generate pink noise audio to temp WAV, load with AudioFileClip ──
+        pink = _generate_pink_noise(duration, sample_rate, amplitude=0.0005)
+        n_samples = len(pink)
+
+        if n_samples == 0:
+            logger.error(f"Silence prefix duration too short: {duration}s")
+            video_clip.close()
+            return None
+
+        import tempfile
+        import wave
+
+        temp_wav = None
+        try:
+            temp_wav = tempfile.mktemp(suffix='.wav', prefix='coiner_silence_')
+            with wave.open(temp_wav, 'w') as wf:
+                wf.setnchannels(channels)
+                wf.setsampwidth(2)  # 16-bit PCM
+                wf.setframerate(sample_rate)
+                scaled = np.int16(pink * 32767)
+                if channels == 1:
+                    wf.writeframes(scaled.tobytes())
+                else:
+                    stereo = np.column_stack([scaled, scaled])
+                    wf.writeframes(stereo.tobytes())
+
+            audio_clip = AudioFileClip(temp_wav)
+
+            # ── C. Combine and write ──
+            video_clip = video_clip.with_audio(audio_clip)
+
+            enc_params = get_video_encoding_params()
+            ffmpeg_params = ["-pix_fmt", "yuv420p"]
+            if enc_params["crf"] is not None:
+                ffmpeg_params.extend(["-crf", str(enc_params["crf"])])
+
+            video_clip.write_videofile(
+                filename=output_path,
+                threads=2,
+                logger=None,
+                temp_audiofile_path=os.path.dirname(output_path),
+                audio_codec=audio_codec,
+                fps=fps,
+                codec=get_video_codec(),
+                bitrate=enc_params["bitrate"],
+                preset=enc_params["preset"],
+                ffmpeg_params=ffmpeg_params,
+            )
+
+            audio_clip.close()
+            video_clip.close()
+
+            # ── D. Verify duration ──
             try:
-                if first_scene_video_path and os.path.exists(first_frame_path):
-                    os.remove(first_frame_path)
-            except:
-                pass
-            return None
-        
-        if not os.path.exists(output_path):
-            logger.error(f"Silence prefix video not created: {output_path}")
-            return None
-        
-        try:
-            if first_scene_video_path and 'first_frame_path' in locals() and os.path.exists(first_frame_path):
-                os.remove(first_frame_path)
-        except:
-            pass
-        
-        try:
-            from moviepy import VideoFileClip
-            clip = VideoFileClip(output_path)
-            actual_duration = clip.duration
-            clip.close()
-            logger.info(f"Created silence prefix video: {output_path} (actual duration: {actual_duration:.3f}s, requested: {duration}s)")
-        except Exception as e:
-            logger.warning(f"Could not verify silence prefix duration: {e}")
-        
-        return output_path
-        
+                clip = VideoFileClip(output_path)
+                actual_duration = clip.duration
+                clip.close()
+                logger.info(f"Created silence prefix video: {output_path} (actual duration: {actual_duration:.3f}s, requested: {duration}s)")
+            except Exception as e:
+                logger.warning(f"Could not verify silence prefix duration: {e}")
+
+            return output_path
+
+        finally:
+            if temp_wav and os.path.exists(temp_wav):
+                try:
+                    os.unlink(temp_wav)
+                except:
+                    pass
+
     except Exception as e:
         logger.error(f"Failed to create silence prefix video: {e}")
         return None
