@@ -88,6 +88,7 @@ interface SubtitleSettings {
 
 interface AppSettings {
   llmProvider: string;
+  subtitleProvider: string;
   videoSource: string;
   useGpu: boolean;
 }
@@ -135,6 +136,7 @@ export const useSettingsStore = defineStore('settings', {
     // App settings
     app: {
       llmProvider: 'openai',
+      subtitleProvider: 'edge',
       videoSource: 'pexels',
       useGpu: false,
     },
@@ -316,6 +318,9 @@ export const useSettingsStore = defineStore('settings', {
       console.log('[SettingsStore] Saving subtitle settings to backend...');
       try {
         const subtitleConfig = {
+          app: {
+            subtitle_provider: this.app.subtitleProvider,
+          },
           ui: {
             subtitle_enabled: this.subtitle.enable,
             subtitle_position: this.subtitle.position,
@@ -611,6 +616,10 @@ export const useSettingsStore = defineStore('settings', {
             if (data.app.llm_provider) {
               this.app.llmProvider = data.app.llm_provider;
               console.log('Updated llmProvider:', this.app.llmProvider);
+            }
+            if (data.app.subtitle_provider) {
+              this.app.subtitleProvider = data.app.subtitle_provider;
+              console.log('Updated subtitleProvider:', this.app.subtitleProvider);
             }
             if (data.app.video_source) {
               this.app.videoSource = data.app.video_source;

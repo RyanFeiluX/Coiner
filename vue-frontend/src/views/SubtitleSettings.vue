@@ -11,7 +11,17 @@
         <div class="form-item">
           <el-checkbox v-model="form.enableSubtitles">{{ t('Enable Subtitles') }}</el-checkbox>
         </div>
-        
+
+        <div class="form-item" v-if="form.enableSubtitles">
+          <label class="form-label">{{ t('Subtitle Engine') }}</label>
+          <el-tooltip :content="t('Subtitle Engine Tooltip')" placement="top">
+            <el-radio-group v-model="form.subtitleEngine" @change="handleSubtitleEngineChange">
+              <el-radio value="edge">Edge-TTS</el-radio>
+              <el-radio value="whisper">Whisper</el-radio>
+            </el-radio-group>
+          </el-tooltip>
+        </div>
+
         <div class="form-item" v-if="form.enableSubtitles">
           <label class="form-label">{{ t('Font') }}</label>
           <el-select v-model="form.subtitleFont" :placeholder="t('Select font')" class="form-select">
@@ -163,6 +173,7 @@ const settingsStore = useSettingsStore();
 
 const form = reactive({
   enableSubtitles: settingsStore.subtitle.enable,
+  subtitleEngine: settingsStore.app.subtitleProvider,
   subtitleFont: settingsStore.subtitle.font,
   subtitlePosition: settingsStore.subtitle.position,
   subtitleCustomPosition: settingsStore.subtitle.customPosition,
@@ -173,6 +184,11 @@ const form = reactive({
   autoFit: settingsStore.subtitle.autoFit,
   subtitleMargin: settingsStore.subtitle.margin
 });
+
+const handleSubtitleEngineChange = async (value: string) => {
+  settingsStore.updateAppSetting('subtitleProvider', value);
+  await settingsStore.saveSubtitleToBackend();
+};
 
 const previewImageUrl = ref<string | null>(null);
 const isLoadingPreview = ref(false);
@@ -329,6 +345,10 @@ watch(() => form.enableSubtitles, async (newValue) => {
   await settingsStore.updateSubtitleSetting('enable', newValue);
 });
 
+watch(() => settingsStore.app.subtitleProvider, (newValue) => {
+  form.subtitleEngine = newValue;
+});
+
 watch(() => form.subtitleFont, async (newValue) => {
   await settingsStore.updateSubtitleSetting('font', newValue);
 });
@@ -381,6 +401,7 @@ watch(() => settingsStore.subtitle, (newSubtitle) => {
 
 onMounted(() => {
   form.enableSubtitles = settingsStore.subtitle.enable;
+  form.subtitleEngine = settingsStore.app.subtitleProvider;
   form.subtitleFont = settingsStore.subtitle.font;
   form.subtitlePosition = settingsStore.subtitle.position;
   form.subtitleCustomPosition = settingsStore.subtitle.customPosition;
