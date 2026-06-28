@@ -43,7 +43,6 @@
               :show-input="true"
               :input-size="'small'"
             />
-            <span class="slider-value">{{ Math.round(parseFloat(form.subtitleCustomPosition)) }}%</span>
           </div>
         </div>
         
@@ -245,7 +244,7 @@ const previewStyle = computed(() => {
     bottomPosition = `${subtitleMarginPercent}%`;
     transform = 'none';
   } else if (form.subtitlePosition === 'custom') {
-    const customPos = parseFloat(form.subtitleCustomPosition) || 80;
+    const customPos = form.subtitleCustomPosition ?? 80;
     topPosition = `${customPos}%`;
     bottomPosition = 'auto';
     transform = 'translateY(-50%)';
@@ -301,7 +300,7 @@ async function updateSubtitlePreview() {
       stroke_color: form.subtitleOutlineColor,
       stroke_width: form.subtitleOutlineWidth,
       subtitle_position: form.subtitlePosition,
-      custom_position: parseFloat(form.subtitleCustomPosition) || 80.0,
+      custom_position: form.subtitleCustomPosition ?? 80.0,
       subtitle_auto_fit: form.autoFit,
       subtitle_margin: settingsStore.subtitle.margin,
       video_aspect: aspect,
@@ -460,13 +459,6 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.slider-value {
-  min-width: 70px;
-  text-align: right;
-  font-size: 14px;
-  color: #666;
 }
 
 .preview-section {

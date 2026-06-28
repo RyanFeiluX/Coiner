@@ -261,7 +261,7 @@ const startIntegration = async () => {
     stroke_color: settingsStore.subtitle.outlineColor,
     stroke_width: settingsStore.subtitle.outlineWidth,
     subtitle_position: settingsStore.subtitle.position,
-    custom_position: parseFloat(settingsStore.subtitle.customPosition) || 70.0
+    custom_position: settingsStore.subtitle.customPosition ?? 70.0
   };
   
   // Get latest BGM settings from settings store
