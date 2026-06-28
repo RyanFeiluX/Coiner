@@ -401,6 +401,7 @@ Coiner 提供了一套完整的 RESTful API 接口，用于视频生成、配置
     },
     "app": {
       "llm_provider": "deepseek",
+      "subtitle_provider": "edge",
       "video_source": "pexels",
       "use_gpu": true,
       "pexels_api_keys": ["Ra5z3Yw0ZUwPy..."],
@@ -444,10 +445,12 @@ Coiner 提供了一套完整的 RESTful API 接口，用于视频生成、配置
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
+| app | object | 否 | 应用配置 (llm_provider, subtitle_provider, video_source 等) |
 | ui | object | 否 | UI 配置 |
 | azure | object | 否 | Azure TTS 配置 |
 | siliconflow | object | 否 | SiliconFlow 配置 |
 | coze | object | 否 | Coze 配置 |
+| whisper | object | 否 | Whisper 配置 (device) |
 
 **请求示例**:
 ```json

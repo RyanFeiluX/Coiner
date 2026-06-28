@@ -97,6 +97,7 @@ def get_config(request: Request):
             },
             "app": {
                 "llm_provider": config.app.get("llm_provider", "openai"),
+                "subtitle_provider": config.app.get("subtitle_provider", "edge"),
                 "video_source": config.app.get("video_source", "pexels"),
                 "video_quality": config.app.get("video_quality", "ultra"),
                 "video_bitrate": config.app.get("video_bitrate", "20M"),
