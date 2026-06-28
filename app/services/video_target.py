@@ -405,8 +405,23 @@ def burn_subtitles_to_scene_video(
     if pos == 'custom':
         custom_pos = float(getattr(params, 'custom_position', 70.0))
         estimated_h = int(font_size_px * 1.5)
-        target_y = int((video_height - estimated_h) * (custom_pos / 100))
-        sub_params["margin_v"] = video_height - target_y - estimated_h
+
+        # Check if pillarbox (3:4 -> 9:16) will be applied later
+        # Position must be calculated relative to final output frame
+        target_h = video_height
+        pad_h = 0
+        vasp = getattr(params, 'video_aspect', None)
+        if vasp is not None:
+            vasp_value = vasp.value if hasattr(vasp, 'value') else str(vasp)
+            if vasp_value == "3:4":
+                target_h = 1920
+                pad_h = (target_h - video_height) // 2
+
+        y_in_target = int((target_h - estimated_h) * (custom_pos / 100))
+        y_in_scene = y_in_target - pad_h
+        y_in_scene = max(0, min(y_in_scene, video_height - estimated_h))
+
+        sub_params["margin_v"] = video_height - y_in_scene - estimated_h
         if sub_params["margin_v"] < 0:
             sub_params["margin_v"] = 0
     else:

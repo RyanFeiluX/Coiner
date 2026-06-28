@@ -239,7 +239,7 @@ const generateVideo = async () => {
       video_language: scriptStore.language || 'zh',
       subtitle_enabled: settingsStore.subtitle.enable,
       subtitle_position: settingsStore.subtitle.position,
-      custom_position: parseFloat(settingsStore.subtitle.customPosition) || 70.0,
+      custom_position: settingsStore.subtitle.customPosition ?? 70.0,
       font_name: settingsStore.subtitle.font,
       font_size: settingsStore.subtitle.fontSize,
       text_fore_color: settingsStore.subtitle.color,

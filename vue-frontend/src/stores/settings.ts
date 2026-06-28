@@ -77,7 +77,7 @@ interface SubtitleSettings {
   enable: boolean;
   font: string;
   position: string;
-  customPosition: string;
+  customPosition: number;
   color: string;
   fontSize: number;
   outlineColor: string;
@@ -203,7 +203,7 @@ export const useSettingsStore = defineStore('settings', {
       enable: true,
       font: 'MicrosoftYaHeiBold.ttc',
       position: 'custom',
-      customPosition: '80.0',
+      customPosition: 80,
       color: '#FFFF00',
       fontSize: 60,
       outlineColor: '#000000',
@@ -319,7 +319,7 @@ export const useSettingsStore = defineStore('settings', {
           ui: {
             subtitle_enabled: this.subtitle.enable,
             subtitle_position: this.subtitle.position,
-            subtitle_custom_position: parseFloat(this.subtitle.customPosition) || 70.0,
+            subtitle_custom_position: this.subtitle.customPosition ?? 70.0,
             subtitle_margin: this.subtitle.margin,
             subtitle_auto_fit: this.subtitle.autoFit,
             font_name: this.subtitle.font,
@@ -489,7 +489,7 @@ export const useSettingsStore = defineStore('settings', {
               console.log('[SettingsStore] Updated subtitle.position from config.ui:', this.subtitle.position);
             }
             if (data.ui.subtitle_custom_position !== undefined) {
-              this.subtitle.customPosition = String(data.ui.subtitle_custom_position);
+              this.subtitle.customPosition = Number(data.ui.subtitle_custom_position) ?? 80;
               console.log('[SettingsStore] Updated subtitle.customPosition from config.ui:', this.subtitle.customPosition);
             }
             if (data.ui.subtitle_margin !== undefined) {
