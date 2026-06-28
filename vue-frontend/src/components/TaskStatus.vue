@@ -130,6 +130,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { Refresh, Download, Delete, Close, Loading } from '@element-plus/icons-vue';
 import { useI18nStore } from '../stores/i18n';
 
@@ -247,8 +248,9 @@ const handleDownload = (videoUrl: string) => {
   window.open(videoUrl, '_blank');
 };
 
+const router = useRouter();
 const navigateToSceneIntegration = (taskId: string) => {
-  window.location.href = `/#/scene-integration?original_task_id=${taskId}`;
+  router.push({ name: 'SceneIntegration', query: { original_task_id: taskId } });
 };
 </script>
 

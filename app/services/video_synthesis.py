@@ -125,19 +125,18 @@ def _rebuild_scene_video(scene_info: dict, task_dir: str) -> str:
     """
     Rebuild a scene's combined.mp4 from its existing audio and re-downloaded materials.
 
+    If audio is missing, attempts to regenerate it via TTS using original scene text and params
+    stored in script.json.
+
     Args:
-        scene_info: Scene info dict from scan_task_files (must contain scene_num, scene_dir, audio)
+        scene_info: Scene info dict from scan_task_files (must contain scene_num, scene_dir)
         task_dir: Original task directory path
 
     Returns:
         Path to rebuilt combined.mp4, or None on failure
     """
     scene_dir = scene_info["scene_dir"]
-    audio_path = scene_info["audio"]
     combined_path = scene_info.get("video") or os.path.join(scene_dir, "combined.mp4")
-
-    if not audio_path or not os.path.exists(audio_path):
-        return None
 
     # Load script.json for scene search terms and params
     script_path = os.path.join(task_dir, "script.json")
@@ -152,40 +151,93 @@ def _rebuild_scene_video(scene_info: dict, task_dir: str) -> str:
         logger.warning(f"Failed to read script.json: {e}")
         return None
 
-    scenes = script_data.get("script", [])
+    raw_script_str = script_data.get("script", "")
     terms_list = script_data.get("search_terms", [])
     params_data = script_data.get("params", {})
 
     scene_index = scene_info["scene_num"] - 1
-    if scene_index >= len(scenes) or scene_index >= len(terms_list):
+    if scene_index >= len(terms_list):
         logger.warning(f"Scene index {scene_index} out of range in script.json")
         return None
 
-    scene = scenes[scene_index]
     search_terms = terms_list[scene_index]
 
     if not search_terms:
         logger.warning(f"No search terms for scene {scene_info['scene_num']}, cannot rebuild")
         return None
 
-    # Read app config for video settings
+    # Get scene text from script.json (used for TTS and subtitle)
+    scene_text = None
+    raw_scenes = params_data.get("scenes", [])
+    if scene_index < len(raw_scenes):
+        scene_text = raw_scenes[scene_index].get("script") or raw_scenes[scene_index].get("audio", "")
+
+    # Try to get or regenerate audio
+    audio_path = scene_info.get("audio")
+    sub_maker = None
+    if not audio_path or not os.path.exists(audio_path):
+        logger.info(f"Scene {scene_info['scene_num']}: audio missing, attempting to regenerate via TTS")
+        try:
+            if scene_text:
+                from app.services import voice
+                audio_path = os.path.join(scene_dir, "audio.mp3")
+                sub_maker = voice.tts(
+                    text=scene_text,
+                    voice_name=voice.parse_voice_name(params_data.get("voice_name", "")),
+                    voice_rate=params_data.get("voice_rate", 1.0),
+                    voice_file=audio_path,
+                    voice_volume=params_data.get("voice_volume", 1.0),
+                    emotion=params_data.get("voice_emotion", ""),
+                    is_preview=False,
+                )
+                if os.path.exists(audio_path):
+                    scene_info["audio"] = audio_path
+                    logger.success(f"Scene {scene_info['scene_num']}: regenerated audio via TTS")
+        except Exception as e:
+            logger.warning(f"Scene {scene_info['scene_num']}: failed to regenerate audio: {e}")
+            audio_path = None
+
+    if not audio_path or not os.path.exists(audio_path):
+        logger.warning(f"Scene {scene_info['scene_num']}: no audio available, cannot rebuild")
+        return None
+
+    # Regenerate subtitle if missing (independent of whether audio was just generated or pre-existing)
+    subtitle_path = scene_info.get("subtitle")
+    if (not subtitle_path or not os.path.exists(subtitle_path)) and params_data.get("subtitle_enabled", True):
+        subtitle_path = os.path.join(scene_dir, "subtitle.srt")
+        try:
+            from app.services import voice
+            if sub_maker and scene_text:
+                voice.create_subtitle(text=scene_text, sub_maker=sub_maker, subtitle_file=subtitle_path)
+            if not os.path.exists(subtitle_path):
+                from app.services import subtitle as sub_svc
+                sub_svc.create(audio_file=audio_path, subtitle_file=subtitle_path)
+                if os.path.exists(subtitle_path) and scene_text:
+                    sub_svc.correct(subtitle_file=subtitle_path, video_script=scene_text)
+            if os.path.exists(subtitle_path):
+                scene_info["subtitle"] = subtitle_path
+                logger.success(f"Scene {scene_info['scene_num']}: regenerated subtitle")
+        except Exception as sub_e:
+            logger.warning(f"Scene {scene_info['scene_num']}: subtitle regeneration failed: {sub_e}")
+
+    # Use original params from script.json first, fall back to current app config
     app_config = config.app
 
-    video_source = app_config.get("video_source", "pexels")
-    video_aspect_str = app_config.get("video_aspect", "portrait")
+    video_source = params_data.get("video_source") or app_config.get("video_source", "pexels")
+    video_aspect_str = params_data.get("video_aspect") or app_config.get("video_aspect", "portrait")
     try:
         video_aspect = VideoAspect(video_aspect_str)
     except ValueError:
         video_aspect = VideoAspect.portrait
 
-    video_concat_mode_str = app_config.get("video_concat_mode", "random")
+    video_concat_mode_str = params_data.get("video_concat_mode") or app_config.get("video_concat_mode", "random")
     try:
         video_concat_mode = VideoConcatMode(video_concat_mode_str)
     except ValueError:
         video_concat_mode = VideoConcatMode.random
 
-    max_clip_duration = int(app_config.get("video_clip_duration", 5))
-    n_threads = int(app_config.get("n_threads", 2))
+    max_clip_duration = int(params_data.get("video_clip_duration") or app_config.get("video_clip_duration", 5))
+    n_threads = int(params_data.get("n_threads") or app_config.get("n_threads", 2))
 
     # Download video materials for this scene
     from app.services.material import download_videos
@@ -205,9 +257,9 @@ def _rebuild_scene_video(scene_info: dict, task_dir: str) -> str:
         logger.warning(f"No videos downloaded for scene {scene_info['scene_num']}, cannot rebuild")
         return None
 
-    # Build scene video using existing audio
+    # Build scene video using (regenerated) audio
     from app.services.video_scene import build_scene_video
-    result = build_scene_video(
+    combined_result, _ = build_scene_video(
         combined_video_path=combined_path,
         video_paths=downloaded,
         audio_file=audio_path,
@@ -218,9 +270,9 @@ def _rebuild_scene_video(scene_info: dict, task_dir: str) -> str:
         scene_info=f"(rebuild scene {scene_info['scene_num']})",
     )
 
-    if result and os.path.exists(result):
-        logger.success(f"Rebuilt scene {scene_info['scene_num']} video: {result}")
-        return result
+    if combined_result and os.path.exists(combined_result):
+        logger.success(f"Rebuilt scene {scene_info['scene_num']} video: {combined_result}")
+        return combined_result
 
     return None
 
@@ -329,16 +381,13 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
             sm.state.update_task(task_id, state=const.TASK_STATE_FAILED, progress=0)
             return None
 
-        # Attempt to rebuild scenes with missing combined.mp4 but existing audio
+        # Attempt to rebuild scenes with missing combined.mp4
         rebuilt_count = 0
         for scene_info in scenes_in_range:
             if scene_info["video"] is not None and os.path.exists(scene_info["video"]):
                 continue  # already valid
-            if not scene_info.get("audio") or not os.path.exists(scene_info["audio"]):
-                logger.warning(f"Scene {scene_info['scene_num']}: video missing and no audio to rebuild from, skipping")
-                continue
 
-            logger.info(f"Scene {scene_info['scene_num']}: video missing, attempting rebuild from existing audio")
+            logger.info(f"Scene {scene_info['scene_num']}: video missing, attempting rebuild")
             rebuilt_path = _rebuild_scene_video(scene_info, task_dir)
             if rebuilt_path:
                 scene_info["video"] = rebuilt_path
@@ -361,7 +410,55 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
             return None
 
         logger.info(f"Scenes in range: {len(scenes_in_range)}, rebuilt: {rebuilt_count}, valid: {len(valid_scenes)}")
-        
+
+        # Recover subtitles for scenes that have audio but missing subtitle
+        subtitle_recovered = 0
+        for scene_info in valid_scenes:
+            if scene_info.get("subtitle") and os.path.exists(scene_info["subtitle"]):
+                continue
+            audio_file = scene_info.get("audio")
+            scene_dir = scene_info.get("scene_dir")
+            if not audio_file or not os.path.exists(audio_file) or not scene_dir:
+                continue
+            srt_path = os.path.join(scene_dir, "subtitle.srt")
+            logger.info(f"Scene {scene_info['scene_num']}: subtitle missing, recovering from audio")
+            try:
+                from app.services import subtitle as sub_svc
+                sub_svc.create(audio_file=audio_file, subtitle_file=srt_path)
+                if os.path.exists(srt_path):
+                    scene_info["subtitle"] = srt_path
+                    subtitle_recovered += 1
+                    logger.success(f"Scene {scene_info['scene_num']}: subtitle recovered from audio")
+            except Exception as sub_e:
+                logger.warning(f"Scene {scene_info['scene_num']}: subtitle recovery failed: {sub_e}")
+        if subtitle_recovered:
+            logger.info(f"Subtitle recovery: {subtitle_recovered} scene(s) recovered")
+
+        # Regenerate merged_subtitle.srt in the original task directory
+        try:
+            original_task_id = os.path.basename(task_dir)
+            scene_subtitle_results = []
+            for s in valid_scenes:
+                sub_path = s.get("subtitle")
+                video_path = s.get("video")
+                if sub_path and os.path.exists(sub_path) and video_path and os.path.exists(video_path):
+                    scene_subtitle_results.append({
+                        "subtitle_path": sub_path,
+                        "combined_video_path": video_path,
+                    })
+            if scene_subtitle_results:
+                from app.services.subtitle import merge_scene_subtitles
+                from app.config.config import silence_duration as config_silence_duration
+                merged = merge_scene_subtitles(
+                    original_task_id,
+                    scene_subtitle_results,
+                    silence_duration=config_silence_duration,
+                )
+                if merged and os.path.exists(merged):
+                    logger.success(f"Merged subtitle file regenerated: {merged}")
+        except Exception as merge_e:
+            logger.warning(f"Failed to regenerate merged subtitle: {merge_e}")
+
         # Get scene integration task directory for the final video
         # Use the provided task_id parameter for the scene integration task
         scene_integration_task_dir = utils.task_dir(task_id)
@@ -388,6 +485,17 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         _cfg = load_config()
         app_config = _cfg.get("app", {})
         ui_config = _cfg.get("ui", {})
+
+        # Load original params from script.json for subtitle/TTS/BGM style consistency
+        original_params = {}
+        script_path = os.path.join(task_dir, "script.json")
+        if os.path.exists(script_path):
+            try:
+                with open(script_path, "r", encoding="utf-8") as f:
+                    script_data = json.loads(f.read())
+                original_params = script_data.get("params", {})
+            except Exception:
+                pass
         
         # Handle BGM parameters
         if bgm_params is None:
@@ -454,36 +562,38 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
             video_subject="Recovered Video",
             video_aspect=VideoAspect(aspect_ratio),
             video_concat_mode=VideoConcatMode(app_config.get("video_concat_mode", "random")),
-            subtitle_enabled=subtitle_params.get('subtitle_enabled', app_config.get("subtitle_enabled", ui_config.get("subtitle_enabled", True))),
-            font_name=subtitle_params.get('font_name', app_config.get("font_name", ui_config.get("font_name", "STHeitiMedium.ttc"))),
-            font_size=subtitle_params.get('font_size', app_config.get("font_size", ui_config.get("font_size", 60))),
-            text_fore_color=subtitle_params.get('text_fore_color', app_config.get("text_fore_color", ui_config.get("text_fore_color", "white"))),
-            text_background_color=subtitle_params.get('text_background_color', app_config.get("text_background_color", ui_config.get("text_background_color", "transparent"))),
-            stroke_color=subtitle_params.get('stroke_color', app_config.get("stroke_color", ui_config.get("stroke_color", "black"))),
-            stroke_width=subtitle_params.get('stroke_width', app_config.get("stroke_width", ui_config.get("stroke_width", 2))),
-            subtitle_position=subtitle_params.get('subtitle_position', app_config.get("subtitle_position", ui_config.get("subtitle_position", "bottom"))),
-            custom_position=subtitle_params.get('custom_position', app_config.get("subtitle_custom_position", ui_config.get("subtitle_custom_position", 70.0))),
-            bgm_type=bgm_params.get('bgm_type', app_config.get("bgm_type", ui_config.get("bgm_type", "random"))),
-            bgm_file=bgm_params.get('bgm_file', ''),
-            bgm_volume=float(bgm_params.get('bgm_volume', app_config.get("bgm_volume", ui_config.get("bgm_volume", 0.2)))),
-            # Title parameters from UI config (title settings are in [ui] section)
-            title_enabled=ui_config.get("title_enabled", False),
-            title_text=ui_config.get("title_text", ""),
-            title_duration=ui_config.get("title_duration", 3.0),
-            title_font_name=ui_config.get("title_font_name", ui_config.get("title_font", "MicrosoftYaHeiBold.ttc")),
-            title_font_size=ui_config.get("title_font_size", 72),
-            title_text_color=ui_config.get("title_text_color", ui_config.get("title_color", "#FFFFFF")),
-            title_stroke_color=ui_config.get("title_stroke_color", "#000000"),
-            title_stroke_width=ui_config.get("title_stroke_width", 2.0),
-            title_background_color=ui_config.get("title_background_color", ui_config.get("title_bg_color", "transparent")),
-            title_position=ui_config.get("title_position", "center"),
-            title_margin=ui_config.get("title_margin", 0.05),
-            title_margin_left=ui_config.get("title_margin_left", 0.05),
-            title_margin_right=ui_config.get("title_margin_right", 0.05),
-            title_animation=ui_config.get("title_animation", "none"),
-            title_animation_duration=ui_config.get("title_animation_duration", 0.5),
-            title_background_overlay=ui_config.get("title_background_overlay", False),
-            title_overlay_color=ui_config.get("title_overlay_color", "rgba(0,0,0,0.5)"),
+            # Subtitle params: original_params > subtitle_params > app_config > ui_config
+            subtitle_enabled=original_params.get('subtitle_enabled') if original_params.get('subtitle_enabled') is not None else subtitle_params.get('subtitle_enabled', app_config.get("subtitle_enabled", ui_config.get("subtitle_enabled", True))),
+            font_name=original_params.get('font_name') or subtitle_params.get('font_name', app_config.get("font_name", ui_config.get("font_name", "STHeitiMedium.ttc"))),
+            font_size=original_params.get('font_size') or subtitle_params.get('font_size', app_config.get("font_size", ui_config.get("font_size", 60))),
+            text_fore_color=original_params.get('text_fore_color') or subtitle_params.get('text_fore_color', app_config.get("text_fore_color", ui_config.get("text_fore_color", "white"))),
+            text_background_color=original_params.get('text_background_color') if original_params.get('text_background_color') is not None else subtitle_params.get('text_background_color', app_config.get("text_background_color", ui_config.get("text_background_color", "transparent"))),
+            stroke_color=original_params.get('stroke_color') or subtitle_params.get('stroke_color', app_config.get("stroke_color", ui_config.get("stroke_color", "black"))),
+            stroke_width=original_params.get('stroke_width') or subtitle_params.get('stroke_width', app_config.get("stroke_width", ui_config.get("stroke_width", 2))),
+            subtitle_position=original_params.get('subtitle_position') or subtitle_params.get('subtitle_position', app_config.get("subtitle_position", ui_config.get("subtitle_position", "bottom"))),
+            custom_position=original_params.get('custom_position') or subtitle_params.get('custom_position', app_config.get("subtitle_custom_position", ui_config.get("subtitle_custom_position", 70.0))),
+            # BGM params: original_params > bgm_params > app_config > ui_config
+            bgm_type=original_params.get('bgm_type') or bgm_params.get('bgm_type', app_config.get("bgm_type", ui_config.get("bgm_type", "random"))),
+            bgm_file=original_params.get('bgm_file') or bgm_params.get('bgm_file', ''),
+            bgm_volume=float(original_params.get('bgm_volume') or bgm_params.get('bgm_volume', app_config.get("bgm_volume", ui_config.get("bgm_volume", 0.2)))),
+            # Title params: original_params > ui_config
+            title_enabled=original_params.get('title_enabled') if original_params.get('title_enabled') is not None else ui_config.get("title_enabled", False),
+            title_text=original_params.get('title_text') or ui_config.get("title_text", ""),
+            title_duration=original_params.get('title_duration') or ui_config.get("title_duration", 3.0),
+            title_font_name=original_params.get('title_font_name') or ui_config.get("title_font_name", ui_config.get("title_font", "MicrosoftYaHeiBold.ttc")),
+            title_font_size=original_params.get('title_font_size') or ui_config.get("title_font_size", 72),
+            title_text_color=original_params.get('title_text_color') or ui_config.get("title_text_color", ui_config.get("title_color", "#FFFFFF")),
+            title_stroke_color=original_params.get('title_stroke_color') or ui_config.get("title_stroke_color", "#000000"),
+            title_stroke_width=original_params.get('title_stroke_width') or ui_config.get("title_stroke_width", 2.0),
+            title_background_color=original_params.get('title_background_color') if original_params.get('title_background_color') is not None else ui_config.get("title_background_color", ui_config.get("title_bg_color", "transparent")),
+            title_position=original_params.get('title_position') or ui_config.get("title_position", "center"),
+            title_margin=original_params.get('title_margin') or ui_config.get("title_margin", 0.05),
+            title_margin_left=original_params.get('title_margin_left') or ui_config.get("title_margin_left", 0.05),
+            title_margin_right=original_params.get('title_margin_right') or ui_config.get("title_margin_right", 0.05),
+            title_animation=original_params.get('title_animation') or ui_config.get("title_animation", "none"),
+            title_animation_duration=original_params.get('title_animation_duration') or ui_config.get("title_animation_duration", 0.5),
+            title_background_overlay=original_params.get('title_background_overlay') if original_params.get('title_background_overlay') is not None else ui_config.get("title_background_overlay", False),
+            title_overlay_color=original_params.get('title_overlay_color') or ui_config.get("title_overlay_color", "rgba(0,0,0,0.5)"),
             title_align=ui_config.get("title_align", "center")
         )
         
