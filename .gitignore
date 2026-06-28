@@ -42,3 +42,4 @@ test/
 .qoder/
 *TEMP*.mp4
 vue-frontend/public/
+secrets.toml

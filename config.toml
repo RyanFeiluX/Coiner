@@ -4,8 +4,8 @@ project_version = "2.8.0"
 [app]
 host_visible = false
 video_source = "pexels"
-pexels_api_keys = [ "Ra5z3Yw0ZUwPy6Y7DddvQTgPq8lgW1JePJu1oSDJWVvrxm6R5LBwqv0x", "OWKfbDqi48tpPqaPyJVQga7FwquH1SXDtMYULID8MPU0z6krtQJ9OwZ6",]
-pixabay_api_keys = [ "54923197-cd28f5e7418eaabd03cdd2edb",]
+pexels_api_keys = []
+pixabay_api_keys = []
 llm_provider = "deepseek"
 stop_on_api_failure = true
 pollinations_api_key = ""
@@ -16,7 +16,7 @@ ollama_model_name = "qwen:7b"
 openai_api_key = ""
 openai_base_url = ""
 openai_model_name = "gpt-4o-mini"
-moonshot_api_key = "sk-0b0650da992d4c86837fdb2ebb39f30c"
+moonshot_api_key = ""
 moonshot_base_url = "https://api.moonshot.cn/v1"
 moonshot_model_name = "moonshot-v1-8k"
 oneapi_api_key = ""
@@ -31,7 +31,7 @@ gemini_api_key = ""
 gemini_model_name = "gemini-1.0-pro"
 qwen_api_key = ""
 qwen_model_name = "qwen-max"
-deepseek_api_key = "sk-0b0650da992d4c86837fdb2ebb39f30c"
+deepseek_api_key = ""
 deepseek_base_url = "https://api.deepseek.com"
 deepseek_model_name = "deepseek-chat"
 modelscope_api_key = ""
@@ -46,7 +46,7 @@ redis_port = 6379
 redis_db = 0
 redis_password = ""
 max_concurrent_tasks = 1
-ollama_api_key = "123"
+ollama_api_key = ""
 use_gpu = true
 video_quality = "ultra"
 video_bitrate = "20M"
@@ -77,13 +77,13 @@ speech_key = ""
 speech_region = ""
 
 [siliconflow]
-api_key = "sk-ehmjzsdqlcbsswaplkgzjsqjrlwyjquczplhjxoszbhdjgvn"
+api_key = ""
 
 [ui]
 hide_log = false
 language = "zh"
-tts_server = "azure-tts-v1"
-voice_name = "zh-CN-YunjianNeural-Male"
+tts_server = "coze-tts"
+voice_name = "coze|7468512265151741979|擎苍-Male|https://lf26-appstore-sign.oceancloudapi.com/ocean-cloud-tos/VolcanoSystemVoice/zh_male_qingcang_mars_bigtts.mp3?lk3s=da27ec82&x-expires=1782721436&x-signature=mCp4o1EbCD%2F8Np6NmxLQ0y64RIo%3D|无语，擎天之巨首，揽尽世间风云变幻，诸般阻碍，不过是无脉相巅峰之基石。今日之儒，来日必当十倍奉还。 无知威名，必将震慑四海八荒。|"
 voice_volume = 1.8
 voice_rate = 1.1
 bgm_type = ""
@@ -101,7 +101,7 @@ stroke_color = "#000000"
 stroke_width = 1
 output_bg_color = "blue"
 title_enabled = true
-title_text = "从简单问答\n到复杂思辨"
+title_text = "AI编程的灵魂"
 title_duration = 3
 title_font_name = "MicrosoftYaHeiBold.ttc"
 title_font_size = 60
@@ -121,10 +121,10 @@ title_style = "classic"
 title_align = "center"
 
 [coze]
-api_key = "sat_5QQV8lPJCo1uK0cMUsMwQMDqPUFHAVajSQnICchJYcSwmp6cuA7MAeRd73k48m4A"
+api_key = ""
 
 [qwen]
-api_key = "sk-79f1b2aa20a942b4be3933e383ad5709"
+api_key = ""
 
 [imagemagick]
 imagemagick_path = "D:\\ProgramData\\ImageMagick-7.1.12-Q16\\magick.exe"
