@@ -20,7 +20,7 @@ def get_voices(request: Request, tts_server: str = "azure-tts-v1", force_refresh
 
     Args:
         tts_server: TTS server type (azure-tts-v1, azure-tts-v2, siliconflow, gemini-tts, coze-tts, qwen-tts)
-        force_refresh: Force refresh voice cache (for Coze TTS)
+        force_refresh: Force refresh voice cache (for Coze, Qwen, and Azure TTS)
     """
     try:
         if tts_server == "siliconflow":
@@ -31,6 +31,12 @@ def get_voices(request: Request, tts_server: str = "azure-tts-v1", force_refresh
             voices = voice.get_coze_voices(force_refresh=force_refresh)
         elif tts_server == "qwen-tts":
             voices = voice.get_qwen_voices(force_refresh=force_refresh)
+        elif tts_server == "azure-tts-v1":
+            standard, _v2 = voice.get_azure_voices(force_refresh=force_refresh)
+            voices = standard
+        elif tts_server == "azure-tts-v2":
+            _std, v2 = voice.get_azure_voices(force_refresh=force_refresh)
+            voices = v2
         else:
             all_voices = voice.get_all_azure_voices(filter_locals=None)
             if tts_server == "azure-tts-v2":
