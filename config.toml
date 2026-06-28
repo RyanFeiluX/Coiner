@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.7.5"
+project_version = "2.7.6"
 
 [app]
 host_visible = false
@@ -101,7 +101,7 @@ stroke_color = "#000000"
 stroke_width = 1
 output_bg_color = "blue"
 title_enabled = true
-title_text = "Claude 4 惊天进化"
+title_text = "从简单问答\n到复杂思辨"
 title_duration = 3
 title_font_name = "MicrosoftYaHeiBold.ttc"
 title_font_size = 60
