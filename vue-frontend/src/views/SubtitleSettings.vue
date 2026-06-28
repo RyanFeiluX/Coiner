@@ -212,7 +212,7 @@ const previewFrameStyle = computed(() => {
   }
 
   return {
-    backgroundColor: '#333',
+    backgroundColor: '#000',
     width: `${width}px`,
     height: `${height}px`
   };

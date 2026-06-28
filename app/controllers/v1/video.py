@@ -530,7 +530,7 @@ def preview_title(request: Request, body: dict):
         # Show pillarbox bars visually: content area (1440px) in gray, bars in dark gray
         content_h = 1440
         pad_h = (height - content_h) // 2  # 240
-        content_bg = ColorClip(size=(width, content_h), color=(51, 51, 51), duration=duration)
+        content_bg = ColorClip(size=(width, content_h), color=(80, 80, 80), duration=duration)
         bar = ColorClip(size=(width, pad_h), color=(20, 20, 20), duration=duration)
         bg = CompositeVideoClip([
             content_bg.with_position((0, pad_h)),
@@ -538,7 +538,7 @@ def preview_title(request: Request, body: dict):
             bar.with_position((0, height - pad_h)),
         ], size=(width, height))
     else:
-        bg = ColorClip(size=(width, height), color=(51, 51, 51), duration=duration)
+        bg = ColorClip(size=(width, height), color=(80, 80, 80), duration=duration)
     composite = CompositeVideoClip([bg, title_clip], size=(width, height))
     composite.save_frame(preview_path, t=1.0)
     
@@ -603,7 +603,7 @@ def preview_subtitle(request: Request, body: dict):
         if normalized == '3:4':
             content_h = 1440
             pad_h = (height - content_h) // 2
-            content_bg = ColorClip(size=(width, content_h), color=(51, 51, 51), duration=duration)
+            content_bg = ColorClip(size=(width, content_h), color=(80, 80, 80), duration=duration)
             bar = ColorClip(size=(width, pad_h), color=(20, 20, 20), duration=duration)
             bg = CompositeVideoClip([
                 content_bg.with_position((0, pad_h)),
@@ -611,7 +611,7 @@ def preview_subtitle(request: Request, body: dict):
                 bar.with_position((0, height - pad_h)),
             ], size=(width, height))
         else:
-            bg = ColorClip(size=(width, height), color=(51, 51, 51), duration=duration)
+            bg = ColorClip(size=(width, height), color=(80, 80, 80), duration=duration)
         bg.save_frame(preview_path, t=1.0)
         logger.info(f"Subtitle preview (disabled) saved to: {preview_path}")
         response = {"preview_path": f"/subtitle-preview-image/{preview_name}"}
@@ -751,7 +751,7 @@ def preview_subtitle(request: Request, body: dict):
     if normalized == '3:4':
         content_h = 1440
         pad_h = (height - content_h) // 2
-        content_bg = ColorClip(size=(width, content_h), color=(51, 51, 51), duration=duration)
+        content_bg = ColorClip(size=(width, content_h), color=(80, 80, 80), duration=duration)
         bar = ColorClip(size=(width, pad_h), color=(20, 20, 20), duration=duration)
         bg = CompositeVideoClip([
             content_bg.with_position((0, pad_h)),
@@ -759,7 +759,7 @@ def preview_subtitle(request: Request, body: dict):
             bar.with_position((0, height - pad_h)),
         ], size=(width, height))
     else:
-        bg = ColorClip(size=(width, height), color=(51, 51, 51), duration=duration)
+        bg = ColorClip(size=(width, height), color=(80, 80, 80), duration=duration)
     composite = CompositeVideoClip([bg, txt_clip], size=(width, height))
     composite.save_frame(preview_path, t=1.0)
 
