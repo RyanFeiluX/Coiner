@@ -29,7 +29,8 @@ _voice_cache = {
     'coze': {'voices': [], 'timestamp': None, 'api_key': None},
     'siliconflow': {'voices': [], 'timestamp': None},
     'gemini': {'voices': [], 'timestamp': None},
-    'qwen': {'voices': [], 'timestamp': None, 'api_key': None}
+    'qwen': {'voices': [], 'timestamp': None, 'api_key': None},
+    'azure': {'voices': [], 'voices_v2': [], 'timestamp': None}
 }
 
 # 缓存有效期（秒）
@@ -606,15 +607,20 @@ def get_coze_voices(force_refresh=False) -> list[str]:
 
 
 def get_all_azure_voices(filter_locals=None) -> list[str]:
-    speech_key = config.azure.get("speech_key", "")
-    service_region = config.azure.get("speech_region", "")
-    if not speech_key or not service_region:
-        logger.warning("Azure speech key or region is NOT set, using HARDCODED voice list")
-    else:
-        logger.info("Azure speech key and region are set, using HARDCODED voice list")
-    
-    logger.info(f"Loading Azure voices from HARDCODED list (filter_locals={filter_locals})")
-    azure_voices_str = """
+    standard, v2 = _get_azure_voices_internal()
+    all_voices = standard + v2
+
+    if filter_locals:
+        filtered = []
+        for voice in all_voices:
+            name = voice.rsplit("-", 1)[0]
+            if any(name.lower().startswith(fl.lower()) for fl in filter_locals):
+                filtered.append(voice)
+        return filtered
+    return all_voices
+
+
+_HARDCODED_AZURE_VOICES_STR = """
 Name: af-ZA-AdriNeural
 Gender: Female
 
@@ -1609,25 +1615,72 @@ Gender: Female
 Name: zh-CN-XiaoxiaoMultilingualNeural-V2
 Gender: Female
     """.strip()
-    voices = []
-    # 定义正则表达式模式，用于匹配 Name 和 Gender 行
+
+
+def _parse_hardcoded_azure_voices() -> tuple[list[str], list[str]]:
     pattern = re.compile(r"Name:\s*(.+)\s*Gender:\s*(.+)\s*", re.MULTILINE)
-    # 使用正则表达式查找所有匹配项
-    matches = pattern.findall(azure_voices_str)
-
+    matches = pattern.findall(_HARDCODED_AZURE_VOICES_STR)
+    standard = []
+    v2 = []
     for name, gender in matches:
-        # 应用过滤条件
-        if filter_locals and any(
-            name.lower().startswith(fl.lower()) for fl in filter_locals
-        ):
-            voices.append(f"{name}-{gender}")
-        elif not filter_locals:
-            voices.append(f"{name}-{gender}")
+        voice = f"{name}-{gender}"
+        if name.endswith("-V2"):
+            v2.append(voice)
+        else:
+            standard.append(voice)
+    standard.sort()
+    v2.sort()
+    return standard, v2
 
-    voices.sort()
-    logger.info(f"Azure loaded {len(voices)} hardcoded voices (filter_locals={filter_locals})")
-    return voices
 
+async def _fetch_azure_voices_from_edge() -> tuple[list[str], list[str]]:
+    voices_data = await edge_tts.list_voices()
+    standard = []
+    v2 = []
+    for v in voices_data:
+        short_name = v.get("ShortName", "")
+        gender = v.get("Gender", "Unknown")
+        voice = f"{short_name}-{gender}"
+        if short_name.endswith("-V2"):
+            v2.append(voice)
+        else:
+            standard.append(voice)
+    standard.sort()
+    v2.sort()
+    return standard, v2
+
+
+def _get_azure_voices_internal(force_refresh: bool = False) -> tuple[list[str], list[str]]:
+    cache = _voice_cache['azure']
+    now = datetime.now()
+
+    if not force_refresh and cache['timestamp'] is not None:
+        age = (now - cache['timestamp']).total_seconds()
+        if age < CACHE_DURATION:
+            logger.info(f"Using cached Azure voices ({len(cache['voices'])} standard, {len(cache['voices_v2'])} V2, age={age:.0f}s)")
+            return cache['voices'], cache['voices_v2']
+
+    try:
+        standard, v2 = asyncio.run(_fetch_azure_voices_from_edge())
+        cache['voices'] = standard
+        cache['voices_v2'] = v2
+        cache['timestamp'] = now
+        logger.info(f"Fetched {len(standard)} standard and {len(v2)} V2 Azure voices from edge-tts API")
+        return standard, v2
+    except Exception as e:
+        logger.warning(f"Failed to fetch Azure voices from API: {e}, falling back to hardcoded list")
+
+    standard, v2 = _parse_hardcoded_azure_voices()
+    cache['voices'] = standard
+    cache['voices_v2'] = v2
+    cache['timestamp'] = now
+    logger.info(f"Azure loaded {len(standard)} standard and {len(v2)} V2 hardcoded voices (fallback)")
+    return standard, v2
+
+
+# Public entry point for external callers
+def get_azure_voices(force_refresh: bool = False) -> tuple[list[str], list[str]]:
+    return _get_azure_voices_internal(force_refresh=force_refresh)
 
 def parse_voice_name(name: str):
     # zh-CN-XiaoyiNeural-Female
@@ -1784,10 +1837,10 @@ def tts(
     )
     if not _volume_handled_internally and voice_volume != 1.0 and os.path.exists(voice_file):
         try:
-            from moviepy import AudioFileClip
+            from moviepy.audio.fx.MultiplyVolume import MultiplyVolume
             logger.info(f"Applying volume adjustment: {voice_volume}x")
             audio_clip = AudioFileClip(voice_file)
-            audio_clip = audio_clip.volumex(voice_volume)
+            audio_clip = audio_clip.with_effects([MultiplyVolume(voice_volume)])
             temp_file = voice_file + ".temp.mp3"
             audio_clip.write_audiofile(temp_file, codec='mp3')
             audio_clip.close()
@@ -1820,15 +1873,18 @@ def azure_tts_v1(
             logger.info(f"start, voice name: {voice_name}, try: {i + 1}")
 
             async def _do() -> SubMaker:
-                communicate = edge_tts.Communicate(text, voice_name, rate=rate_str)
+                communicate = edge_tts.Communicate(text, voice_name, rate=rate_str, boundary="WordBoundary")
                 sub_maker = edge_tts.SubMaker()
+                sub_maker.subs = []
+                sub_maker.offset = []
                 with open(voice_file, "wb") as file:
                     async for chunk in communicate.stream():
                         if chunk["type"] == "audio":
                             file.write(chunk["data"])
                         elif chunk["type"] == "WordBoundary":
-                            sub_maker.create_sub(
-                                (chunk["offset"], chunk["duration"]), chunk["text"]
+                            sub_maker.subs.append(chunk["text"])
+                            sub_maker.offset.append(
+                                (chunk["offset"], chunk["offset"] + chunk["duration"])
                             )
                 return sub_maker
 
@@ -2185,11 +2241,8 @@ def gemini_tts(
         # 将音频长度转换为100纳秒单位（与edge_tts兼容）
         audio_duration_100ns = int(audio_duration * 10000000)
         
-        # 使用create_sub方法正确创建字幕项
-        sub_maker.create_sub(
-            (0, audio_duration_100ns), 
-            text
-        )
+        sub_maker.subs = [text]
+        sub_maker.offset = [(0, audio_duration_100ns)]
         
         return sub_maker
         
