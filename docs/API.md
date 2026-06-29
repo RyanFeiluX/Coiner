@@ -14,6 +14,7 @@ Coiner 提供了一套完整的 RESTful API 接口，用于视频生成、配置
 
 - [健康检查](#健康检查)
 - [任务管理](#任务管理)
+- [场景集成](#场景集成--扫描)
 - [脚本生成](#脚本生成)
 - [配置管理](#配置管理)
 - [语音服务](#语音服务)
@@ -717,7 +718,115 @@ Coiner 提供了一套完整的 RESTful API 接口，用于视频生成、配置
 
 **响应**: 视频文件流 (video/mp4)
 
-### 6. 下载视频
+### 7. 场景集成 — 扫描
+
+扫描任务目录，检测场景文件完整性，用于后续的场景合成恢复。
+
+**端点**: `POST /api/v1/scene-integration/scan`
+
+**摘要**: Scan task directory for scene integration
+
+**请求体**:
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| task_id | string | 否 | 任务 ID（与 task_path 二选一） |
+| task_path | string | 否 | 任务目录路径（与 task_id 二选一） |
+
+**响应示例**:
+```json
+{
+  "status": 200,
+  "message": "success",
+  "data": {
+    "sceneVideos": 5,
+    "sceneAudio": 5,
+    "subtitle": true,
+    "totalScenes": 5,
+    "isValid": true,
+    "taskDir": "/Coiner/storage/tasks/abc123"
+  }
+}
+```
+
+### 8. 场景集成 — 恢复合成
+
+从已有场景文件恢复视频合成，支持选择性合并场景范围，并覆盖字幕/BGM/标题参数。
+
+**端点**: `POST /api/v1/scene-integration/recover`
+
+**摘要**: Recover video synthesis from existing scene files
+
+**请求体**:
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| task_id | string | 否 | 任务 ID（与 task_path 二选一） |
+| task_path | string | 否 | 任务目录路径（与 task_id 二选一） |
+| start_scene | integer | 否 | 起始场景编号，默认 1 |
+| end_scene | integer | 否 | 结束场景编号，默认最后一个场景 |
+
+**字幕参数（场景级，优先使用原始 script.json 中的值）**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| subtitle_enabled | boolean | 否 | 是否启用字幕 |
+| font_name | string | 否 | 字体名称 |
+| font_size | integer | 否 | 字体大小 |
+| text_fore_color | string | 否 | 字幕前景色 |
+| text_background_color | string | 否 | 字幕背景色 |
+| stroke_color | string | 否 | 描边颜色 |
+| stroke_width | float | 否 | 描边宽度 |
+| subtitle_position | string | 否 | 字幕位置 (top, bottom, center, custom) |
+| custom_position | float | 否 | 自定义位置百分比 (0-100) |
+
+**BGM 参数（合成级，来自当前设置）**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| bgm_type | string | 否 | BGM 类型 (random, none, 或文件名) |
+| bgm_file | string | 否 | BGM 文件路径 |
+| bgm_volume | float | 否 | BGM 音量 |
+
+**标题参数（合成级，来自当前设置）**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| title_enabled | boolean | 否 | 是否启用标题 |
+| title_text | string | 否 | 标题文字 |
+| title_duration | float | 否 | 标题持续时间（秒） |
+| title_font_name | string | 否 | 标题字体 |
+| title_font_size | integer | 否 | 标题字号 |
+| title_text_color | string | 否 | 标题文字颜色 |
+| title_stroke_color | string | 否 | 标题描边颜色 |
+| title_stroke_width | float | 否 | 标题描边宽度 |
+| title_background_color | string | 否 | 标题背景色 |
+| title_position | string | 否 | 标题位置 (center, top, bottom) |
+| title_margin | float | 否 | 标题边距 |
+| title_margin_left | float | 否 | 标题左边距 |
+| title_margin_right | float | 否 | 标题右边距 |
+| title_animation | string | 否 | 标题动画 (none, fade, slide, zoom) |
+| title_animation_duration | float | 否 | 标题动画持续时间 |
+| title_background_overlay | boolean | 否 | 是否启用背景叠加 |
+| title_overlay_color | string | 否 | 背景叠加颜色 |
+| title_align | string | 否 | 标题对齐方式 (center, left, right) |
+
+**参数优先级说明**：字幕参数优先使用 `script.json` 中的原始值（保证恢复场景与原场景一致），BGM 和标题参数仅使用请求体传入值（给予用户调整自由度），最终兜底为 `config.toml` 配置。
+
+**响应示例**:
+```json
+{
+  "status": 200,
+  "message": "success",
+  "data": {
+    "task_id": "6c85c8cc-a77a-42b9-bc30-947815aa0558"
+  }
+}
+```
+
+任务创建后，通过 `GET /api/v1/tasks/{task_id}` 轮询进度。
+
+### 9. 下载视频
 
 下载视频文件。
 

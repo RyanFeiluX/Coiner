@@ -53,7 +53,8 @@
 
 | 函数名 | 职责 | 输入参数 | 输出结果 |
 |--------|------|----------|----------|
-| `recover_video_synthesis` | 场景集成任务主函数，协调整个场景合成流程 | task_id, params, start_scene, end_scene | 最终视频文件路径 |
+| `recover_video_synthesis` | 场景集成任务主函数，协调整个场景合成流程 | task_id_or_path, start_scene, end_scene, subtitle_params, bgm_params, title_params | 最终视频文件路径 |
+| `scan_task_files` | 扫描任务目录，检测场景文件完整性 | task_id_or_path | dict（场景视频/音频/字幕状态） |
 
 ## 3. 函数调用关系
 
@@ -93,6 +94,13 @@ process_final_video
 
 ```
 recover_video_synthesis (场景集成任务)
+    ↓
+参数解析 (parameter resolution)
+  ├── 场景级参数 ← script.json (original_params)
+  │   (subtitle_enabled, font_name, font_size, stroke_color ...)
+  ├── 合成级参数 ← API 请求体 (bgm_params / title_params)
+  │   (bgm_type, bgm_file, bgm_volume, title_enabled, title_text ...)
+  └── 兜底 ← config.toml (app_config / ui_config)
     ↓
 analyze_audio_params → 获取第一个场景音频参数
     ↓
@@ -199,6 +207,35 @@ process_final_video (skip_subtitles=True) → 最终处理
 | `audio_duration` | float | 音频时长 |
 | `subtitle_path` | str | 字幕文件路径 |
 | `combined_video_path` | str | 合并后的视频文件路径 |
+
+### 5.3 场景集成参数优先级
+
+场景集成任务中的参数按**场景级**和**合成级**两类区分，各有不同的优先级链：
+
+| 优先级 | 字幕参数（场景级） | BGM 参数（合成级） | 标题参数（合成级） |
+|--------|-------------------|-------------------|-------------------|
+| 最高 | `script.json` original_params | API 请求体 bgm_params | API 请求体 title_params |
+| 中 | API 请求体 subtitle_params | config.toml [app] | config.toml [ui] |
+| 最低 | config.toml [app] → [ui] | config.toml [ui] | — |
+
+**设计原则**：
+- **场景级参数**（字幕字体/颜色/描边/位置等）：优先使用原始生成时的参数（`script.json`），保证恢复场景与原场景渲染一致
+- **合成级参数**（BGM 类型/音量、标题开关/文字/样式等）：由用户当前设置决定，`script.json` 不参与，给予用户灵活调整最终视频的自由
+
+#### 字幕参数优先级（scene-level）
+```
+original_params (script.json) > subtitle_params (API body) > app_config > ui_config
+```
+
+#### BGM 参数优先级（synthesis-level）
+```
+bgm_params (API body) > app_config > ui_config
+```
+
+#### 标题参数优先级（synthesis-level）
+```
+title_params (API body) > ui_config
+```
 
 ## 6. 实现细节
 

@@ -271,9 +271,31 @@ const startIntegration = async () => {
     bgm_volume: parseFloat(settingsStore.audio.backgroundMusicVolume) || 0.2
   };
   
+  // Get latest title settings from settings store
+  const titleParams = {
+    title_enabled: settingsStore.video.title.enabled,
+    title_text: settingsStore.video.title.text,
+    title_duration: settingsStore.video.title.duration,
+    title_font_name: settingsStore.video.title.font,
+    title_font_size: settingsStore.video.title.fontSize,
+    title_text_color: settingsStore.video.title.color,
+    title_stroke_color: settingsStore.video.title.strokeColor,
+    title_stroke_width: settingsStore.video.title.strokeWidth,
+    title_background_color: settingsStore.video.title.backgroundColor,
+    title_position: settingsStore.video.title.position,
+    title_margin: settingsStore.video.title.margin,
+    title_margin_left: settingsStore.video.title.marginLeft,
+    title_margin_right: settingsStore.video.title.marginRight,
+    title_animation: settingsStore.video.title.animation,
+    title_animation_duration: settingsStore.video.title.animationDuration,
+    title_background_overlay: settingsStore.video.title.backgroundOverlay,
+    title_overlay_color: settingsStore.video.title.overlayColor,
+    title_align: settingsStore.video.title.align,
+  };
+  
   try {
-    // Merge subtitle and BGM parameters
-    const requestParams = { ...subtitleParams, ...bgmParams };
+    // Merge subtitle, BGM, and title parameters
+    const requestParams = { ...subtitleParams, ...bgmParams, ...titleParams };
     
     const response = await apiService.recoverSceneIntegration(
       taskInput.value, 

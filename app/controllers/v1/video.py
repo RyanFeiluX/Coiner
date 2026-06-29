@@ -829,6 +829,28 @@ def recover_scene_integration(request: Request, body: dict):
         'bgm_volume': body.get('bgm_volume')
     }.items() if v is not None}
     
+    # Extract title parameters from request (filter None so fallback chain works)
+    title_params = {k: v for k, v in {
+        'title_enabled': body.get('title_enabled'),
+        'title_text': body.get('title_text'),
+        'title_duration': body.get('title_duration'),
+        'title_font_name': body.get('title_font_name'),
+        'title_font_size': body.get('title_font_size'),
+        'title_text_color': body.get('title_text_color'),
+        'title_stroke_color': body.get('title_stroke_color'),
+        'title_stroke_width': body.get('title_stroke_width'),
+        'title_background_color': body.get('title_background_color'),
+        'title_position': body.get('title_position'),
+        'title_margin': body.get('title_margin'),
+        'title_margin_left': body.get('title_margin_left'),
+        'title_margin_right': body.get('title_margin_right'),
+        'title_animation': body.get('title_animation'),
+        'title_animation_duration': body.get('title_animation_duration'),
+        'title_background_overlay': body.get('title_background_overlay'),
+        'title_overlay_color': body.get('title_overlay_color'),
+        'title_align': body.get('title_align'),
+    }.items() if v is not None}
+    
     if not task_id_or_path:
         raise HttpException(task_id="", status_code=400, message="Task ID or path is required")
     
@@ -858,6 +880,7 @@ def recover_scene_integration(request: Request, body: dict):
         task_id,        # task_id (for recover_video_synthesis)
         subtitle_params=subtitle_params,
         bgm_params=bgm_params,
+        title_params=title_params,
         task_create_time=task_create_time,
     )
     

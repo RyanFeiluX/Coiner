@@ -277,7 +277,7 @@ def _rebuild_scene_video(scene_info: dict, task_dir: str) -> str:
     return None
 
 
-def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_scene=None, end_scene=None, task_id: str = None, subtitle_params: dict = None, bgm_params: dict = None, check_cancelled=None, task_create_time: float = None) -> str:
+def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_scene=None, end_scene=None, task_id: str = None, subtitle_params: dict = None, bgm_params: dict = None, title_params: dict = None, check_cancelled=None, task_create_time: float = None) -> str:
     """
     Recover video synthesis from existing task files.
     
@@ -290,8 +290,9 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         start_scene: Starting scene number (1-based), None for first scene
         end_scene: Ending scene number (1-based), None for last scene
         task_id: Optional task ID for tracking purposes
-        subtitle_params: Optional dictionary of subtitle parameters to override defaults
-        bgm_params: Optional dictionary of BGM parameters to override defaults
+        subtitle_params: Optional dictionary of subtitle parameters (scene-level, from original_params)
+        bgm_params: Optional dictionary of BGM parameters (synthesis-level, from current settings)
+        title_params: Optional dictionary of title parameters (synthesis-level, from current settings)
         task_create_time: Optional task creation timestamp (time.time())
         
     Returns:
@@ -558,11 +559,15 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         if bgm_params is None:
             bgm_params = {}
         
+        # Use title_params if provided, otherwise fall back to config
+        if title_params is None:
+            title_params = {}
+        
         params = VideoParams(
             video_subject="Recovered Video",
             video_aspect=VideoAspect(aspect_ratio),
             video_concat_mode=VideoConcatMode(app_config.get("video_concat_mode", "random")),
-            # Subtitle params: original_params > subtitle_params > app_config > ui_config
+            # Subtitle params (scene-level): original_params > subtitle_params > app_config > ui_config
             subtitle_enabled=original_params.get('subtitle_enabled') if original_params.get('subtitle_enabled') is not None else subtitle_params.get('subtitle_enabled', app_config.get("subtitle_enabled", ui_config.get("subtitle_enabled", True))),
             font_name=original_params.get('font_name') or subtitle_params.get('font_name', app_config.get("font_name", ui_config.get("font_name", "STHeitiMedium.ttc"))),
             font_size=original_params.get('font_size') or subtitle_params.get('font_size', app_config.get("font_size", ui_config.get("font_size", 60))),
@@ -572,29 +577,29 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
             stroke_width=original_params.get('stroke_width') or subtitle_params.get('stroke_width', app_config.get("stroke_width", ui_config.get("stroke_width", 2))),
             subtitle_position=original_params.get('subtitle_position') or subtitle_params.get('subtitle_position', app_config.get("subtitle_position", ui_config.get("subtitle_position", "bottom"))),
             custom_position=original_params.get('custom_position') or subtitle_params.get('custom_position', app_config.get("subtitle_custom_position", ui_config.get("subtitle_custom_position", 70.0))),
-            # BGM params: original_params > bgm_params > app_config > ui_config
-            bgm_type=original_params.get('bgm_type') or bgm_params.get('bgm_type', app_config.get("bgm_type", ui_config.get("bgm_type", "random"))),
-            bgm_file=original_params.get('bgm_file') or bgm_params.get('bgm_file', ''),
-            bgm_volume=float(original_params.get('bgm_volume') or bgm_params.get('bgm_volume', app_config.get("bgm_volume", ui_config.get("bgm_volume", 0.2)))),
-            # Title params: original_params > ui_config
-            title_enabled=original_params.get('title_enabled') if original_params.get('title_enabled') is not None else ui_config.get("title_enabled", False),
-            title_text=original_params.get('title_text') or ui_config.get("title_text", ""),
-            title_duration=original_params.get('title_duration') or ui_config.get("title_duration", 3.0),
-            title_font_name=original_params.get('title_font_name') or ui_config.get("title_font_name", ui_config.get("title_font", "MicrosoftYaHeiBold.ttc")),
-            title_font_size=original_params.get('title_font_size') or ui_config.get("title_font_size", 72),
-            title_text_color=original_params.get('title_text_color') or ui_config.get("title_text_color", ui_config.get("title_color", "#FFFFFF")),
-            title_stroke_color=original_params.get('title_stroke_color') or ui_config.get("title_stroke_color", "#000000"),
-            title_stroke_width=original_params.get('title_stroke_width') or ui_config.get("title_stroke_width", 2.0),
-            title_background_color=original_params.get('title_background_color') if original_params.get('title_background_color') is not None else ui_config.get("title_background_color", ui_config.get("title_bg_color", "transparent")),
-            title_position=original_params.get('title_position') or ui_config.get("title_position", "center"),
-            title_margin=original_params.get('title_margin') or ui_config.get("title_margin", 0.05),
-            title_margin_left=original_params.get('title_margin_left') or ui_config.get("title_margin_left", 0.05),
-            title_margin_right=original_params.get('title_margin_right') or ui_config.get("title_margin_right", 0.05),
-            title_animation=original_params.get('title_animation') or ui_config.get("title_animation", "none"),
-            title_animation_duration=original_params.get('title_animation_duration') or ui_config.get("title_animation_duration", 0.5),
-            title_background_overlay=original_params.get('title_background_overlay') if original_params.get('title_background_overlay') is not None else ui_config.get("title_background_overlay", False),
-            title_overlay_color=original_params.get('title_overlay_color') or ui_config.get("title_overlay_color", "rgba(0,0,0,0.5)"),
-            title_align=ui_config.get("title_align", "center")
+            # BGM params (synthesis-level): bgm_params > app_config > ui_config
+            bgm_type=bgm_params.get('bgm_type', app_config.get("bgm_type", ui_config.get("bgm_type", "random"))),
+            bgm_file=bgm_params.get('bgm_file', ''),
+            bgm_volume=float(bgm_params.get('bgm_volume', app_config.get("bgm_volume", ui_config.get("bgm_volume", 0.2)))),
+            # Title params (synthesis-level): title_params > ui_config
+            title_enabled=title_params.get('title_enabled', ui_config.get("title_enabled", False)),
+            title_text=title_params.get('title_text', ui_config.get("title_text", "")),
+            title_duration=title_params.get('title_duration', ui_config.get("title_duration", 3.0)),
+            title_font_name=title_params.get('title_font_name', ui_config.get("title_font_name", ui_config.get("title_font", "MicrosoftYaHeiBold.ttc"))),
+            title_font_size=title_params.get('title_font_size', ui_config.get("title_font_size", 72)),
+            title_text_color=title_params.get('title_text_color', ui_config.get("title_text_color", ui_config.get("title_color", "#FFFFFF"))),
+            title_stroke_color=title_params.get('title_stroke_color', ui_config.get("title_stroke_color", "#000000")),
+            title_stroke_width=title_params.get('title_stroke_width', ui_config.get("title_stroke_width", 2.0)),
+            title_background_color=title_params.get('title_background_color', ui_config.get("title_background_color", ui_config.get("title_bg_color", "transparent"))),
+            title_position=title_params.get('title_position', ui_config.get("title_position", "center")),
+            title_margin=title_params.get('title_margin', ui_config.get("title_margin", 0.05)),
+            title_margin_left=title_params.get('title_margin_left', ui_config.get("title_margin_left", 0.05)),
+            title_margin_right=title_params.get('title_margin_right', ui_config.get("title_margin_right", 0.05)),
+            title_animation=title_params.get('title_animation', ui_config.get("title_animation", "none")),
+            title_animation_duration=title_params.get('title_animation_duration', ui_config.get("title_animation_duration", 0.5)),
+            title_background_overlay=title_params.get('title_background_overlay', ui_config.get("title_background_overlay", False)),
+            title_overlay_color=title_params.get('title_overlay_color', ui_config.get("title_overlay_color", "rgba(0,0,0,0.5)")),
+            title_align=title_params.get('title_align', ui_config.get("title_align", "center"))
         )
         
         # Log title parameters for debugging
