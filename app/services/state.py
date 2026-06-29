@@ -1,8 +1,13 @@
 import ast
+import json
+import os
 from abc import ABC, abstractmethod
+
+from loguru import logger
 
 from app.config import config
 from app.models import const
+from app.utils import utils
 
 
 # Base class for state management
@@ -22,9 +27,37 @@ class BaseState(ABC):
 
 # Memory state management
 class MemoryState(BaseState):
-    def __init__(self):
+    def __init__(self, persist_file: str = None):
         self._tasks = {}
         self._task_sequence_counter = 0
+        self._persist_file = persist_file
+        self._load_from_disk()
+
+    def _save_to_disk(self):
+        if not self._persist_file:
+            return
+        try:
+            os.makedirs(os.path.dirname(self._persist_file), exist_ok=True)
+            with open(self._persist_file, 'w', encoding='utf-8') as f:
+                json.dump(self._tasks, f, ensure_ascii=False, default=str)
+        except Exception as e:
+            logger.warning(f"Failed to persist state: {e}")
+
+    def _load_from_disk(self):
+        if not self._persist_file or not os.path.exists(self._persist_file):
+            return
+        try:
+            with open(self._persist_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                self._tasks = data
+                if data:
+                    max_seq = max(
+                        (t.get("sequence_number", 0) for t in data.values()),
+                        default=0,
+                    )
+                    self._task_sequence_counter = max_seq
+        except Exception as e:
+            logger.warning(f"Failed to load state: {e}")
 
     def get_all_tasks(self, page: int, page_size: int):
         start = (page - 1) * page_size
@@ -66,6 +99,7 @@ class MemoryState(BaseState):
             "progress": progress,
             "sequence_number": sequence_number,** kwargs,
         }
+        self._save_to_disk()
 
     def get_task(self, task_id: str):
         return self._tasks.get(task_id, None)
@@ -73,6 +107,7 @@ class MemoryState(BaseState):
     def delete_task(self, task_id: str):
         if task_id in self._tasks:
             del self._tasks[task_id]
+            self._save_to_disk()
 
 
 # Redis state management
@@ -188,13 +223,15 @@ _redis_port = config.app.get("redis_port", 6379)
 _redis_db = config.app.get("redis_db", 0)
 _redis_password = config.app.get("redis_password", None)
 
-state = (
-    RedisState(
+if _enable_redis:
+    state = RedisState(
         host=_redis_host, port=_redis_port, db=_redis_db, password=_redis_password
     )
-    if _enable_redis
-    else MemoryState()
-)
+else:
+    _state_persist_file = os.path.join(
+        utils.storage_dir("state", create=True), "memory_state.json"
+    )
+    state = MemoryState(persist_file=_state_persist_file)
 
 
 def is_task_running():

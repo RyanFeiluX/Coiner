@@ -327,8 +327,13 @@ const startPolling = () => {
           isRunning.value = false;
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error polling task status:', error);
+      if (error?.response?.status === 404) {
+        stopPolling();
+        isRunning.value = false;
+        status.value = t('Task no longer exists');
+      }
     }
   }, 3000);
 };
