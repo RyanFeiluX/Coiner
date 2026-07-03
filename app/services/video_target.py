@@ -886,6 +886,7 @@ def _ffmpeg_fast_encode(
     bgm_volume: float = 0.2,
     target_width: int = 1080,
     target_height: int = 1920,
+    input_video_height: int = None,
     task_id: str = None,
     progress_callback=None,
 ) -> bool:
@@ -954,10 +955,21 @@ def _ffmpeg_fast_encode(
         if subtitle_file.lower().endswith(".srt") and subtitle_params:
             import tempfile
             _temp_ass_file = tempfile.mktemp(suffix=".ass", prefix="coiner_sub_")
+
+            # Determine the actual video height at the point the subtitles filter
+            # will run.  When pillarbox is applied the video is first scaled to
+            # target_height, otherwise it stays at the input video's height.
+            # Using the wrong PlayResY would cause libass to scale the font size
+            # (and marginV / outline) incorrectly — see _srt_to_ass for details.
+            if pillarbox:
+                sub_render_height = target_height
+            else:
+                sub_render_height = input_video_height or target_height
+
             _srt_to_ass(
                 srt_path=subtitle_file,
                 ass_path=_temp_ass_file,
-                video_height=target_height,
+                video_height=sub_render_height,
                 font_name=subtitle_params.get("font_name", "Arial"),
                 font_size_px=subtitle_params.get("font_size", 60),
                 primary_color=subtitle_params.get("primary_color", "&H00FFFFFF"),
@@ -1589,6 +1601,7 @@ def process_final_video(
                 bgm_volume=bgm_vol,
                 target_width=1080,
                 target_height=1920,
+                input_video_height=_video_height,
                 task_id=task_id,
                 progress_callback=progress_callback,
             )
@@ -1633,6 +1646,7 @@ def process_final_video(
                 bgm_volume=bgm_vol,
                 target_width=1080,
                 target_height=1920,
+                input_video_height=_video_height,
                 task_id=task_id,
                 progress_callback=progress_callback,
             )
