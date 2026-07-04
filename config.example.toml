@@ -256,6 +256,14 @@ intro_video_bg_blur = 15
 # Can be a color name (black, white, red, etc.) or hex code (#000000, #FFFFFF, etc.)
 intro_video_bg_color = "black"
 
+# Enable Ken Burns animation for static intro images
+# When true, intro images will have a slow zoom and random-direction pan effect instead of being static
+intro_image_animation_enabled = true
+
+# Zoom amount for intro image Ken Burns animation (0.01 = 1%, 0.05 = 5%)
+# Controls how much the image zooms in over the intro duration
+intro_image_zoom_amount = 0.03
+
 
 [whisper]
 # Only effective when subtitle_provider is "whisper"

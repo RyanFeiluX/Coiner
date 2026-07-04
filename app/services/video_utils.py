@@ -27,6 +27,7 @@ from moviepy import (
     AudioFileClip,
     ColorClip,
     CompositeAudioClip,
+    CompositeVideoClip,
     ImageClip,
     TextClip,
     VideoFileClip,
@@ -1746,4 +1747,128 @@ def clear_downscale_cache():
     """Clear the in-memory downscale path cache (not the disk files)."""
     with _downscale_cache_lock:
         _downscale_cache.clear()
+
+
+def fit_intro_image_with_ken_burns(
+    image_path: str,
+    target_width: int,
+    target_height: int,
+    duration: float,
+    bg_color_str: str = "black",
+    bg_type: str = "solid",
+    blur_radius: int = 15,
+    zoom_amount: float = 0.03,
+):
+    """
+    Create an intro clip from a static image with Ken Burns animation.
+    The image is slowly zoomed in and panned in a random direction,
+    creating a dynamic "moving camera" effect instead of a static image.
+
+    Args:
+        image_path: Path to the image file
+        target_width: Target canvas width in pixels
+        target_height: Target canvas height in pixels
+        duration: Duration of the clip in seconds
+        bg_color_str: Background color string (name, hex, or rgb) - used when bg_type is "solid"
+        bg_type: Background type - "solid" (solid color) or "blurred" (blurred stretched image)
+        blur_radius: Blur radius when bg_type is "blurred"
+        zoom_amount: Zoom factor over duration (e.g., 0.03 = 3% zoom)
+
+    Returns:
+        CompositeVideoClip with Ken Burns animation on background
+    """
+    logger.info(f"Creating Ken Burns intro from image: {image_path}")
+    logger.info(f"Target: {target_width}x{target_height}, duration: {duration:.1f}s, zoom: {zoom_amount:.2%}")
+
+    clip = ImageClip(image_path)
+    img_w, img_h = clip.size
+    logger.info(f"Image size: {img_w}x{img_h}")
+
+    # Scale image to COVER target (object-fit: cover) + extra room for zoom
+    target_ratio = target_width / target_height
+    img_ratio = img_w / img_h
+
+    if img_ratio > target_ratio:
+        base_scale = target_height / img_h
+    else:
+        base_scale = target_width / img_w
+
+    total_scale = base_scale * (1.0 + zoom_amount)
+    scaled_w = round(img_w * total_scale)
+    scaled_h = round(img_h * total_scale)
+    logger.info(f"Scaled image: {scaled_w}x{scaled_h} (scale: {total_scale:.3f})")
+
+    scaled_clip = clip.resized(new_size=(scaled_w, scaled_h))
+
+    # Calculate pan bounds
+    max_x_offset = (scaled_w - target_width) / 2
+    max_y_offset = (scaled_h - target_height) / 2
+    logger.debug(f"Max pan offsets: x={max_x_offset:.1f}, y={max_y_offset:.1f}")
+
+    # Random pan direction
+    pan_direction = random.choice([
+        "center", "left", "right", "up", "down",
+        "top-left", "top-right", "bottom-left", "bottom-right"
+    ])
+    logger.info(f"Ken Burns pan direction: {pan_direction}")
+
+    pan_range = 0.4
+
+    # (start_x, start_y, end_x, end_y)
+    # Positive = clip shifts right/down, showing more of left/top of image
+    pan_configs = {
+        "center":        (0, 0, 0, 0),
+        "left":          (max_x_offset * pan_range, 0, -max_x_offset * pan_range, 0),
+        "right":         (-max_x_offset * pan_range, 0, max_x_offset * pan_range, 0),
+        "up":            (0, max_y_offset * pan_range, 0, -max_y_offset * pan_range),
+        "down":          (0, -max_y_offset * pan_range, 0, max_y_offset * pan_range),
+        "top-left":      (max_x_offset * pan_range, max_y_offset * pan_range, -max_x_offset * pan_range, -max_y_offset * pan_range),
+        "top-right":     (-max_x_offset * pan_range, max_y_offset * pan_range, max_x_offset * pan_range, -max_y_offset * pan_range),
+        "bottom-left":   (max_x_offset * pan_range, -max_y_offset * pan_range, -max_x_offset * pan_range, max_y_offset * pan_range),
+        "bottom-right":  (-max_x_offset * pan_range, -max_y_offset * pan_range, max_x_offset * pan_range, max_y_offset * pan_range),
+    }
+
+    start_x, start_y, end_x, end_y = pan_configs[pan_direction]
+
+    def zoom_func(t):
+        progress = t / duration if duration > 0 else 0
+        return 1.0 + zoom_amount * progress
+
+    def pos_func(t):
+        progress = t / duration if duration > 0 else 0
+        scale = zoom_func(t)
+        pan_x = start_x + (end_x - start_x) * progress
+        pan_y = start_y + (end_y - start_y) * progress
+        x = (target_width - scaled_w * scale) / 2 + pan_x
+        y = (target_height - scaled_h * scale) / 2 + pan_y
+        return (x, y)
+
+    animated_clip = scaled_clip.with_effects([vfx.Resize(zoom_func)])
+    animated_clip = animated_clip.with_position(pos_func)
+    animated_clip = animated_clip.with_duration(duration)
+
+    # Create background
+    bg_color = parse_color(bg_color_str)
+
+    if bg_type == "blurred":
+        stretched = clip.resized(new_size=(target_width, target_height))
+        blurred = apply_blur_effect(stretched, blur_radius)
+        composite = create_composite_video_clip(
+            [blurred, animated_clip],
+            size=(target_width, target_height)
+        )
+        close_clip(stretched)
+        close_clip(blurred)
+    else:
+        background = ColorClip(size=(target_width, target_height), color=bg_color, duration=duration)
+        composite = create_composite_video_clip(
+            [background, animated_clip],
+            size=(target_width, target_height)
+        )
+        close_clip(background)
+
+    composite = composite.with_duration(duration)
+
+    logger.success(f"Ken Burns intro created: {target_width}x{target_height} with {bg_type} background, direction={pan_direction}")
+    return composite
 

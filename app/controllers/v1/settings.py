@@ -113,6 +113,8 @@ def get_config(request: Request):
                 "intro_video_bg_type": config.app.get("intro_video_bg_type", "solid"),
                 "intro_video_bg_blur": config.app.get("intro_video_bg_blur", 15),
                 "intro_video_bg_color": config.app.get("intro_video_bg_color", "black"),
+                "intro_image_animation_enabled": config.app.get("intro_image_animation_enabled", True),
+                "intro_image_zoom_amount": config.app.get("intro_image_zoom_amount", 0.03),
                 "host_visible": config.app.get("host_visible", True),
                 "use_gpu": config.app.get("use_gpu", False),
                 "pexels_api_keys": config.app.get("pexels_api_keys", []),

@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.8.7"
+project_version = "2.8.8"
 
 [app]
 host_visible = false
@@ -64,6 +64,8 @@ video_style = "ai"
 intro_video_bg_type = "blurred"
 intro_video_bg_blur = 48
 intro_video_bg_color = "black"
+intro_image_animation_enabled = true
+intro_image_zoom_amount = 0.03
 
 [whisper]
 model_size = "large-v3"

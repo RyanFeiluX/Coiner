@@ -27,6 +27,7 @@ from app.services.video_utils import (
     close_clip,
     crop_clip_to_target,
     fit_intro_video_to_target,
+    fit_intro_image_with_ken_burns,
     fast_brightness_check,
     clear_brightness_cache,
     pre_downscale_video,
@@ -579,33 +580,44 @@ def build_scene_video(
                             logger.error(f"Failed to convert PNG to JPG, using original PNG: {e}")
                             processed_image_path = intro_video_path
                     
-                    clip = ImageClip(processed_image_path).with_duration(intro_duration)
                     clip_duration = intro_duration
-                    clip_w, clip_h = clip.size
-                    
+
                     aspect = VideoAspect(video_aspect)
                     video_width, video_height = aspect.to_resolution()
-                    
+
                     logger.debug(f"Intro video processing - video_aspect input: {video_aspect}")
                     logger.debug(f"Intro video processing - VideoAspect enum: {aspect}")
                     logger.debug(f"Intro video processing - Resolution: {video_width}x{video_height}")
-                    
+
                     # Get intro video background configuration
                     intro_bg_type = config.app.get("intro_video_bg_type", "solid")
                     intro_bg_blur = config.app.get("intro_video_bg_blur", 15)
                     intro_bg_color = config.app.get("intro_video_bg_color", "black")
-                    
-                    clip = fit_intro_video_to_target(clip, video_width, video_height, bg_color_str=intro_bg_color, bg_type=intro_bg_type, blur_radius=intro_bg_blur)
-                    
+
+                    # Apply Ken Burns animation for static images if enabled
+                    intro_image_animation = config.app.get("intro_image_animation_enabled", True)
+                    if intro_image_animation:
+                        zoom_amount = config.app.get("intro_image_zoom_amount", 0.03)
+                        clip = fit_intro_image_with_ken_burns(
+                            processed_image_path, video_width, video_height, intro_duration,
+                            bg_color_str=intro_bg_color, bg_type=intro_bg_type,
+                            blur_radius=intro_bg_blur, zoom_amount=zoom_amount,
+                        )
+                    else:
+                        clip = ImageClip(processed_image_path).with_duration(intro_duration)
+                        clip = fit_intro_video_to_target(clip, video_width, video_height,
+                            bg_color_str=intro_bg_color, bg_type=intro_bg_type,
+                            blur_radius=intro_bg_blur)
+
                     brightness_factor = config.app.get("video_brightness", 1.0)
                     contrast_factor = config.app.get("video_contrast", 1.0)
-                    
+
                     if brightness_factor != 1.0:
                         clip = video_effects.brightness_enhance(clip, brightness_factor)
-                    
+
                     if contrast_factor != 1.0:
                         clip = video_effects.contrast_enhance(clip, contrast_factor)
-                    
+
                     intro_clips.append(clip)
                     total_intro_duration = clip_duration
                     logger.info(f"Image intro video processed: {intro_video_path} (duration: {intro_duration:.1f}s)")
