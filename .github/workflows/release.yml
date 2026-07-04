@@ -1,0 +1,146 @@
+name: Build Windows Installer
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+          echo "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: vue-frontend/package-lock.json
+
+      - name: Build Vue frontend
+        run: |
+          cd vue-frontend
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Copy Vue dist to resource/public
+        shell: pwsh
+        run: |
+          if (Test-Path "vue-frontend/dist") {
+            Copy-Item -Path "vue-frontend/dist/*" -Destination "resource/public/" -Recurse -Force
+            Write-Output "Vue dist copied to resource/public"
+          }
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Build with PyInstaller
+        shell: pwsh
+        run: pyinstaller --onedir --name coiner main.py `
+          --hidden-import uvicorn.logging `
+          --hidden-import uvicorn.loops.auto `
+          --hidden-import uvicorn.loops.asyncio `
+          --hidden-import uvicorn.protocols.http.auto `
+          --hidden-import uvicorn.protocols.http.h11_impl `
+          --hidden-import uvicorn.protocols.websockets.auto `
+          --hidden-import uvicorn.protocols.websockets.wsproto_impl `
+          --hidden-import dashscope `
+          --hidden-import google.generativeai `
+          --hidden-import azure.cognitiveservices.speech `
+          --hidden-import faster_whisper `
+          --hidden-import ctranslate2 `
+          --collect-submodules app
+
+      - name: Download FFmpeg
+        shell: pwsh
+        run: |
+          Write-Output "Downloading FFmpeg..."
+          Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile "ffmpeg.zip"
+          Expand-Archive -Path "ffmpeg.zip" -DestinationPath "ffmpeg-temp" -Force
+          $ffexe = Get-ChildItem -Path "ffmpeg-temp" -Filter "ffmpeg.exe" -Recurse | Select-Object -First 1
+          $fpexe = Get-ChildItem -Path "ffmpeg-temp" -Filter "ffprobe.exe" -Recurse | Select-Object -First 1
+          if (-not $ffexe) { throw "ffmpeg.exe not found in downloaded archive" }
+          Copy-Item $ffexe.FullName "$pwd\ffmpeg.exe"
+          Copy-Item $fpexe.FullName "$pwd\ffprobe.exe"
+          Write-Output "FFmpeg downloaded and extracted"
+
+      - name: Download ImageMagick
+        shell: pwsh
+        run: |
+          Write-Output "Downloading ImageMagick..."
+          $url = "https://imagemagick.org/archive/binaries/ImageMagick-7.1.1-29-Q16-HDRI-x64-portable.zip"
+          Invoke-WebRequest -Uri $url -OutFile "imagemagick.zip"
+          Expand-Archive -Path "imagemagick.zip" -DestinationPath "imagemagick-temp" -Force
+          $magexe = Get-ChildItem -Path "imagemagick-temp" -Filter "magick.exe" -Recurse | Select-Object -First 1
+          if ($magexe) {
+            Copy-Item $magexe.FullName "$pwd\magick.exe"
+            Write-Output "ImageMagick downloaded from archive"
+          } else {
+            Write-Output "Archive download failed, trying chocolatey..."
+            choco install imagemagick.app --no-progress -y
+            $magexe = Get-ChildItem -Path "C:\Program Files\ImageMagick*" -Recurse -Filter "magick.exe" | Select-Object -First 1
+            if (-not $magexe) { throw "magick.exe not found after chocolatey install" }
+            Copy-Item $magexe.FullName "$pwd\magick.exe"
+            Write-Output "ImageMagick installed via chocolatey"
+          }
+
+      - name: Stage installer files
+        shell: pwsh
+        run: |
+          $stage = Join-Path $pwd "build-installer"
+          New-Item -ItemType Directory -Path "$stage\_internal" -Force
+
+          Copy-Item "dist/coiner/coiner.exe" "$stage/main.exe" -Force
+          Copy-Item "dist/coiner/_internal/*" "$stage/_internal/" -Recurse -Force
+          Copy-Item "resource/*" "$stage/resource/" -Recurse -Force
+          Copy-Item "ffmpeg.exe" "$stage/ffmpeg.exe" -Force
+          Copy-Item "ffprobe.exe" "$stage/ffprobe.exe" -Force
+          Copy-Item "magick.exe" "$stage/magick.exe" -Force
+          Copy-Item "config.example.toml" "$stage/config.example.toml" -Force
+          Copy-Item "installer/start.bat" "$stage/start.bat" -Force
+          Copy-Item "LICENSE" "$stage/LICENSE" -Force
+          Write-Output "Installer files staged at $stage"
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Compile installer
+        shell: pwsh
+        run: |
+          $iscc = Get-Command "iscc.exe" -ErrorAction SilentlyContinue
+          if (-not $iscc) {
+            $isccPath = "C:\Program Files (x86)\Inno Setup 6\iscc.exe"
+            if (Test-Path $isccPath) {
+              & $isccPath "installer/installer.iss" /DMyAppVersion="$env:VERSION" "/DStageDir=$pwd\build-installer"
+            } else {
+              throw "Inno Setup compiler (iscc.exe) not found"
+            }
+          } else {
+            & $iscc.Source "installer/installer.iss" /DMyAppVersion="$env:VERSION" "/DStageDir=$pwd\build-installer"
+          }
+
+      - name: List installer output
+        shell: pwsh
+        run: Get-ChildItem -Path "installer/output"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: installer/output/Coiner-Setup-*.exe
+          generate_release_notes: true

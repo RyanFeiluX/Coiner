@@ -2,6 +2,7 @@ import json
 import locale
 import os
 from pathlib import Path
+import sys
 import threading
 from typing import Any
 from uuid import uuid4
@@ -65,6 +66,8 @@ def get_uuid(remove_hyphen: bool = False):
 
 
 def root_dir():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
     return os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 

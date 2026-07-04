@@ -43,3 +43,5 @@ test/
 *TEMP*.mp4
 vue-frontend/public/
 secrets.toml
+installer/output/
+dist/
