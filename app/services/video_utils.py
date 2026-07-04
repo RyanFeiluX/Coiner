@@ -1312,7 +1312,7 @@ def crop_clip_to_target(clip, target_width, target_height, max_scale=1.10):
     return clip
 
 
-def wrap_text(text, max_width, font="Arial", font_size_px=60, auto_fit=False, min_font_ratio=0.85):
+def wrap_text(text, max_width, font="Arial", font_size_px=60, auto_fit=False, min_font_ratio=0.85, balance_lines=True):
     """Wrap text to fit within max_width.
     
     Args:
@@ -1322,6 +1322,7 @@ def wrap_text(text, max_width, font="Arial", font_size_px=60, auto_fit=False, mi
         font_size_px: Font size in pixels (already converted from points)
         auto_fit: If True, try reducing font size to fit on a single line before wrapping
         min_font_ratio: Minimum font size ratio when auto_fit is enabled (default 0.85 = 85%)
+        balance_lines: If True, try to balance line lengths for multi-line subtitles
     
     Returns:
         Tuple of (wrapped_text, text_height, actual_font_size_px)
@@ -1354,7 +1355,6 @@ def wrap_text(text, max_width, font="Arial", font_size_px=60, auto_fit=False, mi
         
         if best_size_px < font_size_px:
             actual_font_size_px = best_size_px
-            # Re-create font at the fitted size
             img_font = ImageFont.truetype(font, actual_font_size_px)
     
     if width <= max_width:
@@ -1364,6 +1364,7 @@ def wrap_text(text, max_width, font="Arial", font_size_px=60, auto_fit=False, mi
     current_line = text.strip()
     
     punctuation_chars = '，,。.！!？?；;：:、'
+    word_boundary_chars = punctuation_chars + ' '
     
     while current_line:
         current_width, line_height = get_text_size(current_line)
@@ -1372,33 +1373,31 @@ def wrap_text(text, max_width, font="Arial", font_size_px=60, auto_fit=False, mi
             lines.append(current_line)
             break
         
-        split_pos = len(current_line) // 2
-        
-        current_width, _ = get_text_size(current_line)
-        if current_width > max_width:
-            target_chars = 0
-            for i in range(1, len(current_line)):
-                w, _ = get_text_size(current_line[:i])
-                if w <= max_width:
-                    target_chars = i
-                else:
-                    break
-            
-            if target_chars > 0:
-                split_pos = target_chars
+        # Find the furthest split position within max_width (greedy baseline)
+        target_chars = 0
+        for i in range(1, len(current_line)):
+            w, _ = get_text_size(current_line[:i])
+            if w <= max_width:
+                target_chars = i
             else:
-                split_pos = len(current_line) // 2
-        
-        best_split_pos = split_pos
-        
-        look_range = 5
-        start_look = max(0, split_pos - look_range)
-        end_look = min(len(current_line), split_pos + look_range)
-        
-        for i in range(end_look, start_look, -1):
-            if i < len(current_line) and (current_line[i] in punctuation_chars or current_line[i] == ' '):
-                best_split_pos = i + 1
                 break
+        
+        if target_chars == 0:
+            best_split_pos = len(current_line) // 2
+        else:
+            best_split_pos = target_chars
+        
+        # Look for punctuation/space near the greedy split position
+        best_split_pos = _find_punctuation_split(current_line, best_split_pos, punctuation_chars)
+        
+        # Balanced line breaking: if the second line would be too short, 
+        # try moving words back from line 1 to line 2
+        if balance_lines:
+            second_line = current_line[best_split_pos:].strip()
+            if second_line and len(second_line) <= 3:
+                best_split_pos = _balance_split(
+                    current_line, best_split_pos, max_width, get_text_size, word_boundary_chars
+                )
         
         line = current_line[:best_split_pos].strip()
         
@@ -1413,6 +1412,51 @@ def wrap_text(text, max_width, font="Arial", font_size_px=60, auto_fit=False, mi
     total_height = len(lines) * line_height
     
     return wrapped_text, total_height, actual_font_size_px
+
+
+def _find_punctuation_split(text, split_pos, punctuation_chars):
+    look_range = 5
+    start_look = max(0, split_pos - look_range)
+    end_look = min(len(text), split_pos + look_range)
+    
+    for i in range(end_look, start_look, -1):
+        if i < len(text) and (text[i] in punctuation_chars or text[i] == ' '):
+            return i + 1
+    return split_pos
+
+
+def _balance_split(current_line, split_pos, max_width, get_text_size, word_boundary_chars):
+    second_line_remainder = current_line[split_pos:].strip()
+    if not second_line_remainder or len(second_line_remainder) > 3:
+        return split_pos
+    
+    best_pos = split_pos
+    best_balance = -1.0
+    
+    # Search backwards from split_pos, preferring word boundaries
+    for candidate in range(split_pos - 1, max(0, split_pos - 15), -1):
+        if candidate == 0:
+            continue
+        ch = current_line[candidate]
+        if ch not in word_boundary_chars:
+            continue
+        
+        line1 = current_line[:candidate].strip()
+        line2 = current_line[candidate:].strip()
+        if not line1 or not line2:
+            continue
+        
+        w1, _ = get_text_size(line1)
+        w2, _ = get_text_size(line2)
+        if w1 > max_width or w2 > max_width:
+            continue
+        
+        balance = min(w1, w2) / max(w1, w2) if max(w1, w2) > 0 else 0
+        if balance > best_balance:
+            best_balance = balance
+            best_pos = candidate
+    
+    return best_pos
 
 def analyze_video_params(video_path):
     """

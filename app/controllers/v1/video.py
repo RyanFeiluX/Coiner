@@ -626,7 +626,7 @@ def preview_subtitle(request: Request, body: dict):
     try:
         wrapped_text, text_h, actual_font_size_px = wrap_text(
             subtitle_text, max_width=max_width, font=font_path,
-            fontsize=font_size_px, auto_fit=subtitle_auto_fit
+            font_size_px=font_size_px, auto_fit=subtitle_auto_fit
         )
     except Exception as e:
         logger.warning(f"wrap_text failed for subtitle preview: {e}")
