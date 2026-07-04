@@ -1521,6 +1521,7 @@ def process_final_video(
         
         sub_params = None
         actual_sub_file = subtitle_file if subtitle_file and os.path.exists(subtitle_file) else None
+        _video_height = video_clip.size[1] if video_clip else 1920
         if actual_sub_file and params.subtitle_enabled and not skip_subtitles:
             from app.services.title import _get_valid_font_path
             font_path = _get_valid_font_path(getattr(params, 'font_name', 'STHeitiMedium.ttc'))
@@ -1529,7 +1530,6 @@ def process_final_video(
             font_family = _get_font_family_name(font_path) if font_path else "Arial"
             
             _ui_cfg = load_config().get("ui", {})
-            _video_height = video_clip.size[1] if video_clip else 1920
             
             font_size_pt = int(getattr(params, 'font_size', 60))
             _play_res_y = 1080
