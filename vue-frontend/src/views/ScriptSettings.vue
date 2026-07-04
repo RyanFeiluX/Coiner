@@ -490,6 +490,26 @@ const validateIntroVideo = (file: File): { valid: boolean; message: string } => 
   return { valid: true, message: 'Valid file' };
 };
 
+// Get actual video/audio duration from a file using HTML5 API
+const getMediaDuration = (file: File): Promise<number | null> => {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    const url = URL.createObjectURL(file);
+    video.src = url;
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      const d = video.duration;
+      if (isFinite(d) && d > 0) resolve(d);
+      else resolve(null);
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+  });
+};
+
 // Import intro video
 const importIntroVideo = async (event: Event, index: number) => {
   const input = event.target as HTMLInputElement;
@@ -518,11 +538,17 @@ const importIntroVideo = async (event: Event, index: number) => {
     
     if (response.data.status === 200 && response.data.data?.file) {
       const fullPath = response.data.data.file;
+      const isVideo = !file.name.match(/\.(jpg|jpeg|png|bmp)$/i);
+      let duration = scenes.value[index].introVideoDuration || 10;
+      if (isVideo) {
+        const actual = await getMediaDuration(file);
+        if (actual !== null) duration = Math.round(actual * 10) / 10;
+      }
       const updatedScene = { 
         ...scenes.value[index], 
         introVideo: fullPath,
         introVideoOriginalPath: file.name,
-        introVideoDuration: scenes.value[index].introVideoDuration || 10
+        introVideoDuration: duration
       };
       scriptStore.updateScene(index, updatedScene);
       ElMessage.success('Intro video uploaded successfully');
