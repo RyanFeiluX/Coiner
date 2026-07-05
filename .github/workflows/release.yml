@@ -67,39 +67,6 @@ jobs:
           --hidden-import ctranslate2 `
           --collect-submodules app
 
-      - name: Download FFmpeg
-        shell: pwsh
-        run: |
-          Write-Output "Downloading FFmpeg..."
-          Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile "ffmpeg.zip"
-          Expand-Archive -Path "ffmpeg.zip" -DestinationPath "ffmpeg-temp" -Force
-          $ffexe = Get-ChildItem -Path "ffmpeg-temp" -Filter "ffmpeg.exe" -Recurse | Select-Object -First 1
-          $fpexe = Get-ChildItem -Path "ffmpeg-temp" -Filter "ffprobe.exe" -Recurse | Select-Object -First 1
-          if (-not $ffexe) { throw "ffmpeg.exe not found in downloaded archive" }
-          Copy-Item $ffexe.FullName "$pwd\ffmpeg.exe"
-          Copy-Item $fpexe.FullName "$pwd\ffprobe.exe"
-          Write-Output "FFmpeg downloaded and extracted"
-
-      - name: Download ImageMagick
-        shell: pwsh
-        run: |
-          Write-Output "Downloading ImageMagick..."
-          $url = "https://imagemagick.org/archive/binaries/ImageMagick-7.1.1-29-Q16-HDRI-x64-portable.zip"
-          Invoke-WebRequest -Uri $url -OutFile "imagemagick.zip"
-          Expand-Archive -Path "imagemagick.zip" -DestinationPath "imagemagick-temp" -Force
-          $magexe = Get-ChildItem -Path "imagemagick-temp" -Filter "magick.exe" -Recurse | Select-Object -First 1
-          if ($magexe) {
-            Copy-Item $magexe.FullName "$pwd\magick.exe"
-            Write-Output "ImageMagick downloaded from archive"
-          } else {
-            Write-Output "Archive download failed, trying chocolatey..."
-            choco install imagemagick.app --no-progress -y
-            $magexe = Get-ChildItem -Path "C:\Program Files\ImageMagick*" -Recurse -Filter "magick.exe" | Select-Object -First 1
-            if (-not $magexe) { throw "magick.exe not found after chocolatey install" }
-            Copy-Item $magexe.FullName "$pwd\magick.exe"
-            Write-Output "ImageMagick installed via chocolatey"
-          }
-
       - name: Stage installer files
         shell: pwsh
         run: |
@@ -109,9 +76,6 @@ jobs:
           Copy-Item "dist/coiner/coiner.exe" "$stage/main.exe" -Force
           Copy-Item "dist/coiner/_internal/*" "$stage/_internal/" -Recurse -Force
           Copy-Item "resource/*" "$stage/resource/" -Recurse -Force
-          Copy-Item "ffmpeg.exe" "$stage/ffmpeg.exe" -Force
-          Copy-Item "ffprobe.exe" "$stage/ffprobe.exe" -Force
-          Copy-Item "magick.exe" "$stage/magick.exe" -Force
           Copy-Item "config.example.toml" "$stage/config.example.toml" -Force
           Copy-Item "installer/start.bat" "$stage/start.bat" -Force
           Copy-Item "LICENSE" "$stage/LICENSE" -Force

@@ -30,12 +30,13 @@ Compression=lzma2/ultra
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\{#MyAppExeName}
-SetupIconFile={#StageDir}\resource\public\vite.svg
 WizardStyle=modern
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
+#ifexist "compiler:Languages\ChineseSimplified.isl"
 Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+#endif
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -44,9 +45,6 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#StageDir}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StageDir}\_internal\*"; DestDir: "{app}\_internal"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#StageDir}\resource\*"; DestDir: "{app}\resource"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{#StageDir}\ffmpeg.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#StageDir}\ffprobe.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#StageDir}\magick.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StageDir}\config.example.toml"; DestDir: "{app}"; DestName: "config.toml"; Flags: ignoreversion onlyifdoesntexist
 Source: "{#StageDir}\start.bat"; DestDir: "{app}"; Flags: ignoreversion
 
@@ -62,7 +60,29 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDi
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: shellexec postinstall skipifsilent nowait; WorkingDir: "{app}"
 
 [Code]
-function InitializeSetup: Boolean;
+var
+  DependenciesPage: TOutputMsgWizardPage;
+
+procedure InitializeWizard;
 begin
-  Result := True;
+  DependenciesPage := CreateOutputMsgPage(
+    wpInfoAfter,
+    'External Dependencies',
+    'Additional software required by Coiner',
+    'Coiner requires FFmpeg and ImageMagick to function properly.' + #13#10 +
+    '' + #13#10 +
+    '1. FFmpeg (required for video processing)' + #13#10 +
+    '   Download from: https://www.gyan.dev/ffmpeg/builds/' + #13#10 +
+    '   Or install via: winget install FFmpeg' + #13#10 +
+    '' + #13#10 +
+    '2. ImageMagick (required for text/subtitle rendering)' + #13#10 +
+    '   Download from: https://imagemagick.org/archive/binaries/' + #13#10 +
+    '   Or install via: winget install ImageMagick' + #13#10 +
+    '' + #13#10 +
+    'After installing ImageMagick on Windows,' + #13#10 +
+    'set imagemagick_path in config.toml to the magick.exe path.' + #13#10 +
+    '' + #13#10 +
+    'Note: imageio-ffmpeg (bundled) can auto-download FFmpeg if not found.' + #13#10 +
+    'You may skip FFmpeg and let it be downloaded automatically.'
+  );
 end;
