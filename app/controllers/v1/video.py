@@ -793,7 +793,8 @@ def scan_scene_integration(request: Request, body: dict):
             "subtitle": result["global_subtitle"] is not None,
             "totalScenes": result["total_scenes"],
             "isValid": result["is_valid"],
-            "taskDir": result["task_dir"]
+            "taskDir": result["task_dir"],
+            "sceneNums": [s["scene_num"] for s in result["scene_videos"]]
         }
         
         return utils.get_response(200, response)

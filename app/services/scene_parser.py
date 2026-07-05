@@ -1016,10 +1016,7 @@ def parse_script_with_llm(script: str, language: str = None, host_visible: bool 
         if not keywords or keywords.strip() == "":
             # Generate keywords using LLM
             logger.info(f"Scene {i+1} - Generating keywords...")
-            # Use scene title or first few words as video subject to avoid passing the entire script
-            scene_subject = scene_data.get("title", "") or scene_script[:50].strip()
             keywords_list = llm_service.generate_scene_terms(
-                video_subject=scene_subject,  # Use scene title or short script snippet as context
                 scene_script=scene_script,
                 scene_camera=visual_requirement,
                 amount=5
@@ -1111,9 +1108,7 @@ def parse_script_with_llm(script: str, language: str = None, host_visible: bool 
                 visual_requirement = f"Visual requirement for Scene {i+1}"
             
             # Generate keywords
-            fallback_subject = paragraph[:50].strip()
             keywords_list = llm_service.generate_scene_terms(
-                video_subject=fallback_subject,
                 scene_script=paragraph,
                 scene_camera=visual_requirement,
                 amount=5
