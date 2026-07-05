@@ -260,10 +260,16 @@ if not defined SKIP_FRONTEND (
 rem Wait for frontend server to start
 if not defined SKIP_FRONTEND (
     echo Waiting for frontend server to start...
-    ping localhost -n 10 > nul
+    for /l %%i in (1,1,30) do (
+        >nul ping localhost -n 2
+        >nul 2>&1 powershell -NoProfile -Command "try { Invoke-WebRequest 'http://localhost:3000' -TimeoutSec 1 -UseBasicParsing | Out-Null; exit 0 } catch { exit 1 }"
+        if not errorlevel 1 goto :frontend_ready
+    )
+    echo Warning: Frontend server not ready, opening browser anyway...
 ) else (
     echo Skipping frontend wait as requested...
 )
+:frontend_ready
 
 rem Open browser using PowerShell to avoid PATH issues
 if not defined SKIP_FRONTEND (
