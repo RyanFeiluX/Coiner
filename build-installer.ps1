@@ -1,5 +1,4 @@
 param(
-    [string]$Version = "",
     [switch]$SkipVue,
     [switch]$SkipPyInstaller,
     [switch]$SkipStage,
@@ -7,7 +6,6 @@ param(
 )
 
 $batArgs = @()
-if ($Version) { $batArgs += "-Version"; $batArgs += $Version }
 if ($SkipVue) { $batArgs += "-SkipVue" }
 if ($SkipPyInstaller) { $batArgs += "-SkipPyInstaller" }
 if ($SkipStage) { $batArgs += "-SkipStage" }

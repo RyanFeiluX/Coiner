@@ -10,42 +10,25 @@ set "SKIP_COMPILE="
 REM --- Parse arguments ---
 :parse
 if "%~1"=="" goto :endparse
-if /i "%~1"=="-Version" set "VERSION=%~2" & shift & shift & goto :parse
 if /i "%~1"=="-SkipVue" set "SKIP_VUE=1" & shift & goto :parse
 if /i "%~1"=="-SkipPyInstaller" set "SKIP_PYINSTALLER=1" & shift & goto :parse
 if /i "%~1"=="-SkipStage" set "SKIP_STAGE=1" & shift & goto :parse
 if /i "%~1"=="-SkipCompile" set "SKIP_COMPILE=1" & shift & goto :parse
-REM First positional arg treated as version if it matches pattern
-echo %~1 | findstr /r "^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$" >nul
-if errorlevel 1 (echo Unknown option: %~1 & exit /b 1)
-set "VERSION=%~1"
-shift
-goto :parse
+echo Unknown option: %~1 & exit /b 1
 :endparse
 
 set "ROOT=%~dp0"
 set "ROOT=%ROOT:~0,-1%"
 
-REM --- Auto-detect version ---
-if "%VERSION%"=="" (
-    for /f "tokens=1 delims= " %%a in ('git describe --tags --abbrev=0 2^>nul') do set "TAG=%%a"
-    if not "!TAG!"=="" (
-        echo !TAG! | findstr /r "^v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$" >nul
-        if not errorlevel 1 (
-            set "VERSION=!TAG:~1!"
-        )
-    )
+REM --- Read version from config.toml ---
+for /f "tokens=2 delims==" %%a in ('findstr /b "project_version" "%ROOT%\config.toml" 2^>nul') do set "VERSION=%%a"
+set "VERSION=!VERSION: =!"
+set "VERSION=!VERSION:"=!
+if "!VERSION!"=="" (
+    echo Error: project_version not found in config.toml
+    exit /b 1
 )
-if "%VERSION%"=="" (
-    REM Fallback: read from config.example.toml
-    for /f "tokens=2 delims==" %%a in ('findstr /b "project_version" "%ROOT%\config.example.toml" 2^>nul') do (
-        set "VERSION=%%a"
-        set "VERSION=!VERSION: =!"
-        set "VERSION=!VERSION:"=!"
-    )
-)
-if "%VERSION%"=="" set "VERSION=0.0.0"
-echo Target version: %VERSION%
+echo Target version: !VERSION!
 
 REM ============================================================
 REM Step 1: Build Vue frontend
@@ -132,7 +115,8 @@ if not defined SKIP_STAGE (
     if exist "%ROOT%\resource" (
         xcopy /e /i /q "%ROOT%\resource\*" "!STAGE!\resource\" >nul
     )
-    copy /y "%ROOT%\config.example.toml" "!STAGE!\config.example.toml" >nul
+    copy /y "%ROOT%\config.example.toml" "!STAGE!\config.toml" >nul
+    powershell -NoProfile -Command "$f='!STAGE!\config.toml'; $v='!VERSION!'; $c=Get-Content $f -Raw; if($c -match '(?m)^project_version\s*=.*$'){$c=[regex]::Replace($c,'(?m)^project_version\s*=.*$','project_version = \"'+$v+'\"')}else{$c='project_version = \"'+$v+'\"'+[Environment]::NewLine+$c}; Set-Content $f -Value $c -NoNewLine"
     copy /y "%ROOT%\installer\start.bat" "!STAGE!\start.bat" >nul
     if exist "%ROOT%\LICENSE" copy /y "%ROOT%\LICENSE" "!STAGE!\LICENSE" >nul
 

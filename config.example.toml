@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "1.2.66"
+project_version = ""
 
 [app]
 # 主播是否露脸
