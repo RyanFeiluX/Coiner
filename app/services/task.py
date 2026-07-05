@@ -199,22 +199,12 @@ def generate_scene_terms(task_id, params, scenes):
         else:
             # Generate new keywords if none exist
             terms = llm.generate_scene_terms(
-                video_subject=params.video_subject,
                 scene_script=scene.get('audio', scene.get('script', '')),
                 scene_camera=scene.get('visual', scene.get('camera', '')),  # Use visual field from new format
                 amount=5
             )
         
         if terms and not (isinstance(terms, str) and "Error: " in terms):
-            # Ensure video subject is included in keywords (add bilingual versions)
-            if params.video_subject and params.video_subject.strip():
-                subject_lower = params.video_subject.lower()
-                terms_lower = [term.lower() for term in terms]
-                if subject_lower not in terms_lower:
-                    # Add video subject to terms if not already present
-                    # Add both English and Chinese versions if possible
-                    terms.insert(0, params.video_subject)
-                    # Do not limit terms count to preserve bilingual keywords
             # Filter out any empty terms
             terms = [term for term in terms if term and term.strip()]
             scene_terms_list.append(terms)
@@ -223,10 +213,7 @@ def generate_scene_terms(task_id, params, scenes):
             logger.success(f"scene {i+1} terms: {terms}")
         else:
             logger.warning(f"failed to generate terms for scene {i+1}, using default terms")
-            default_terms = []
-            if params.video_subject and params.video_subject.strip():
-                default_terms.append(params.video_subject)
-            default_terms.extend(["video", "content"])
+            default_terms = ["video", "content"]
             scene_terms_list.append(default_terms)
             scene['keywords'] = ", ".join(default_terms)
     

@@ -67,7 +67,7 @@
                 <label class="form-label">{{ t('Start Scene') }}</label>
                 <el-select v-model="startScene" class="form-select">
                   <el-option
-                    v-for="i in taskFiles.sceneVideos"
+                    v-for="i in taskFiles.sceneNums"
                     :key="i"
                     :label="i"
                     :value="i"
@@ -78,7 +78,7 @@
                 <label class="form-label">{{ t('End Scene') }}</label>
                 <el-select v-model="endScene" class="form-select">
                   <el-option
-                    v-for="i in taskFiles.sceneVideos"
+                    v-for="i in taskFiles.sceneNums"
                     :key="i"
                     :label="i"
                     :value="i"
@@ -220,11 +220,17 @@ const scanTask = async () => {
         sceneAudio: response.data.sceneAudio,
         subtitle: response.data.subtitle,
         totalScenes: response.data.totalScenes,
-        isValid: response.data.isValid
+        isValid: response.data.isValid,
+        sceneNums: response.data.sceneNums
       };
-      
-      startScene.value = 1;
-      endScene.value = response.data.sceneVideos || 1;
+
+      if (response.data.sceneNums && response.data.sceneNums.length > 0) {
+        startScene.value = response.data.sceneNums[0];
+        endScene.value = response.data.sceneNums[response.data.sceneNums.length - 1];
+      } else {
+        startScene.value = 1;
+        endScene.value = response.data.sceneVideos || 1;
+      }
     } else {
       taskFiles.value = null;
     }

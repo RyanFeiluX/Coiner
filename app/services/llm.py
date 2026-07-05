@@ -1565,7 +1565,6 @@ Please update the visual/camera descriptions according to the host visibility re
 
 
 def generate_scene_terms(
-    video_subject: str,
     scene_script: str,
     scene_camera: str,
     amount: int = 5
@@ -1576,7 +1575,6 @@ def generate_scene_terms(
     English translations will be added during video search.
 
     Args:
-        video_subject: Overall video subject
         scene_script: Script for this specific scene
         scene_camera: Camera/visual description for this scene
         amount: Number of terms to generate
@@ -1596,15 +1594,11 @@ Generate {amount} search terms for stock videos for a specific scene.
 3. You must only return the JSON array of strings
 4. Generate search terms in the same language as the scene script
 5. Focus on visual elements mentioned in the camera description
-6. Always include keywords related to the overall video subject to maintain consistency across scenes
 
 ## Output Example:
 ["城市夜景", "摩天大楼", "都市生活", "繁华街道", "现代建筑"]
 
 ## Context:
-### Video Subject
-{video_subject}
-
 ### Scene Camera/Visual Description
 {scene_camera}
 
