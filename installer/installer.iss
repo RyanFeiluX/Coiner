@@ -34,9 +34,7 @@ WizardStyle=modern
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
-#ifexist "compiler:Languages\ChineseSimplified.isl"
-Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
-#endif
+Name: "chinesesimplified"; MessagesFile: "ChineseSimplified.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -59,6 +57,11 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDi
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: shellexec postinstall skipifsilent nowait; WorkingDir: "{app}"
 
+[CustomMessages]
+DependenciesTitle=External Dependencies
+DependenciesDescription=Additional software required by Coiner
+DependenciesText=Coiner requires FFmpeg and ImageMagick to function properly.%n%n1. FFmpeg (required for video processing)%n   Download from: https://www.gyan.dev/ffmpeg/builds/%n   Or install via: winget install FFmpeg%n%n2. ImageMagick (required for text/subtitle rendering)%n   Download from: https://imagemagick.org/archive/binaries/%n   Or install via: winget install ImageMagick%n%nAfter installing ImageMagick on Windows,%nset imagemagick_path in config.toml to the magick.exe path.%n%nNote: imageio-ffmpeg (bundled) can auto-download FFmpeg if not found.%nYou may skip FFmpeg and let it be downloaded automatically.
+
 [Code]
 var
   DependenciesPage: TOutputMsgWizardPage;
@@ -67,22 +70,8 @@ procedure InitializeWizard;
 begin
   DependenciesPage := CreateOutputMsgPage(
     wpInfoAfter,
-    'External Dependencies',
-    'Additional software required by Coiner',
-    'Coiner requires FFmpeg and ImageMagick to function properly.' + #13#10 +
-    '' + #13#10 +
-    '1. FFmpeg (required for video processing)' + #13#10 +
-    '   Download from: https://www.gyan.dev/ffmpeg/builds/' + #13#10 +
-    '   Or install via: winget install FFmpeg' + #13#10 +
-    '' + #13#10 +
-    '2. ImageMagick (required for text/subtitle rendering)' + #13#10 +
-    '   Download from: https://imagemagick.org/archive/binaries/' + #13#10 +
-    '   Or install via: winget install ImageMagick' + #13#10 +
-    '' + #13#10 +
-    'After installing ImageMagick on Windows,' + #13#10 +
-    'set imagemagick_path in config.toml to the magick.exe path.' + #13#10 +
-    '' + #13#10 +
-    'Note: imageio-ffmpeg (bundled) can auto-download FFmpeg if not found.' + #13#10 +
-    'You may skip FFmpeg and let it be downloaded automatically.'
+    CustomMessage('DependenciesTitle'),
+    CustomMessage('DependenciesDescription'),
+    CustomMessage('DependenciesText')
   );
 end;
