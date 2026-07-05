@@ -45,3 +45,7 @@ vue-frontend/public/
 secrets.toml
 installer/output/
 dist/
+build/coiner/
+resource/public/
+build-installer/
+coiner.spec
