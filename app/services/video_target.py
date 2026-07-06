@@ -401,7 +401,7 @@ def burn_subtitles_to_scene_video(
     align_map = {"bottom": 2, "top": 8, "center": 4, "custom": 2}
     sub_params["alignment"] = align_map.get(pos, 2)
 
-    _ui_cfg = load_config().get("ui", {})
+    _subtitle_cfg = load_config().get("subtitle", {})
     if pos == 'custom':
         custom_pos = float(getattr(params, 'custom_position', 70.0))
         estimated_h = int(font_size_px * 1.5)
@@ -425,7 +425,7 @@ def burn_subtitles_to_scene_video(
         if sub_params["margin_v"] < 0:
             sub_params["margin_v"] = 0
     else:
-        margin_ratio = _ui_cfg.get("subtitle_margin", 0.05)
+        margin_ratio = _subtitle_cfg.get("subtitle_margin", 0.05)
         sub_params["margin_v"] = int(video_height * margin_ratio)
 
     stroke_w = int(getattr(params, 'stroke_width', 0) or 0)
@@ -1347,10 +1347,10 @@ def process_final_video(
                         font_path = None
                     
                     _cfg = load_config()
-                    ui_config = _cfg.get("ui", {})
-                    subtitle_margin = ui_config.get("subtitle_margin", 0.05)
+                    subtitle_config = _cfg.get("subtitle", {})
+                    subtitle_margin = subtitle_config.get("subtitle_margin", 0.05)
                     max_width = video_width * (1 - 2 * subtitle_margin) * 0.95
-                    subtitle_auto_fit = ui_config.get("subtitle_auto_fit", False)
+                    subtitle_auto_fit = subtitle_config.get("subtitle_auto_fit", False)
                     
                     _play_res_y = 1080
                     font_size_pt = int(params.font_size)
@@ -1529,7 +1529,7 @@ def process_final_video(
             # Use font family name (libass can't resolve filenames like 'STHeitiMedium.ttc')
             font_family = _get_font_family_name(font_path) if font_path else "Arial"
             
-            _ui_cfg = load_config().get("ui", {})
+            _subtitle_cfg = load_config().get("subtitle", {})
             
             font_size_pt = int(getattr(params, 'font_size', 60))
             _play_res_y = 1080
@@ -1562,7 +1562,7 @@ def process_final_video(
                 if sub_params["margin_v"] < 0:
                     sub_params["margin_v"] = 0
             else:
-                margin_ratio = _ui_cfg.get("subtitle_margin", 0.05)
+                margin_ratio = _subtitle_cfg.get("subtitle_margin", 0.05)
                 sub_params["margin_v"] = int(_video_height * margin_ratio)
             
             stroke_w = int(getattr(params, 'stroke_width', 0) or 0)

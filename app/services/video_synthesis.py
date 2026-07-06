@@ -489,6 +489,7 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         video_config = _cfg.get("video", {})
         ui_config = _cfg.get("ui", {})
         audio_config = _cfg.get("audio", {})
+        subtitle_config = _cfg.get("subtitle", {})
 
         # Load original params from script.json for subtitle/TTS/BGM style consistency
         original_params = {}
@@ -570,16 +571,16 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
             video_subject="Recovered Video",
             video_aspect=VideoAspect(aspect_ratio),
             video_concat_mode=VideoConcatMode(video_config.get("video_concat_mode", "random")),
-            # Subtitle params (scene-level): original_params > subtitle_params > app_config > ui_config
-            subtitle_enabled=original_params.get('subtitle_enabled') if original_params.get('subtitle_enabled') is not None else subtitle_params.get('subtitle_enabled', app_config.get("subtitle_enabled", ui_config.get("subtitle_enabled", True))),
-            font_name=original_params.get('font_name') or subtitle_params.get('font_name', app_config.get("font_name", ui_config.get("font_name", "STHeitiMedium.ttc"))),
-            font_size=original_params.get('font_size') or subtitle_params.get('font_size', app_config.get("font_size", ui_config.get("font_size", 60))),
-            text_fore_color=original_params.get('text_fore_color') or subtitle_params.get('text_fore_color', app_config.get("text_fore_color", ui_config.get("text_fore_color", "white"))),
-            text_background_color=original_params.get('text_background_color') if original_params.get('text_background_color') is not None else subtitle_params.get('text_background_color', app_config.get("text_background_color", ui_config.get("text_background_color", "transparent"))),
-            stroke_color=original_params.get('stroke_color') or subtitle_params.get('stroke_color', app_config.get("stroke_color", ui_config.get("stroke_color", "black"))),
-            stroke_width=original_params.get('stroke_width') or subtitle_params.get('stroke_width', app_config.get("stroke_width", ui_config.get("stroke_width", 2))),
-            subtitle_position=original_params.get('subtitle_position') or subtitle_params.get('subtitle_position', app_config.get("subtitle_position", ui_config.get("subtitle_position", "bottom"))),
-            custom_position=original_params.get('custom_position') or subtitle_params.get('custom_position', app_config.get("subtitle_custom_position", ui_config.get("subtitle_custom_position", 70.0))),
+            # Subtitle params (scene-level): original_params > subtitle_params > app_config > subtitle_config > ui_config
+            subtitle_enabled=original_params.get('subtitle_enabled') if original_params.get('subtitle_enabled') is not None else subtitle_params.get('subtitle_enabled', app_config.get("subtitle_enabled", subtitle_config.get("subtitle_enabled", ui_config.get("subtitle_enabled", True)))),
+            font_name=original_params.get('font_name') or subtitle_params.get('font_name', app_config.get("font_name", subtitle_config.get("font_name", ui_config.get("font_name", "STHeitiMedium.ttc")))),
+            font_size=original_params.get('font_size') or subtitle_params.get('font_size', app_config.get("font_size", subtitle_config.get("font_size", ui_config.get("font_size", 60)))),
+            text_fore_color=original_params.get('text_fore_color') or subtitle_params.get('text_fore_color', app_config.get("text_fore_color", subtitle_config.get("text_fore_color", ui_config.get("text_fore_color", "white")))),
+            text_background_color=original_params.get('text_background_color') if original_params.get('text_background_color') is not None else subtitle_params.get('text_background_color', app_config.get("text_background_color", subtitle_config.get("text_background_color", ui_config.get("text_background_color", "transparent")))),
+            stroke_color=original_params.get('stroke_color') or subtitle_params.get('stroke_color', app_config.get("stroke_color", subtitle_config.get("stroke_color", ui_config.get("stroke_color", "black")))),
+            stroke_width=original_params.get('stroke_width') or subtitle_params.get('stroke_width', app_config.get("stroke_width", subtitle_config.get("stroke_width", ui_config.get("stroke_width", 2)))),
+            subtitle_position=original_params.get('subtitle_position') or subtitle_params.get('subtitle_position', app_config.get("subtitle_position", subtitle_config.get("subtitle_position", ui_config.get("subtitle_position", "bottom")))),
+            custom_position=original_params.get('custom_position') or subtitle_params.get('custom_position', app_config.get("subtitle_custom_position", subtitle_config.get("subtitle_custom_position", ui_config.get("subtitle_custom_position", 70.0)))),
             # BGM params (synthesis-level): bgm_params > app_config > ui_config
             bgm_type=bgm_params.get('bgm_type', app_config.get("bgm_type", audio_config.get("bgm_type", ui_config.get("bgm_type", "random")))),
             bgm_file=bgm_params.get('bgm_file', ''),

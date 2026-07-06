@@ -321,7 +321,7 @@ export const useSettingsStore = defineStore('settings', {
           app: {
             subtitle_provider: this.app.subtitleProvider,
           },
-          ui: {
+          subtitle: {
             subtitle_enabled: this.subtitle.enable,
             subtitle_position: this.subtitle.position,
             subtitle_custom_position: this.subtitle.customPosition ?? 70.0,
@@ -332,7 +332,6 @@ export const useSettingsStore = defineStore('settings', {
             font_size: this.subtitle.fontSize,
             stroke_color: this.subtitle.outlineColor,
             stroke_width: this.subtitle.outlineWidth,
-            output_bg_color: this.video.outputBgColor,
           }
         };
         console.log('[SettingsStore] Sending config:', JSON.stringify(subtitleConfig, null, 2));
@@ -490,56 +489,63 @@ export const useSettingsStore = defineStore('settings', {
                 }
             }
 
+            if (data.subtitle) {
+                console.log('[SettingsStore] === Config Subtitle Data ===');
+                console.log('[SettingsStore] config.subtitle:', data.subtitle);
+                
+                if (typeof data.subtitle.subtitle_enabled === 'boolean') {
+                  this.subtitle.enable = data.subtitle.subtitle_enabled;
+                  console.log('[SettingsStore] Updated subtitle.enable from config.subtitle:', this.subtitle.enable);
+                }
+                if (data.subtitle.subtitle_position) {
+                  this.subtitle.position = data.subtitle.subtitle_position;
+                  console.log('[SettingsStore] Updated subtitle.position from config.subtitle:', this.subtitle.position);
+                }
+                if (data.subtitle.subtitle_custom_position !== undefined) {
+                  this.subtitle.customPosition = Number(data.subtitle.subtitle_custom_position) ?? 80;
+                  console.log('[SettingsStore] Updated subtitle.customPosition from config.subtitle:', this.subtitle.customPosition);
+                }
+                if (data.subtitle.subtitle_margin !== undefined) {
+                  this.subtitle.margin = Number(data.subtitle.subtitle_margin);
+                  console.log('[SettingsStore] Updated subtitle.margin from config.subtitle:', this.subtitle.margin);
+                }
+                if (typeof data.subtitle.subtitle_auto_fit === 'boolean') {
+                  this.subtitle.autoFit = data.subtitle.subtitle_auto_fit;
+                  console.log('[SettingsStore] Updated subtitle.autoFit from config.subtitle:', this.subtitle.autoFit);
+                }
+                if (data.subtitle.font_name) {
+                  this.subtitle.font = data.subtitle.font_name;
+                  console.log('[SettingsStore] Updated subtitle.font from config.subtitle:', this.subtitle.font);
+                }
+                if (data.subtitle.text_fore_color) {
+                  this.subtitle.color = data.subtitle.text_fore_color;
+                  console.log('[SettingsStore] Updated subtitle.color from config.subtitle:', this.subtitle.color);
+                }
+                if (typeof data.subtitle.text_background_color !== 'undefined') {
+                  console.log('[SettingsStore] text_background_color from config.subtitle:', data.subtitle.text_background_color);
+                }
+                if (data.subtitle.font_size !== undefined) {
+                  this.subtitle.fontSize = Number(data.subtitle.font_size);
+                  console.log('[SettingsStore] Updated subtitle.fontSize from config.subtitle:', this.subtitle.fontSize);
+                }
+                if (data.subtitle.stroke_color) {
+                  this.subtitle.outlineColor = data.subtitle.stroke_color;
+                  console.log('[SettingsStore] Updated subtitle.outlineColor from config.subtitle:', this.subtitle.outlineColor);
+                }
+                if (data.subtitle.stroke_width !== undefined) {
+                  this.subtitle.outlineWidth = Number(data.subtitle.stroke_width);
+                  console.log('[SettingsStore] Updated subtitle.outlineWidth from config.subtitle:', this.subtitle.outlineWidth);
+                }
+            }
+
+            if (data.video) {
+                if (data.video.output_bg_color) {
+                  this.video.outputBgColor = data.video.output_bg_color;
+                  console.log('[SettingsStore] Updated video.outputBgColor from config.video:', this.video.outputBgColor);
+                }
+            }
+
             if (data.ui) {
-                // Load subtitle settings from config.ui
-            if (typeof data.ui.subtitle_enabled === 'boolean') {
-              this.subtitle.enable = data.ui.subtitle_enabled;
-              console.log('[SettingsStore] Updated subtitle.enable from config.ui:', this.subtitle.enable);
-            }
-            if (data.ui.subtitle_position) {
-              this.subtitle.position = data.ui.subtitle_position;
-              console.log('[SettingsStore] Updated subtitle.position from config.ui:', this.subtitle.position);
-            }
-            if (data.ui.subtitle_custom_position !== undefined) {
-              this.subtitle.customPosition = Number(data.ui.subtitle_custom_position) ?? 80;
-              console.log('[SettingsStore] Updated subtitle.customPosition from config.ui:', this.subtitle.customPosition);
-            }
-            if (data.ui.subtitle_margin !== undefined) {
-              this.subtitle.margin = Number(data.ui.subtitle_margin);
-              console.log('[SettingsStore] Updated subtitle.margin from config.ui:', this.subtitle.margin);
-            }
-            if (typeof data.ui.subtitle_auto_fit === 'boolean') {
-              this.subtitle.autoFit = data.ui.subtitle_auto_fit;
-              console.log('[SettingsStore] Updated subtitle.autoFit from config.ui:', this.subtitle.autoFit);
-            }
-            if (data.ui.font_name) {
-              this.subtitle.font = data.ui.font_name;
-              console.log('[SettingsStore] Updated subtitle.font from config.ui:', this.subtitle.font);
-            }
-            if (data.ui.text_fore_color) {
-              this.subtitle.color = data.ui.text_fore_color;
-              console.log('[SettingsStore] Updated subtitle.color from config.ui:', this.subtitle.color);
-            }
-            if (typeof data.ui.text_background_color !== 'undefined') {
-              console.log('[SettingsStore] text_background_color from config.ui:', data.ui.text_background_color);
-            }
-            if (data.ui.font_size !== undefined) {
-              this.subtitle.fontSize = Number(data.ui.font_size);
-              console.log('[SettingsStore] Updated subtitle.fontSize from config.ui:', this.subtitle.fontSize);
-            }
-            if (data.ui.stroke_color) {
-              this.subtitle.outlineColor = data.ui.stroke_color;
-              console.log('[SettingsStore] Updated subtitle.outlineColor from config.ui:', this.subtitle.outlineColor);
-            }
-            if (data.ui.stroke_width !== undefined) {
-              this.subtitle.outlineWidth = Number(data.ui.stroke_width);
-              console.log('[SettingsStore] Updated subtitle.outlineWidth from config.ui:', this.subtitle.outlineWidth);
-            }
-            if (data.ui.output_bg_color) {
-              this.video.outputBgColor = data.ui.output_bg_color;
-              console.log('[SettingsStore] Updated video.outputBgColor from config.ui:', this.video.outputBgColor);
-            }
-            
             // Load title settings from config.ui
             if (typeof data.ui.title_enabled === 'boolean') {
               this.video.title.enabled = data.ui.title_enabled;

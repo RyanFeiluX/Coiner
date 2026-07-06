@@ -264,6 +264,8 @@ material_directory = ""
 # Number of scenes to process in parallel (1=sequential, 2=recommended, 3-4=requires more memory)
 # Each parallel scene roughly doubles memory during video processing phase
 max_parallel_scenes = 2
+# Output background color (used for pillarbox bars when aspect ratio doesn't match the video)
+output_bg_color = "black"
 
 [whisper]
 # Only effective when subtitle_provider is "whisper"
@@ -324,14 +326,7 @@ bgm_type = ""
 # Background music volume (0.0 - 1.0)
 bgm_volume = 0.2
 
-[ui]
-# UI related settings
-# 是否隐藏日志信息
-# Whether to hide logs in the UI
-hide_log = false
-# UI language
-language = "zh"
-
+[subtitle]
 # Subtitle Settings
 # Enable subtitles
 subtitle_enabled = true
@@ -341,6 +336,8 @@ subtitle_position = "bottom"
 subtitle_custom_position = 70.0
 # Subtitle margin (percentage of video height)
 subtitle_margin = 0.05
+# Subtitle auto-fit: automatically adjust subtitle width to fit video width
+subtitle_auto_fit = false
 # Font name
 font_name = "MicrosoftYaHeiBold.ttc"
 # Text color (hex format or rgb)
@@ -353,8 +350,14 @@ font_size = 60
 stroke_color = "#000000"
 # Stroke width
 stroke_width = 1.5
-# Output background color
-output_bg_color = "black"
+
+[ui]
+# UI related settings
+# 是否隐藏日志信息
+# Whether to hide logs in the UI
+hide_log = false
+# UI language
+language = "zh"
 
 # Title Settings
 # Enable title

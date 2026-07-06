@@ -56,6 +56,7 @@ intro_image_animation_enabled = true
 intro_image_zoom_amount = 0.03
 material_directory = ""
 max_parallel_scenes = 2
+output_bg_color = "blue"
 
 [whisper]
 model_size = "large-v3"
@@ -77,9 +78,7 @@ voice_rate = 1
 bgm_type = ""
 bgm_volume = 0.1
 
-[ui]
-hide_log = false
-language = "zh"
+[subtitle]
 subtitle_enabled = true
 subtitle_position = "custom"
 subtitle_custom_position = 95
@@ -91,9 +90,12 @@ text_background_color = true
 font_size = 40
 stroke_color = "#000000"
 stroke_width = 1
-output_bg_color = "blue"
+
+[ui]
+hide_log = false
+language = "zh"
 title_enabled = true
-title_text = "法律与道德的角力场"
+title_text = "资本套路下的民生陷阱"
 title_duration = 3
 title_font_name = "MicrosoftYaHeiBold.ttc"
 title_font_size = 72

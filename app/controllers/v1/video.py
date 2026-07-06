@@ -569,7 +569,7 @@ def preview_subtitle(request: Request, body: dict):
     subtitle_auto_fit = body.get('subtitle_auto_fit', False)
     subtitle_margin = body.get('subtitle_margin')
     if subtitle_margin is None:
-        subtitle_margin = config.ui.get("subtitle_margin", 0.05)
+        subtitle_margin = config.subtitle.get("subtitle_margin", 0.05)
 
     logger.info(f"Subtitle preview request - text: '{subtitle_text}', font: '{font_name}', font_size_pt: {font_size_pt}, position: {subtitle_position}, margin: {subtitle_margin}")
 

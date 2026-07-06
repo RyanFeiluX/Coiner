@@ -23,6 +23,19 @@ _AUDIO_KEYS = {
     "bgm_type", "bgm_volume",
 }
 
+# Keys that belong to [subtitle] — used for migrating from legacy [ui] or [app] location
+_SUBTITLE_KEYS = {
+    "subtitle_enabled", "subtitle_position", "subtitle_custom_position",
+    "subtitle_margin", "subtitle_auto_fit",
+    "font_name", "text_fore_color", "text_background_color",
+    "font_size", "stroke_color", "stroke_width",
+}
+
+# Keys that should be moved from [ui] to [video]
+_UI_TO_VIDEO_KEYS = {
+    "output_bg_color",
+}
+
 # Keys that belong to [video] — used for migrating from legacy [app] location
 _VIDEO_KEYS = {
     "video_source", "video_quality", "video_bitrate",
@@ -97,6 +110,7 @@ def save_config():
     _cfg["coze"] = coze
     _cfg["qwen"] = qwen
     _cfg["audio"] = audio
+    _cfg["subtitle"] = subtitle
     _cfg["ui"] = ui
     _cfg["video"] = video
 
@@ -135,6 +149,7 @@ siliconflow = _cfg.get("siliconflow", {})
 coze = _cfg.get("coze", {})
 qwen = _cfg.get("qwen", {})
 audio = _cfg.get("audio", {})
+subtitle = _cfg.get("subtitle", {})
 
 ui = _cfg.get(
     "ui",
@@ -151,6 +166,19 @@ for key in list(ui.keys()):
 for key in list(app.keys()):
     if key in _AUDIO_KEYS and key not in audio:
         audio[key] = app.pop(key)
+
+# Migrate subtitle keys that may still be in [ui] or [app] from older configs
+for key in list(ui.keys()):
+    if key in _SUBTITLE_KEYS and key not in subtitle:
+        subtitle[key] = ui.pop(key)
+for key in list(app.keys()):
+    if key in _SUBTITLE_KEYS and key not in subtitle:
+        subtitle[key] = app.pop(key)
+
+# Migrate keys from [ui] to [video]
+for key in list(ui.keys()):
+    if key in _UI_TO_VIDEO_KEYS and key not in video:
+        video[key] = ui.pop(key)
 
 # Migrate video keys that may still be in [app] from older configs
 for key in list(app.keys()):

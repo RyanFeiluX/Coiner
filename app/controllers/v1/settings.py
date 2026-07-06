@@ -64,20 +64,22 @@ def get_config(request: Request):
                 "tts_server": tts_server,
                 "voice_name": voice_name,
             },
+            "subtitle": {
+                **config.subtitle,
+                "subtitle_enabled": config.subtitle.get("subtitle_enabled", True),
+                "subtitle_position": config.subtitle.get("subtitle_position", "bottom"),
+                "subtitle_custom_position": config.subtitle.get("subtitle_custom_position", 70.0),
+                "subtitle_margin": config.subtitle.get("subtitle_margin", 0.05),
+                "subtitle_auto_fit": config.subtitle.get("subtitle_auto_fit", False),
+                "font_name": config.subtitle.get("font_name", "MicrosoftYaHeiBold.ttc"),
+                "text_fore_color": config.subtitle.get("text_fore_color", "#FFFFFF"),
+                "text_background_color": config.subtitle.get("text_background_color", True),
+                "font_size": config.subtitle.get("font_size", 60),
+                "stroke_color": config.subtitle.get("stroke_color", "#000000"),
+                "stroke_width": config.subtitle.get("stroke_width", 1.5),
+            },
             "ui": {
                 **config.ui,
-                "subtitle_enabled": config.ui.get("subtitle_enabled", True),
-                "subtitle_position": config.ui.get("subtitle_position", "bottom"),
-                "subtitle_custom_position": config.ui.get("subtitle_custom_position", 70.0),
-                "subtitle_margin": config.ui.get("subtitle_margin", 0.1),
-                "subtitle_auto_fit": config.ui.get("subtitle_auto_fit", False),
-                "font_name": config.ui.get("font_name", "MicrosoftYaHeiBold.ttc"),
-                "text_fore_color": config.ui.get("text_fore_color", "#FFFFFF"),
-                "text_background_color": config.ui.get("text_background_color", True),
-                "font_size": config.ui.get("font_size", 60),
-                "stroke_color": config.ui.get("stroke_color", "#000000"),
-                "stroke_width": config.ui.get("stroke_width", 1.5),
-                "output_bg_color": config.ui.get("output_bg_color", "black"),
                 "title_enabled": config.ui.get("title_enabled", False),
                 "title_text": config.ui.get("title_text", ""),
                 "title_duration": config.ui.get("title_duration", 3.0),
@@ -133,6 +135,7 @@ def get_config(request: Request):
                 "intro_image_animation_enabled": config.video.get("intro_image_animation_enabled", True),
                 "intro_image_zoom_amount": config.video.get("intro_image_zoom_amount", 0.03),
                 "use_gpu": config.video.get("use_gpu", False),
+                "output_bg_color": config.video.get("output_bg_color", "black"),
             },
             "azure": {
                 "speech_region": config.azure.get("speech_region", ""),
@@ -195,6 +198,10 @@ def update_config(request: Request, cfg: dict):
             for key, value in cfg["whisper"].items():
                 config.whisper[key] = value
 
+        if "subtitle" in cfg:
+            for key, value in cfg["subtitle"].items():
+                config.subtitle[key] = value
+
         if "video" in cfg:
             for key, value in cfg["video"].items():
                 config.video[key] = value
@@ -204,7 +211,7 @@ def update_config(request: Request, cfg: dict):
                 config.audio[key] = value
 
         config.save_config()
-        logger.info(f"[Update Config] Config saved successfully. ui.subtitle_enabled={config.ui.get('subtitle_enabled')}")
+        logger.info(f"[Update Config] Config saved successfully. subtitle_enabled={config.subtitle.get('subtitle_enabled')}")
         return utils.get_response(200, {"message": "Config saved successfully"})
     except Exception as e:
         logger.error(f"Failed to update config: {str(e)}")

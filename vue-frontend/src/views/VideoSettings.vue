@@ -480,8 +480,8 @@ const loadConfig = async () => {
           form.introVideoBgColor = cfg.video.intro_video_bg_color;
         }
       }
-      if (cfg.ui && cfg.ui.output_bg_color) {
-        form.outputBgColor = cfg.ui.output_bg_color;
+      if (cfg.video && cfg.video.output_bg_color) {
+        form.outputBgColor = cfg.video.output_bg_color;
       }
     }
   } catch (error: any) {
@@ -507,9 +507,7 @@ const saveConfig = async () => {
         video_style: form.videoStyle,
         intro_video_bg_type: form.introVideoBgType,
         intro_video_bg_blur: form.introVideoBgBlur,
-        intro_video_bg_color: form.introVideoBgColor
-      },
-      ui: {
+        intro_video_bg_color: form.introVideoBgColor,
         output_bg_color: form.outputBgColor
       }
     };
