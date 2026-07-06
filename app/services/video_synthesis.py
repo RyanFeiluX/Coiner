@@ -488,6 +488,7 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         app_config = _cfg.get("app", {})
         video_config = _cfg.get("video", {})
         ui_config = _cfg.get("ui", {})
+        audio_config = _cfg.get("audio", {})
 
         # Load original params from script.json for subtitle/TTS/BGM style consistency
         original_params = {}
@@ -504,9 +505,9 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         if bgm_params is None:
             bgm_params = {}
         
-        bgm_type = bgm_params.get('bgm_type', app_config.get('bgm_type', 'random'))
+        bgm_type = bgm_params.get('bgm_type', app_config.get('bgm_type', audio_config.get('bgm_type', 'random')))
         bgm_file_param = bgm_params.get('bgm_file', '')
-        bgm_volume = float(bgm_params.get('bgm_volume', app_config.get('bgm_volume', 0.2)))
+        bgm_volume = float(bgm_params.get('bgm_volume', app_config.get('bgm_volume', audio_config.get('bgm_volume', 0.2))))
         
         # Get BGM file if BGM is enabled
         if bgm_type and bgm_type != 'none':
@@ -580,9 +581,9 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
             subtitle_position=original_params.get('subtitle_position') or subtitle_params.get('subtitle_position', app_config.get("subtitle_position", ui_config.get("subtitle_position", "bottom"))),
             custom_position=original_params.get('custom_position') or subtitle_params.get('custom_position', app_config.get("subtitle_custom_position", ui_config.get("subtitle_custom_position", 70.0))),
             # BGM params (synthesis-level): bgm_params > app_config > ui_config
-            bgm_type=bgm_params.get('bgm_type', app_config.get("bgm_type", ui_config.get("bgm_type", "random"))),
+            bgm_type=bgm_params.get('bgm_type', app_config.get("bgm_type", audio_config.get("bgm_type", ui_config.get("bgm_type", "random")))),
             bgm_file=bgm_params.get('bgm_file', ''),
-            bgm_volume=float(bgm_params.get('bgm_volume', app_config.get("bgm_volume", ui_config.get("bgm_volume", 0.2)))),
+            bgm_volume=float(bgm_params.get('bgm_volume', app_config.get("bgm_volume", audio_config.get("bgm_volume", ui_config.get("bgm_volume", 0.2))))),
             # Title params (synthesis-level): title_params > ui_config
             title_enabled=title_params.get('title_enabled', ui_config.get("title_enabled", False)),
             title_text=title_params.get('title_text', ui_config.get("title_text", "")),

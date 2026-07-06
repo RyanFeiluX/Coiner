@@ -454,24 +454,24 @@ const loadConfig = async () => {
     const response = await apiService.getConfig();
     if (response.status === 200 && response.data) {
       const cfg = response.data;
-      if (cfg.ui) {
-        if (cfg.ui.tts_server) {
-          form.ttsServer = cfg.ui.tts_server;
+      if (cfg.audio) {
+        if (cfg.audio.tts_server) {
+          form.ttsServer = cfg.audio.tts_server;
         }
-        if (cfg.ui.voice_name) {
-          form.speechSynthesis = cfg.ui.voice_name;
+        if (cfg.audio.voice_name) {
+          form.speechSynthesis = cfg.audio.voice_name;
         }
-        if (cfg.ui.voice_volume !== undefined) {
-          form.speechVolume = String(cfg.ui.voice_volume);
+        if (cfg.audio.voice_volume !== undefined) {
+          form.speechVolume = String(cfg.audio.voice_volume);
         }
-        if (cfg.ui.voice_rate !== undefined) {
-          form.speechRate = String(cfg.ui.voice_rate);
+        if (cfg.audio.voice_rate !== undefined) {
+          form.speechRate = String(cfg.audio.voice_rate);
         }
-        if (cfg.ui.bgm_type !== undefined) {
-          form.backgroundMusic = cfg.ui.bgm_type === '' ? 'none' : cfg.ui.bgm_type;
+        if (cfg.audio.bgm_type !== undefined) {
+          form.backgroundMusic = cfg.audio.bgm_type === '' ? 'none' : cfg.audio.bgm_type;
         }
-        if (cfg.ui.bgm_volume !== undefined) {
-          form.backgroundMusicVolume = String(cfg.ui.bgm_volume);
+        if (cfg.audio.bgm_volume !== undefined) {
+          form.backgroundMusicVolume = String(cfg.audio.bgm_volume);
         }
       }
       if (cfg.azure) {
@@ -496,7 +496,7 @@ const loadConfig = async () => {
 const saveConfig = async () => {
   try {
     const cfg = {
-      ui: {
+      audio: {
         tts_server: form.ttsServer,
         voice_name: form.speechSynthesis,
         voice_volume: parseFloat(form.speechVolume),

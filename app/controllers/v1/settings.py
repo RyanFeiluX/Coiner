@@ -55,14 +55,17 @@ def get_config(request: Request):
     """Get current configuration for UI settings."""
     try:
         logger.info(f"[Get Config] ui.title_enabled={config.ui.get('title_enabled')}, ui.title_text={config.ui.get('title_text')}")
-        tts_server = config.ui.get("tts_server", "azure-tts-v1")
-        voice_name = config.ui.get("voice_name", "")
+        tts_server = config.audio.get("tts_server", "azure-tts-v1")
+        voice_name = config.audio.get("voice_name", "")
 
         cfg = {
-            "ui": {
-                **config.ui,
+            "audio": {
+                **config.audio,
                 "tts_server": tts_server,
                 "voice_name": voice_name,
+            },
+            "ui": {
+                **config.ui,
                 "subtitle_enabled": config.ui.get("subtitle_enabled", True),
                 "subtitle_position": config.ui.get("subtitle_position", "bottom"),
                 "subtitle_custom_position": config.ui.get("subtitle_custom_position", 70.0),
@@ -195,6 +198,10 @@ def update_config(request: Request, cfg: dict):
         if "video" in cfg:
             for key, value in cfg["video"].items():
                 config.video[key] = value
+
+        if "audio" in cfg:
+            for key, value in cfg["audio"].items():
+                config.audio[key] = value
 
         config.save_config()
         logger.info(f"[Update Config] Config saved successfully. ui.subtitle_enabled={config.ui.get('subtitle_enabled')}")

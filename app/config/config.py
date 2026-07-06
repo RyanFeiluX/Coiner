@@ -17,6 +17,12 @@ _config_loaded = False
 # Secrets file (not tracked by git)
 secrets_file = f"{root_dir}/secrets.toml"
 
+# Keys that belong to [audio] — used for migrating from legacy [ui] or [app] location
+_AUDIO_KEYS = {
+    "tts_server", "voice_name", "voice_volume", "voice_rate",
+    "bgm_type", "bgm_volume",
+}
+
 # Keys that belong to [video] — used for migrating from legacy [app] location
 _VIDEO_KEYS = {
     "video_source", "video_quality", "video_bitrate",
@@ -90,6 +96,7 @@ def save_config():
     _cfg["siliconflow"] = siliconflow
     _cfg["coze"] = coze
     _cfg["qwen"] = qwen
+    _cfg["audio"] = audio
     _cfg["ui"] = ui
     _cfg["video"] = video
 
@@ -127,6 +134,8 @@ azure = _cfg.get("azure", {})
 siliconflow = _cfg.get("siliconflow", {})
 coze = _cfg.get("coze", {})
 qwen = _cfg.get("qwen", {})
+audio = _cfg.get("audio", {})
+
 ui = _cfg.get(
     "ui",
     {
@@ -134,6 +143,14 @@ ui = _cfg.get(
     },
 )
 video = _cfg.get("video", {})
+
+# Migrate audio keys that may still be in [ui] or [app] from older configs
+for key in list(ui.keys()):
+    if key in _AUDIO_KEYS and key not in audio:
+        audio[key] = ui.pop(key)
+for key in list(app.keys()):
+    if key in _AUDIO_KEYS and key not in audio:
+        audio[key] = app.pop(key)
 
 # Migrate video keys that may still be in [app] from older configs
 for key in list(app.keys()):

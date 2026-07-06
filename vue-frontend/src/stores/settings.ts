@@ -442,49 +442,56 @@ export const useSettingsStore = defineStore('settings', {
           const data = response.data;
           console.log('Config data:', data);
 
-          if (data.ui) {
-            if (data.ui.language) {
-              this.ui.language = data.ui.language;
-              console.log('Updated language:', this.ui.language);
+            if (data.ui) {
+                if (data.ui.language) {
+                    this.ui.language = data.ui.language;
+                    console.log('Updated language:', this.ui.language);
+                }
+                if (typeof data.ui.hide_log === 'boolean') {
+                    this.ui.hideLog = data.ui.hide_log;
+                    console.log('Updated hideLog:', this.ui.hideLog);
+                }
+                console.log('[SettingsStore] === Config UI Data ===');
+                console.log('[SettingsStore] config.ui:', data.ui);
             }
-            if (typeof data.ui.hide_log === 'boolean') {
-              this.ui.hideLog = data.ui.hide_log;
-              console.log('Updated hideLog:', this.ui.hideLog);
+
+            if (data.audio) {
+                console.log('[SettingsStore] === Config Audio Data ===');
+                console.log('[SettingsStore] config.audio:', data.audio);
+                
+                if (data.audio.tts_server) {
+                    this.audio.ttsServer = data.audio.tts_server;
+                    console.log('[SettingsStore] Updated ttsServer from config.audio:', this.audio.ttsServer);
+                } else {
+                    console.log('[SettingsStore] tts_server not found in config.audio');
+                }
+                if (data.audio.voice_name) {
+                    this.audio.speechSynthesis = data.audio.voice_name;
+                    console.log('[SettingsStore] Updated speechSynthesis from config.audio:', this.audio.speechSynthesis.substring(0, 100) + '...');
+                } else {
+                    console.log('[SettingsStore] voice_name not found in config.audio');
+                }
+                if (data.audio.voice_volume !== undefined) {
+                    this.audio.speechVolume = String(data.audio.voice_volume);
+                    console.log('[SettingsStore] Updated speechVolume from config.audio:', this.audio.speechVolume);
+                }
+                if (data.audio.voice_rate !== undefined) {
+                    this.audio.speechRate = String(data.audio.voice_rate);
+                    console.log('[SettingsStore] Updated speechRate from config.audio:', this.audio.speechRate);
+                }
+                if (data.audio.bgm_type !== undefined) {
+                    const bgmType = data.audio.bgm_type === '' ? 'none' : data.audio.bgm_type;
+                    this.audio.backgroundMusic = bgmType;
+                    console.log('[SettingsStore] Updated backgroundMusic from config.audio:', this.audio.backgroundMusic);
+                }
+                if (data.audio.bgm_volume !== undefined) {
+                    this.audio.backgroundMusicVolume = String(data.audio.bgm_volume);
+                    console.log('[SettingsStore] Updated backgroundMusicVolume from config.audio:', this.audio.backgroundMusicVolume);
+                }
             }
-            console.log('[SettingsStore] === Config UI Data ===');
-            console.log('[SettingsStore] config.ui:', data.ui);
-            
-            if (data.ui.tts_server) {
-              this.audio.ttsServer = data.ui.tts_server;
-              console.log('[SettingsStore] Updated ttsServer from config.ui:', this.audio.ttsServer);
-            } else {
-              console.log('[SettingsStore] tts_server not found in config.ui');
-            }
-            if (data.ui.voice_name) {
-              this.audio.speechSynthesis = data.ui.voice_name;
-              console.log('[SettingsStore] Updated speechSynthesis from config.ui:', this.audio.speechSynthesis.substring(0, 100) + '...');
-            } else {
-              console.log('[SettingsStore] voice_name not found in config.ui');
-            }
-            if (data.ui.voice_volume !== undefined) {
-              this.audio.speechVolume = String(data.ui.voice_volume);
-              console.log('[SettingsStore] Updated speechVolume from config.ui:', this.audio.speechVolume);
-            }
-            if (data.ui.voice_rate !== undefined) {
-              this.audio.speechRate = String(data.ui.voice_rate);
-              console.log('[SettingsStore] Updated speechRate from config.ui:', this.audio.speechRate);
-            }
-            if (data.ui.bgm_type !== undefined) {
-              const bgmType = data.ui.bgm_type === '' ? 'none' : data.ui.bgm_type;
-              this.audio.backgroundMusic = bgmType;
-              console.log('[SettingsStore] Updated backgroundMusic from config.ui:', this.audio.backgroundMusic);
-            }
-            if (data.ui.bgm_volume !== undefined) {
-              this.audio.backgroundMusicVolume = String(data.ui.bgm_volume);
-              console.log('[SettingsStore] Updated backgroundMusicVolume from config.ui:', this.audio.backgroundMusicVolume);
-            }
-            
-            // Load subtitle settings from config.ui
+
+            if (data.ui) {
+                // Load subtitle settings from config.ui
             if (typeof data.ui.subtitle_enabled === 'boolean') {
               this.subtitle.enable = data.ui.subtitle_enabled;
               console.log('[SettingsStore] Updated subtitle.enable from config.ui:', this.subtitle.enable);

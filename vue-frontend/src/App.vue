@@ -153,10 +153,10 @@ const getAudioConfig = async (): Promise<{tts_server: string, voice_name: string
   try {
     const response = await apiService.getConfig();
     console.log('[getAudioConfig] Response:', response);
-    if (response.status === 200 && response.data?.ui) {
+    if (response.status === 200 && response.data?.audio) {
       const result = {
-        tts_server: response.data.ui.tts_server || 'azure-tts-v1',
-        voice_name: response.data.ui.voice_name || ''
+        tts_server: response.data.audio.tts_server || 'azure-tts-v1',
+        voice_name: response.data.audio.voice_name || ''
       };
       console.log('[getAudioConfig] Returning:', result);
       return result;

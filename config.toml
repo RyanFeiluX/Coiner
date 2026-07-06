@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.9.3"
+project_version = "2.9.4"
 
 [app]
 host_visible = false
@@ -69,15 +69,17 @@ speech_region = ""
 
 [siliconflow]
 
-[ui]
-hide_log = false
-language = "zh"
+[audio]
 tts_server = "qwen-tts"
 voice_name = "qwen|Elias|墨讲师-Female||"
 voice_volume = 1.8
 voice_rate = 1
 bgm_type = ""
 bgm_volume = 0.1
+
+[ui]
+hide_log = false
+language = "zh"
 subtitle_enabled = true
 subtitle_position = "custom"
 subtitle_custom_position = 95
