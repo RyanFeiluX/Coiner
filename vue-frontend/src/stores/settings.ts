@@ -612,91 +612,73 @@ export const useSettingsStore = defineStore('settings', {
             }
           }
 
+          if (data.video) {
+            if (data.video.video_source) {
+              this.app.videoSource = data.video.video_source;
+              this.video.source = data.video.video_source;
+            }
+            if (data.video.video_quality) {
+              this.video.quality = data.video.video_quality;
+            }
+            if (data.video.video_bitrate) {
+              this.video.bitrate = data.video.video_bitrate;
+            }
+            if (data.video.video_brightness !== undefined) {
+              this.video.brightness = Number(data.video.video_brightness);
+            }
+            if (data.video.video_contrast !== undefined) {
+              this.video.contrast = Number(data.video.video_contrast);
+            }
+            if (data.video.video_concat_mode) {
+              this.video.concatMode = data.video.video_concat_mode;
+            }
+            if (data.video.video_transition_mode) {
+              this.video.transitionMode = data.video.video_transition_mode;
+            }
+            if (data.video.video_aspect) {
+              this.video.aspect = data.video.video_aspect;
+            }
+            if (data.video.video_clip_duration !== undefined) {
+              this.video.clipDuration = Number(data.video.video_clip_duration);
+            }
+            if (data.video.video_count !== undefined) {
+              this.video.count = Number(data.video.video_count);
+            }
+            if (data.video.silence_duration !== undefined) {
+              this.video.silenceDuration = Number(data.video.silence_duration);
+            }
+            if (data.video.video_style) {
+              this.video.style = data.video.video_style;
+            }
+            if (data.video.intro_video_bg_type) {
+              this.video.introVideoBgType = data.video.intro_video_bg_type;
+            }
+            if (data.video.intro_video_bg_blur !== undefined) {
+              this.video.introVideoBgBlur = Number(data.video.intro_video_bg_blur);
+            }
+            if (data.video.intro_video_bg_color) {
+              this.video.introVideoBgColor = data.video.intro_video_bg_color;
+            }
+            if (typeof data.video.use_gpu === 'boolean') {
+              this.app.useGpu = data.video.use_gpu;
+            }
+          }
+
           if (data.app) {
             if (data.app.llm_provider) {
               this.app.llmProvider = data.app.llm_provider;
-              console.log('Updated llmProvider:', this.app.llmProvider);
             }
             if (data.app.subtitle_provider) {
               this.app.subtitleProvider = data.app.subtitle_provider;
-              console.log('Updated subtitleProvider:', this.app.subtitleProvider);
-            }
-            if (data.app.video_source) {
-              this.app.videoSource = data.app.video_source;
-              this.video.source = data.app.video_source;
-              console.log('Updated videoSource:', this.app.videoSource);
-            }
-            if (data.app.video_quality) {
-              this.video.quality = data.app.video_quality;
-              console.log('Updated video.quality:', this.video.quality);
-            }
-            if (data.app.video_bitrate) {
-              this.video.bitrate = data.app.video_bitrate;
-              console.log('Updated video.bitrate:', this.video.bitrate);
-            }
-            if (data.app.video_brightness !== undefined) {
-              this.video.brightness = Number(data.app.video_brightness);
-              console.log('Updated video.brightness:', this.video.brightness);
-            }
-            if (data.app.video_contrast !== undefined) {
-              this.video.contrast = Number(data.app.video_contrast);
-              console.log('Updated video.contrast:', this.video.contrast);
-            }
-            if (data.app.video_concat_mode) {
-              this.video.concatMode = data.app.video_concat_mode;
-              console.log('Updated video.concatMode:', this.video.concatMode);
-            }
-            if (data.app.video_transition_mode) {
-              this.video.transitionMode = data.app.video_transition_mode;
-              console.log('Updated video.transitionMode:', this.video.transitionMode);
-            }
-            if (data.app.video_aspect) {
-              this.video.aspect = data.app.video_aspect;
-              console.log('Updated video.aspect:', this.video.aspect);
-            }
-            if (data.app.video_clip_duration !== undefined) {
-              this.video.clipDuration = Number(data.app.video_clip_duration);
-              console.log('Updated video.clipDuration:', this.video.clipDuration);
-            }
-            if (data.app.video_count !== undefined) {
-              this.video.count = Number(data.app.video_count);
-              console.log('Updated video.count:', this.video.count);
-            }
-            if (data.app.silence_duration !== undefined) {
-              this.video.silenceDuration = Number(data.app.silence_duration);
-              console.log('Updated video.silenceDuration:', this.video.silenceDuration);
-            }
-            if (data.app.video_style) {
-              this.video.style = data.app.video_style;
-              console.log('Updated video.style:', this.video.style);
-            }
-            if (data.app.intro_video_bg_type) {
-              this.video.introVideoBgType = data.app.intro_video_bg_type;
-              console.log('Updated video.introVideoBgType:', this.video.introVideoBgType);
-            }
-            if (data.app.intro_video_bg_blur !== undefined) {
-              this.video.introVideoBgBlur = Number(data.app.intro_video_bg_blur);
-              console.log('Updated video.introVideoBgBlur:', this.video.introVideoBgBlur);
-            }
-            if (data.app.intro_video_bg_color) {
-              this.video.introVideoBgColor = data.app.intro_video_bg_color;
-              console.log('Updated video.introVideoBgColor:', this.video.introVideoBgColor);
-            }
-            if (typeof data.app.use_gpu === 'boolean') {
-              this.app.useGpu = data.app.use_gpu;
-              console.log('Updated useGpu:', this.app.useGpu);
             }
             if (typeof data.app.host_visible === 'boolean') {
               this.video.hostVisible = data.app.host_visible;
-              console.log('Updated hostVisible:', this.video.hostVisible);
             }
             if (Array.isArray(data.app.pexels_api_keys)) {
               this.videoSources.pexelsApiKeys = data.app.pexels_api_keys;
-              console.log('Updated pexelsApiKeys:', this.videoSources.pexelsApiKeys);
             }
             if (Array.isArray(data.app.pixabay_api_keys)) {
               this.videoSources.pixabayApiKeys = data.app.pixabay_api_keys;
-              console.log('Updated pixabayApiKeys:', this.videoSources.pixabayApiKeys);
             }
 
             // Update LLM configs
@@ -709,7 +691,6 @@ export const useSettingsStore = defineStore('settings', {
               if (data.app.openai_model_name) {
                 this.llm.openai.modelName = data.app.openai_model_name;
               }
-              console.log('Updated openai config:', this.llm.openai);
             }
 
             if (data.app.moonshot_api_key) {
@@ -721,7 +702,6 @@ export const useSettingsStore = defineStore('settings', {
               if (data.app.moonshot_model_name) {
                 this.llm.moonshot.modelName = data.app.moonshot_model_name;
               }
-              console.log('Updated moonshot config:', this.llm.moonshot);
             }
 
             if (data.app.deepseek_api_key) {
@@ -733,7 +713,6 @@ export const useSettingsStore = defineStore('settings', {
               if (data.app.deepseek_model_name) {
                 this.llm.deepseek.modelName = data.app.deepseek_model_name;
               }
-              console.log('Updated deepseek config:', this.llm.deepseek);
             }
           }
 

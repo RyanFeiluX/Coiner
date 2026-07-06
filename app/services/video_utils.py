@@ -491,9 +491,9 @@ def get_video_encoding_params():
     """Get video encoding parameters"""
     # Reload config to get latest values
     _cfg = load_config()
-    app_config = _cfg.get("app", {})
+    video_config = _cfg.get("video", {})
     
-    use_gpu = app_config.get("use_gpu", False)
+    use_gpu = video_config.get("use_gpu", False)
     
     # Get actual video codec to determine preset type first
     actual_codec = get_video_codec()
@@ -503,8 +503,8 @@ def get_video_encoding_params():
     # Set default quality based on actual codec type (not config use_gpu)
     # GPU defaults to highest quality, CPU defaults to high quality
     default_quality = "ultra" if preset_type == "gpu" else "high"
-    quality = app_config.get("video_quality", default_quality).lower()
-    custom_bitrate = app_config.get("video_bitrate", "")
+    quality = video_config.get("video_quality", default_quality).lower()
+    custom_bitrate = video_config.get("video_bitrate", "")
     
     logger.info(f"Video encoding: codec={actual_codec}, preset_type={preset_type}, quality={quality}")
     
@@ -540,7 +540,7 @@ def get_video_codec():
     """Select appropriate video encoder based on configuration and system environment"""
     global _cached_codec_entry
 
-    use_gpu = config.app.get("use_gpu", False)
+    use_gpu = config.video.get("use_gpu", False)
 
     # Return cached result if the use_gpu setting hasn't changed
     if _cached_codec_entry is not None and _cached_codec_entry[0] == use_gpu:
@@ -599,7 +599,7 @@ def get_video_codec():
 
 video_codec = get_video_codec()
 video_encoding_params = get_video_encoding_params()
-logger.info(f"Video encoder initialized: {video_codec} (GPU for video codec: {config.app.get('use_gpu', False)})")
+logger.info(f"Video encoder initialized: {video_codec} (GPU for video codec: {config.video.get('use_gpu', False)})")
 
 def get_memory_usage():
     """Get current memory usage percentage"""

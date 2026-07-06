@@ -17,6 +17,18 @@ _config_loaded = False
 # Secrets file (not tracked by git)
 secrets_file = f"{root_dir}/secrets.toml"
 
+# Keys that belong to [video] — used for migrating from legacy [app] location
+_VIDEO_KEYS = {
+    "video_source", "video_quality", "video_bitrate",
+    "video_brightness", "video_contrast", "video_brightness_threshold",
+    "video_concat_mode", "video_transition_mode", "video_aspect",
+    "video_clip_duration", "video_count", "video_style",
+    "use_gpu", "silence_duration",
+    "intro_video_bg_type", "intro_video_bg_blur", "intro_video_bg_color",
+    "intro_image_animation_enabled", "intro_image_zoom_amount",
+    "min_scene_success_ratio", "material_directory", "max_parallel_scenes",
+}
+
 # Keys considered sensitive that should live in secrets.toml
 SECRET_KEYS = {
     "app": [
@@ -79,6 +91,7 @@ def save_config():
     _cfg["coze"] = coze
     _cfg["qwen"] = qwen
     _cfg["ui"] = ui
+    _cfg["video"] = video
 
     secrets_data = {}
     for section, keys in SECRET_KEYS.items():
@@ -91,6 +104,9 @@ def save_config():
 
     public_cfg = {}
     for section, section_cfg in _cfg.items():
+        if not isinstance(section_cfg, dict):
+            public_cfg[section] = section_cfg
+            continue
         skipped = SECRET_KEYS.get(section, [])
         public_cfg[section] = {k: v for k, v in section_cfg.items() if k not in skipped}
 
@@ -117,6 +133,12 @@ ui = _cfg.get(
         "hide_log": False,
     },
 )
+video = _cfg.get("video", {})
+
+# Migrate video keys that may still be in [app] from older configs
+for key in list(app.keys()):
+    if key in _VIDEO_KEYS and key not in video:
+        video[key] = app.pop(key)
 
 hostname = socket.gethostname()
 
@@ -132,7 +154,7 @@ project_version = _cfg.get("project_version", "1.2.6")
 reload_debug = False
 
 # Silence Prefix duration — still frame at the very beginning of the final video
-silence_duration = app.get("silence_duration", 0.3)
+silence_duration = video.get("silence_duration", 0.3)
 
 imagemagick_path = app.get("imagemagick_path", "")
 if imagemagick_path and os.path.isfile(imagemagick_path):

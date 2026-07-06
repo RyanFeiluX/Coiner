@@ -1,52 +1,41 @@
 project_name = "Coiner"
-project_version = "2.9.2"
+project_version = "2.9.3"
 
 [app]
 host_visible = false
-video_source = "pexels"
-pexels_api_keys = []
-pixabay_api_keys = []
 llm_provider = "deepseek"
 stop_on_api_failure = true
-pollinations_api_key = ""
 pollinations_base_url = "https://pollinations.ai/api/v1"
 pollinations_model_name = "openai-fast"
 ollama_base_url = "http://host.docker.internal:11434/v1"
 ollama_model_name = "qwen:7b"
-openai_api_key = ""
 openai_base_url = ""
 openai_model_name = "gpt-4o-mini"
-moonshot_api_key = ""
 moonshot_base_url = "https://api.moonshot.cn/v1"
 moonshot_model_name = "moonshot-v1-8k"
-oneapi_api_key = ""
 oneapi_base_url = ""
 oneapi_model_name = ""
 g4f_model_name = "gpt-3.5-turbo"
-azure_api_key = ""
 azure_base_url = ""
 azure_model_name = "gpt-35-turbo"
 azure_api_version = "2024-02-15-preview"
-gemini_api_key = ""
 gemini_model_name = "gemini-1.0-pro"
-qwen_api_key = ""
 qwen_model_name = "qwen-max"
-deepseek_api_key = ""
 deepseek_base_url = "https://api.deepseek.com"
 deepseek_model_name = "deepseek-chat"
-modelscope_api_key = ""
 modelscope_base_url = "https://api-inference.modelscope.cn/v1/"
 modelscope_model_name = "Qwen/Qwen3-32B"
 subtitle_provider = "edge"
 endpoint = ""
-material_directory = ""
 enable_redis = false
 redis_host = "localhost"
 redis_port = 6379
 redis_db = 0
-redis_password = ""
 max_concurrent_tasks = 1
-ollama_api_key = ""
+console_log_level = "INFO"
+
+[video]
+video_source = "pexels"
 use_gpu = true
 video_quality = "ultra"
 video_bitrate = "20M"
@@ -55,17 +44,18 @@ video_contrast = 1.05
 video_concat_mode = "random"
 video_transition_mode = "none"
 min_scene_success_ratio = 0.9
-video_aspect = "portrait_3_4"
+video_aspect = "square"
 video_clip_duration = 5
 video_count = 1
 silence_duration = 0.5
-console_log_level = "INFO"
-video_style = "ai"
+video_style = "none"
 intro_video_bg_type = "blurred"
 intro_video_bg_blur = 48
 intro_video_bg_color = "black"
 intro_image_animation_enabled = true
 intro_image_zoom_amount = 0.03
+material_directory = ""
+max_parallel_scenes = 2
 
 [whisper]
 model_size = "large-v3"
@@ -75,38 +65,36 @@ compute_type = "int8"
 [proxy]
 
 [azure]
-speech_key = ""
 speech_region = ""
 
 [siliconflow]
-api_key = ""
 
 [ui]
 hide_log = false
 language = "zh"
-tts_server = "coze-tts"
-voice_name = "coze|7468512265151741979|擎苍-Male|https://lf26-appstore-sign.oceancloudapi.com/ocean-cloud-tos/VolcanoSystemVoice/zh_male_qingcang_mars_bigtts.mp3?lk3s=da27ec82&x-expires=1782721436&x-signature=mCp4o1EbCD%2F8Np6NmxLQ0y64RIo%3D|无语，擎天之巨首，揽尽世间风云变幻，诸般阻碍，不过是无脉相巅峰之基石。今日之儒，来日必当十倍奉还。 无知威名，必将震慑四海八荒。|"
+tts_server = "qwen-tts"
+voice_name = "qwen|Elias|墨讲师-Female||"
 voice_volume = 1.8
-voice_rate = 1.1
+voice_rate = 1
 bgm_type = ""
 bgm_volume = 0.1
 subtitle_enabled = true
 subtitle_position = "custom"
-subtitle_custom_position = 85
+subtitle_custom_position = 95
 subtitle_margin = 0.05
 subtitle_auto_fit = true
 font_name = "MicrosoftYaHeiBold.ttc"
-text_fore_color = "rgb(255, 255, 255)"
+text_fore_color = "rgb(247, 243, 9)"
 text_background_color = true
-font_size = 32
+font_size = 40
 stroke_color = "#000000"
 stroke_width = 1
 output_bg_color = "blue"
 title_enabled = true
-title_text = "AI编程的灵魂"
+title_text = "法律与道德的角力场"
 title_duration = 3
 title_font_name = "MicrosoftYaHeiBold.ttc"
-title_font_size = 60
+title_font_size = 72
 title_text_color = "#FF0000"
 title_stroke_color = "#FFFF00"
 title_stroke_width = 3
@@ -123,10 +111,8 @@ title_style = "classic"
 title_align = "center"
 
 [coze]
-api_key = ""
 
 [qwen]
-api_key = ""
 
 [imagemagick]
 imagemagick_path = "D:\\ProgramData\\ImageMagick-7.1.12-Q16\\magick.exe"

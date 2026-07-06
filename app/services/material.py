@@ -453,7 +453,7 @@ def download_videos(
     download_failures = 0
     total_download_attempts = 0
 
-    material_directory = config.app.get("material_directory", "").strip()
+    material_directory = config.video.get("material_directory", "").strip()
     if material_directory == "task":
         material_directory = utils.task_dir(task_id)
     elif material_directory and not os.path.isdir(material_directory):

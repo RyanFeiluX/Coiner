@@ -98,25 +98,7 @@ def get_config(request: Request):
             "app": {
                 "llm_provider": config.app.get("llm_provider", "openai"),
                 "subtitle_provider": config.app.get("subtitle_provider", "edge"),
-                "video_source": config.app.get("video_source", "pexels"),
-                "video_quality": config.app.get("video_quality", "ultra"),
-                "video_bitrate": config.app.get("video_bitrate", "20M"),
-                "video_brightness": config.app.get("video_brightness", 1.0),
-                "video_contrast": config.app.get("video_contrast", 1.0),
-                "video_concat_mode": config.app.get("video_concat_mode", "sequential"),
-                "video_transition_mode": config.app.get("video_transition_mode", "none"),
-                "video_aspect": config.app.get("video_aspect", "landscape"),
-                "video_clip_duration": config.app.get("video_clip_duration", 3),
-                "video_count": config.app.get("video_count", 1),
-                "silence_duration": config.app.get("silence_duration", 0.3),
-                "video_style": config.app.get("video_style", "none"),
-                "intro_video_bg_type": config.app.get("intro_video_bg_type", "solid"),
-                "intro_video_bg_blur": config.app.get("intro_video_bg_blur", 15),
-                "intro_video_bg_color": config.app.get("intro_video_bg_color", "black"),
-                "intro_image_animation_enabled": config.app.get("intro_image_animation_enabled", True),
-                "intro_image_zoom_amount": config.app.get("intro_image_zoom_amount", 0.03),
                 "host_visible": config.app.get("host_visible", True),
-                "use_gpu": config.app.get("use_gpu", False),
                 "pexels_api_keys": config.app.get("pexels_api_keys", []),
                 "pixabay_api_keys": config.app.get("pixabay_api_keys", []),
                 "openai_api_key": config.app.get("openai_api_key", ""),
@@ -128,6 +110,26 @@ def get_config(request: Request):
                 "deepseek_api_key": config.app.get("deepseek_api_key", ""),
                 "deepseek_base_url": config.app.get("deepseek_base_url", ""),
                 "deepseek_model_name": config.app.get("deepseek_model_name", ""),
+            },
+            "video": {
+                "video_source": config.video.get("video_source", "pexels"),
+                "video_quality": config.video.get("video_quality", "ultra"),
+                "video_bitrate": config.video.get("video_bitrate", "20M"),
+                "video_brightness": config.video.get("video_brightness", 1.0),
+                "video_contrast": config.video.get("video_contrast", 1.0),
+                "video_concat_mode": config.video.get("video_concat_mode", "sequential"),
+                "video_transition_mode": config.video.get("video_transition_mode", "none"),
+                "video_aspect": config.video.get("video_aspect", "landscape"),
+                "video_clip_duration": config.video.get("video_clip_duration", 3),
+                "video_count": config.video.get("video_count", 1),
+                "silence_duration": config.video.get("silence_duration", 0.3),
+                "video_style": config.video.get("video_style", "none"),
+                "intro_video_bg_type": config.video.get("intro_video_bg_type", "solid"),
+                "intro_video_bg_blur": config.video.get("intro_video_bg_blur", 15),
+                "intro_video_bg_color": config.video.get("intro_video_bg_color", "black"),
+                "intro_image_animation_enabled": config.video.get("intro_image_animation_enabled", True),
+                "intro_image_zoom_amount": config.video.get("intro_image_zoom_amount", 0.03),
+                "use_gpu": config.video.get("use_gpu", False),
             },
             "azure": {
                 "speech_region": config.azure.get("speech_region", ""),
@@ -189,6 +191,10 @@ def update_config(request: Request, cfg: dict):
         if "whisper" in cfg:
             for key, value in cfg["whisper"].items():
                 config.whisper[key] = value
+
+        if "video" in cfg:
+            for key, value in cfg["video"].items():
+                config.video[key] = value
 
         config.save_config()
         logger.info(f"[Update Config] Config saved successfully. ui.subtitle_enabled={config.ui.get('subtitle_enabled')}")

@@ -95,7 +95,7 @@ def process_scene_videos(
             # Fast brightness pre-check: sample tiny grayscale frames via FFmpeg
             # before doing the expensive MoviePy decode+resize pipeline.
             # Each source video is checked once (cached across scenes).
-            brightness_threshold = config.app.get("video_brightness_threshold", 0.3)
+            brightness_threshold = config.video.get("video_brightness_threshold", 0.3)
             source_brightness = fast_brightness_check(video_path, duration=clip_duration)
             if source_brightness < brightness_threshold:
                 logger.info(f"Skipping dark source video (brightness: {source_brightness:.3f} < {brightness_threshold}): {os.path.basename(video_path)}")
@@ -230,7 +230,7 @@ def process_scene_videos(
                     logger.debug(f"Error closing old clip: {e}")
 
             # Check brightness and filter out dark videos
-            brightness_threshold = config.app.get("video_brightness_threshold", 0.3)
+            brightness_threshold = config.video.get("video_brightness_threshold", 0.3)
             try:
                 brightness = video_effects.detect_brightness(clip)
                 logger.debug(f"Clip brightness: {brightness:.3f}, threshold: {brightness_threshold}")
@@ -243,8 +243,8 @@ def process_scene_videos(
                 logger.debug(f"Error detecting brightness: {e}, continuing with clip")
             
             # Apply brightness and contrast enhancement
-            brightness_factor = config.app.get("video_brightness", 1.0)
-            contrast_factor = config.app.get("video_contrast", 1.0)
+            brightness_factor = config.video.get("video_brightness", 1.0)
+            contrast_factor = config.video.get("video_contrast", 1.0)
             
             if brightness_factor != 1.0:
                 old_clip = clip
@@ -590,14 +590,14 @@ def build_scene_video(
                     logger.debug(f"Intro video processing - Resolution: {video_width}x{video_height}")
 
                     # Get intro video background configuration
-                    intro_bg_type = config.app.get("intro_video_bg_type", "solid")
-                    intro_bg_blur = config.app.get("intro_video_bg_blur", 15)
-                    intro_bg_color = config.app.get("intro_video_bg_color", "black")
+                    intro_bg_type = config.video.get("intro_video_bg_type", "solid")
+                    intro_bg_blur = config.video.get("intro_video_bg_blur", 15)
+                    intro_bg_color = config.video.get("intro_video_bg_color", "black")
 
                     # Apply Ken Burns animation for static images if enabled
-                    intro_image_animation = config.app.get("intro_image_animation_enabled", True)
+                    intro_image_animation = config.video.get("intro_image_animation_enabled", True)
                     if intro_image_animation:
-                        zoom_amount = config.app.get("intro_image_zoom_amount", 0.03)
+                        zoom_amount = config.video.get("intro_image_zoom_amount", 0.03)
                         clip = fit_intro_image_with_ken_burns(
                             processed_image_path, video_width, video_height, intro_duration,
                             bg_color_str=intro_bg_color, bg_type=intro_bg_type,
@@ -609,8 +609,8 @@ def build_scene_video(
                             bg_color_str=intro_bg_color, bg_type=intro_bg_type,
                             blur_radius=intro_bg_blur)
 
-                    brightness_factor = config.app.get("video_brightness", 1.0)
-                    contrast_factor = config.app.get("video_contrast", 1.0)
+                    brightness_factor = config.video.get("video_brightness", 1.0)
+                    contrast_factor = config.video.get("video_contrast", 1.0)
 
                     if brightness_factor != 1.0:
                         clip = video_effects.brightness_enhance(clip, brightness_factor)
@@ -641,14 +641,14 @@ def build_scene_video(
                     logger.debug(f"Intro video processing - Resolution: {video_width}x{video_height}")
                     
                     # Get intro video background configuration
-                    intro_bg_type = config.app.get("intro_video_bg_type", "solid")
-                    intro_bg_blur = config.app.get("intro_video_bg_blur", 15)
-                    intro_bg_color = config.app.get("intro_video_bg_color", "black")
+                    intro_bg_type = config.video.get("intro_video_bg_type", "solid")
+                    intro_bg_blur = config.video.get("intro_video_bg_blur", 15)
+                    intro_bg_color = config.video.get("intro_video_bg_color", "black")
                     
                     clip = fit_intro_video_to_target(clip, video_width, video_height, bg_color_str=intro_bg_color, bg_type=intro_bg_type, blur_radius=intro_bg_blur)
                     
-                    brightness_factor = config.app.get("video_brightness", 1.0)
-                    contrast_factor = config.app.get("video_contrast", 1.0)
+                    brightness_factor = config.video.get("video_brightness", 1.0)
+                    contrast_factor = config.video.get("video_contrast", 1.0)
                     
                     if brightness_factor != 1.0:
                         clip = video_effects.brightness_enhance(clip, brightness_factor)
@@ -676,14 +676,14 @@ def build_scene_video(
                     
                     # Use fit_intro_video_to_target for intro videos - always scale to fit without cropping
                     # Get intro video background configuration
-                    intro_bg_type = config.app.get("intro_video_bg_type", "solid")
-                    intro_bg_blur = config.app.get("intro_video_bg_blur", 15)
-                    intro_bg_color = config.app.get("intro_video_bg_color", "black")
+                    intro_bg_type = config.video.get("intro_video_bg_type", "solid")
+                    intro_bg_blur = config.video.get("intro_video_bg_blur", 15)
+                    intro_bg_color = config.video.get("intro_video_bg_color", "black")
                     
                     clip = fit_intro_video_to_target(clip, video_width, video_height, bg_color_str=intro_bg_color, bg_type=intro_bg_type, blur_radius=intro_bg_blur)
                     
-                    brightness_factor = config.app.get("video_brightness", 1.0)
-                    contrast_factor = config.app.get("video_contrast", 1.0)
+                    brightness_factor = config.video.get("video_brightness", 1.0)
+                    contrast_factor = config.video.get("video_contrast", 1.0)
                     
                     if brightness_factor != 1.0:
                         clip = video_effects.brightness_enhance(clip, brightness_factor)

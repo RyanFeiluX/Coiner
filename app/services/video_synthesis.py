@@ -220,24 +220,25 @@ def _rebuild_scene_video(scene_info: dict, task_dir: str) -> str:
         except Exception as sub_e:
             logger.warning(f"Scene {scene_info['scene_num']}: subtitle regeneration failed: {sub_e}")
 
-    # Use original params from script.json first, fall back to current app config
+    # Use original params from script.json first, fall back to current config
     app_config = config.app
+    video_config = config.video
 
-    video_source = params_data.get("video_source") or app_config.get("video_source", "pexels")
-    video_aspect_str = params_data.get("video_aspect") or app_config.get("video_aspect", "portrait")
+    video_source = params_data.get("video_source") or video_config.get("video_source", "pexels")
+    video_aspect_str = params_data.get("video_aspect") or video_config.get("video_aspect", "portrait")
     try:
         video_aspect = VideoAspect(video_aspect_str)
     except ValueError:
         video_aspect = VideoAspect.portrait
 
-    video_concat_mode_str = params_data.get("video_concat_mode") or app_config.get("video_concat_mode", "random")
+    video_concat_mode_str = params_data.get("video_concat_mode") or video_config.get("video_concat_mode", "random")
     try:
         video_concat_mode = VideoConcatMode(video_concat_mode_str)
     except ValueError:
         video_concat_mode = VideoConcatMode.random
 
-    max_clip_duration = int(params_data.get("video_clip_duration") or app_config.get("video_clip_duration", 5))
-    n_threads = int(params_data.get("n_threads") or app_config.get("n_threads", 2))
+    max_clip_duration = int(params_data.get("video_clip_duration") or video_config.get("video_clip_duration", 5))
+    n_threads = int(params_data.get("n_threads") or video_config.get("n_threads", 2))
 
     # Download video materials for this scene
     from app.services.material import download_videos
@@ -485,6 +486,7 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         # Get video parameters from config
         _cfg = load_config()
         app_config = _cfg.get("app", {})
+        video_config = _cfg.get("video", {})
         ui_config = _cfg.get("ui", {})
 
         # Load original params from script.json for subtitle/TTS/BGM style consistency
@@ -548,7 +550,7 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
             logger.info(f"Using detected aspect ratio: {aspect_ratio}")
         else:
             # Fall back to config
-            aspect_ratio = app_config.get("video_aspect", "9:16")
+            aspect_ratio = video_config.get("video_aspect", "9:16")
             logger.info(f"Using config aspect ratio: {aspect_ratio}")
         
         # Use subtitle_params if provided, otherwise fall back to config
@@ -566,7 +568,7 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         params = VideoParams(
             video_subject="Recovered Video",
             video_aspect=VideoAspect(aspect_ratio),
-            video_concat_mode=VideoConcatMode(app_config.get("video_concat_mode", "random")),
+            video_concat_mode=VideoConcatMode(video_config.get("video_concat_mode", "random")),
             # Subtitle params (scene-level): original_params > subtitle_params > app_config > ui_config
             subtitle_enabled=original_params.get('subtitle_enabled') if original_params.get('subtitle_enabled') is not None else subtitle_params.get('subtitle_enabled', app_config.get("subtitle_enabled", ui_config.get("subtitle_enabled", True))),
             font_name=original_params.get('font_name') or subtitle_params.get('font_name', app_config.get("font_name", ui_config.get("font_name", "STHeitiMedium.ttc"))),

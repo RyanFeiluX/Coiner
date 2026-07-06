@@ -691,10 +691,8 @@ const saveSettings = async () => {
     // Build app config based on LLM provider
     const appConfig: Record<string, any> = {
       llm_provider: form.llmProvider,
-      use_gpu: form.videoEncoder === 'GPU',
       pexels_api_keys: pexelsKeys,
       pixabay_api_keys: pixabayKeys,
-      silence_duration: form.silenceDuration,
       host_visible: form.hostVisible
     };
 
@@ -717,9 +715,16 @@ const saveSettings = async () => {
         break;
     }
 
+    // Build video config
+    const videoConfig: Record<string, any> = {
+      use_gpu: form.videoEncoder === 'GPU',
+      silence_duration: form.silenceDuration
+    };
+
     // Prepare config object to send to backend - create plain object to avoid circular references
     const configToSave = JSON.parse(JSON.stringify({
       app: appConfig,
+      video: videoConfig,
       whisper: {
         device: form.whisperDevice
       }

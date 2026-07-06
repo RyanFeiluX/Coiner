@@ -900,7 +900,7 @@ def start(task_id, params: VideoParams, stop_at: str = "video", check_cancelled=
     
     # Log GPU configuration for video codec
     from app.config import config
-    use_gpu = config.app.get("use_gpu", False)
+    use_gpu = config.video.get("use_gpu", False)
     logger.info(f"GPU configuration for video codec: use_gpu={use_gpu}")
     
     logger.info(f"========================================")
@@ -1106,7 +1106,7 @@ def start_multi_scene(task_id, params: VideoParams, stop_at: str = "video", task
             logger.info("No local materials provided")
     
     # Parallel scene processing
-    max_parallel = config.app.get("max_parallel_scenes", 2)
+    max_parallel = config.video.get("max_parallel_scenes", 2)
     max_parallel = max(1, min(max_parallel, total_scenes))  # Clamp to [1, total_scenes]
     
     if max_parallel == 1:
@@ -1217,7 +1217,7 @@ def start_multi_scene(task_id, params: VideoParams, stop_at: str = "video", task
         logger.warning(scene_loss_warning)
 
         # Check against min_scene_success_ratio threshold
-        min_ratio = config.app.get("min_scene_success_ratio", 0.0)
+        min_ratio = config.video.get("min_scene_success_ratio", 0.0)
         if min_ratio > 0 and len(scene_results) / total_scenes < min_ratio:
             logger.error(f"Scene success rate {len(scene_results)}/{total_scenes} "
                          f"({len(scene_results)/total_scenes:.0%}) below threshold {min_ratio:.0%}")

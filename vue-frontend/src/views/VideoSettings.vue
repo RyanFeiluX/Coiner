@@ -435,49 +435,49 @@ const loadConfig = async () => {
     const response = await apiService.getConfig();
     if (response.status === 200 && response.data) {
       const cfg = response.data;
-      if (cfg.app) {
-        if (cfg.app.video_source) {
-          form.videoSource = cfg.app.video_source;
+      if (cfg.video) {
+        if (cfg.video.video_source) {
+          form.videoSource = cfg.video.video_source;
         }
-        if (typeof cfg.app.use_gpu === 'boolean') {
-          settingsStore.app.useGpu = cfg.app.use_gpu;
+        if (typeof cfg.video.use_gpu === 'boolean') {
+          settingsStore.app.useGpu = cfg.video.use_gpu;
         }
         setVideoQualityBasedOnGPU();
-        if (cfg.app.video_brightness !== undefined) {
-          form.videoBrightness = Number(cfg.app.video_brightness);
+        if (cfg.video.video_brightness !== undefined) {
+          form.videoBrightness = Number(cfg.video.video_brightness);
         }
-        if (cfg.app.video_contrast !== undefined) {
-          form.videoContrast = Number(cfg.app.video_contrast);
+        if (cfg.video.video_contrast !== undefined) {
+          form.videoContrast = Number(cfg.video.video_contrast);
         }
-        if (cfg.app.video_concat_mode) {
-          form.videoConcatMode = cfg.app.video_concat_mode;
+        if (cfg.video.video_concat_mode) {
+          form.videoConcatMode = cfg.video.video_concat_mode;
         }
-        if (cfg.app.video_transition_mode) {
-          form.videoTransitionMode = cfg.app.video_transition_mode;
+        if (cfg.video.video_transition_mode) {
+          form.videoTransitionMode = cfg.video.video_transition_mode;
         }
-        if (cfg.app.video_aspect) {
-          form.videoAspect = cfg.app.video_aspect;
+        if (cfg.video.video_aspect) {
+          form.videoAspect = cfg.video.video_aspect;
         }
-        if (cfg.app.video_clip_duration !== undefined) {
-          form.videoClipDuration = Number(cfg.app.video_clip_duration);
+        if (cfg.video.video_clip_duration !== undefined) {
+          form.videoClipDuration = Number(cfg.video.video_clip_duration);
         }
-        if (cfg.app.video_count !== undefined) {
-          form.videoCount = Number(cfg.app.video_count);
+        if (cfg.video.video_count !== undefined) {
+          form.videoCount = Number(cfg.video.video_count);
         }
-        if (cfg.app.silence_duration !== undefined) {
-          form.silenceDuration = Number(cfg.app.silence_duration);
+        if (cfg.video.silence_duration !== undefined) {
+          form.silenceDuration = Number(cfg.video.silence_duration);
         }
-        if (cfg.app.video_style) {
-          form.videoStyle = cfg.app.video_style;
+        if (cfg.video.video_style) {
+          form.videoStyle = cfg.video.video_style;
         }
-        if (cfg.app.intro_video_bg_type) {
-          form.introVideoBgType = cfg.app.intro_video_bg_type;
+        if (cfg.video.intro_video_bg_type) {
+          form.introVideoBgType = cfg.video.intro_video_bg_type;
         }
-        if (cfg.app.intro_video_bg_blur !== undefined) {
-          form.introVideoBgBlur = Number(cfg.app.intro_video_bg_blur);
+        if (cfg.video.intro_video_bg_blur !== undefined) {
+          form.introVideoBgBlur = Number(cfg.video.intro_video_bg_blur);
         }
-        if (cfg.app.intro_video_bg_color) {
-          form.introVideoBgColor = cfg.app.intro_video_bg_color;
+        if (cfg.video.intro_video_bg_color) {
+          form.introVideoBgColor = cfg.video.intro_video_bg_color;
         }
       }
       if (cfg.ui && cfg.ui.output_bg_color) {
@@ -492,7 +492,7 @@ const loadConfig = async () => {
 const saveConfig = async () => {
   try {
     const cfg = {
-      app: {
+      video: {
         video_source: form.videoSource,
         video_quality: form.videoQuality,
         video_bitrate: form.videoBitrate,

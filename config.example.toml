@@ -5,8 +5,6 @@ project_version = ""
 # 主播是否露脸
 host_visible = false
 
-video_source = "pexels" # "pexels" or "pixabay"
-
 # Pexels API Key
 # Register at https://www.pexels.com/api/ to get your API key.
 # You can use multiple keys to avoid rate limits.
@@ -161,19 +159,6 @@ imagemagick_path = "D:\\ProgramData\\ImageMagick-7.1.12-Q16\\magick.exe"
 # endpoint="https://xxxx.com"
 endpoint = ""
 
-
-# Video material storage location
-# material_directory = ""                    # Indicates that video materials will be downloaded to the default folder, the default folder is ./storage/cache_videos under the current project
-# material_directory = "/user/harry/videos"  # Indicates that video materials will be downloaded to a specified folder
-# material_directory = "task"                # Indicates that video materials will be downloaded to the current task's folder, this method does not allow sharing of already downloaded video materials
-
-# 视频素材存放位置
-# material_directory = ""                    #表示将视频素材下载到默认的文件夹，默认文件夹为当前项目下的 ./storage/cache_videos
-# material_directory = "/user/harry/videos"  #表示将视频素材下载到指定的文件夹中
-# material_directory = "task"                #表示将视频素材下载到当前任务的文件夹中，这种方式无法共享已经下载的视频素材
-
-material_directory = ""
-
 # Used for state management of the task
 enable_redis = false
 redis_host = "localhost"
@@ -184,13 +169,18 @@ redis_password = ""
 # 文生视频时的最大并发任务数
 max_concurrent_tasks = 5
 
-# 多场景并行处理数量 (1=串行, 2=推荐, 3-4=需要更多内存)
-# Number of scenes to process in parallel (1=sequential, 2=recommended, 3-4=requires more memory)
-# Each parallel scene roughly doubles memory during video processing phase
-max_parallel_scenes = 2
-
 # Ollama API Key
 ollama_api_key = ""
+
+# Console log level: controls what is printed to the terminal
+# Options: TRACE, DEBUG, INFO, SUCCESS, WARNING, ERROR, CRITICAL
+# Only affects terminal/console output. The Logs UI and log files always capture at DEBUG level.
+# Set to "DEBUG" to see all details, "INFO" for a cleaner console, "WARNING" for minimal output.
+console_log_level = "INFO"
+
+[video]
+# Video material source: "pexels" or "pixabay"
+video_source = "pexels"
 
 # Use GPU for video encoding
 use_gpu = false
@@ -216,6 +206,7 @@ video_concat_mode = "sequential"
 # Video transition mode
 # Options: "none", "fade", "slide"
 video_transition_mode = "none"
+
 # Minimum ratio of successful scenes to allow task completion.
 # If the success rate drops below this threshold, the task will fail.
 # Set to 0.0 to disable (always produce output even with lost scenes).
@@ -233,12 +224,6 @@ video_count = 1
 
 # Silence Prefix duration — still frame at the very beginning of the final video (seconds, default 0.3)
 silence_duration = 0.3
-
-# Console log level: controls what is printed to the terminal
-# Options: TRACE, DEBUG, INFO, SUCCESS, WARNING, ERROR, CRITICAL
-# Only affects terminal/console output. The Logs UI and log files always capture at DEBUG level.
-# Set to "DEBUG" to see all details, "INFO" for a cleaner console, "WARNING" for minimal output.
-console_log_level = "INFO"
 
 # Video style
 # Options: "none", "people", "nature", "animation", "cartoon", "industry", "science", "tech", "business", "ai"
@@ -264,6 +249,21 @@ intro_image_animation_enabled = true
 # Controls how much the image zooms in over the intro duration
 intro_image_zoom_amount = 0.03
 
+# Video material storage location
+# material_directory = ""                    # Indicates that video materials will be downloaded to the default folder, the default folder is ./storage/cache_videos under the current project
+# material_directory = "/user/harry/videos"  # Indicates that video materials will be downloaded to a specified folder
+# material_directory = "task"                # Indicates that video materials will be downloaded to the current task's folder, this method does not allow sharing of already downloaded video materials
+
+# 视频素材存放位置
+# material_directory = ""                    #表示将视频素材下载到默认的文件夹，默认文件夹为当前项目下的 ./storage/cache_videos
+# material_directory = "/user/harry/videos"  #表示将视频素材下载到指定的文件夹中
+# material_directory = "task"                #表示将视频素材下载到当前任务的文件夹中，这种方式无法共享已经下载的视频素材
+material_directory = ""
+
+# 多场景并行处理数量 (1=串行, 2=推荐, 3-4=需要更多内存)
+# Number of scenes to process in parallel (1=sequential, 2=recommended, 3-4=requires more memory)
+# Each parallel scene roughly doubles memory during video processing phase
+max_parallel_scenes = 2
 
 [whisper]
 # Only effective when subtitle_provider is "whisper"
