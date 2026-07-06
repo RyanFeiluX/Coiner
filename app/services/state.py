@@ -1,4 +1,5 @@
 import ast
+import datetime
 import json
 import os
 from abc import ABC, abstractmethod
@@ -92,6 +93,14 @@ class MemoryState(BaseState):
         else:
             sequence_number = existing_task.get("sequence_number", self._task_sequence_counter)
         
+        # Auto-track start_time when task begins processing
+        previous_state = existing_task.get("state")
+        if state == const.TASK_STATE_PROCESSING and previous_state != const.TASK_STATE_PROCESSING:
+            kwargs["start_time"] = datetime.datetime.now().isoformat()
+        # Auto-track end_time when task completes or fails
+        if state in (const.TASK_STATE_COMPLETE, const.TASK_STATE_FAILED) and previous_state not in (const.TASK_STATE_COMPLETE, const.TASK_STATE_FAILED):
+            kwargs["end_time"] = datetime.datetime.now().isoformat()
+
         self._tasks[task_id] = {
             **existing_task,  # Preserve existing fields
             "task_id": task_id,

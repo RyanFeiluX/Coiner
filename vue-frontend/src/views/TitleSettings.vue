@@ -792,8 +792,8 @@ const loadConfig = async () => {
     console.log('[TitleSettings] loadConfig called');
     const response = await apiService.getConfig();
     console.log('[TitleSettings] loadConfig response:', response);
-    if (response.status === 200 && response.data?.data) {
-      const cfg = response.data.data;
+    if (response.status === 200 && response.data) {
+      const cfg = response.data;
       console.log('[TitleSettings] loadConfig cfg:', cfg);
       console.log('[TitleSettings] loadConfig cfg.ui:', cfg.ui);
       if (cfg.ui) {

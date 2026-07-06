@@ -11,6 +11,8 @@ export interface Task {
   error?: string;
   created_at?: string;
   updated_at?: string;
+  start_time?: string;
+  end_time?: string;
 }
 
 export const useTasksStore = defineStore('tasks', {

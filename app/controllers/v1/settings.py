@@ -161,6 +161,7 @@ def update_config(request: Request, cfg: dict):
         cfg: Configuration dictionary with keys: ui, app, azure, siliconflow, coze, whisper
     """
     try:
+        logger.info(f"[Update Config] Received cfg type={type(cfg).__name__}, content={cfg}")
         if "ui" in cfg:
             for key, value in cfg["ui"].items():
                 config.ui[key] = value

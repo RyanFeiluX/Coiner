@@ -65,6 +65,14 @@
                   <span class="label">{{ updatedAtText }}:</span>
                   <span>{{ formatDate(task.updated_at) }}</span>
                 </div>
+                <div class="info-item" v-if="task.start_time">
+                  <span class="label">{{ startTimeText }}:</span>
+                  <span>{{ formatDate(task.start_time) }}</span>
+                </div>
+                <div class="info-item" v-if="task.end_time">
+                  <span class="label">{{ endTimeText }}:</span>
+                  <span>{{ formatDate(task.end_time) }}</span>
+                </div>
                 <div class="info-item" v-if="task.error">
                   <span class="label">{{ errorText }}:</span>
                   <span class="error-message">{{ task.error }}</span>
@@ -147,6 +155,8 @@ interface Task {
   error?: string;
   created_at?: string;
   updated_at?: string;
+  start_time?: string;
+  end_time?: string;
   sequence_number?: number;
   scene_loss_warning?: string;
   failed_scene_indices?: number[];
@@ -167,6 +177,8 @@ interface Props {
   progressText?: string;
   createdAtText?: string;
   updatedAtText?: string;
+  startTimeText?: string;
+  endTimeText?: string;
   errorText?: string;
   downloadText?: string;
   deleteText?: string;
@@ -189,6 +201,8 @@ withDefaults(defineProps<Props>(), {
   progressText: 'Progress',
   createdAtText: 'Created At',
   updatedAtText: 'Updated At',
+  startTimeText: 'Start Time',
+  endTimeText: 'End Time',
   errorText: 'Error',
   downloadText: 'Download',
   deleteText: 'Delete',
@@ -289,18 +303,21 @@ const navigateToSceneIntegration = (taskId: string) => {
 }
 
 .task-info {
-  margin-bottom: 15px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 16px;
+  margin-bottom: 12px;
 }
 
 .info-item {
-  margin-bottom: 8px;
   display: flex;
   align-items: center;
 }
 
 .label {
   font-weight: 500;
-  width: 120px;
+  width: 80px;
+  flex-shrink: 0;
 }
 
 .error-message {
