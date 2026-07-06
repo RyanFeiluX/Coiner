@@ -36,6 +36,17 @@ _UI_TO_VIDEO_KEYS = {
     "output_bg_color",
 }
 
+# Keys that belong to [title] — used for migrating from legacy [ui] or [app] location
+_TITLE_KEYS = {
+    "title_enabled", "title_text", "title_duration",
+    "title_font_name", "title_font_size", "title_text_color",
+    "title_stroke_color", "title_stroke_width", "title_background_color",
+    "title_position", "title_margin", "title_margin_left", "title_margin_right",
+    "title_animation", "title_animation_duration",
+    "title_background_overlay", "title_overlay_color",
+    "title_style", "title_align",
+}
+
 # Keys that belong to [video] — used for migrating from legacy [app] location
 _VIDEO_KEYS = {
     "video_source", "video_quality", "video_bitrate",
@@ -111,6 +122,7 @@ def save_config():
     _cfg["qwen"] = qwen
     _cfg["audio"] = audio
     _cfg["subtitle"] = subtitle
+    _cfg["title"] = title
     _cfg["ui"] = ui
     _cfg["video"] = video
 
@@ -150,6 +162,7 @@ coze = _cfg.get("coze", {})
 qwen = _cfg.get("qwen", {})
 audio = _cfg.get("audio", {})
 subtitle = _cfg.get("subtitle", {})
+title = _cfg.get("title", {})
 
 ui = _cfg.get(
     "ui",
@@ -174,6 +187,14 @@ for key in list(ui.keys()):
 for key in list(app.keys()):
     if key in _SUBTITLE_KEYS and key not in subtitle:
         subtitle[key] = app.pop(key)
+
+# Migrate title keys that may still be in [ui] or [app] from older configs
+for key in list(ui.keys()):
+    if key in _TITLE_KEYS and key not in title:
+        title[key] = ui.pop(key)
+for key in list(app.keys()):
+    if key in _TITLE_KEYS and key not in title:
+        title[key] = app.pop(key)
 
 # Migrate keys from [ui] to [video]
 for key in list(ui.keys()):

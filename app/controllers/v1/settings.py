@@ -54,7 +54,7 @@ def get_voices(request: Request, tts_server: str = "azure-tts-v1", force_refresh
 def get_config(request: Request):
     """Get current configuration for UI settings."""
     try:
-        logger.info(f"[Get Config] ui.title_enabled={config.ui.get('title_enabled')}, ui.title_text={config.ui.get('title_text')}")
+        logger.info(f"[Get Config] title_enabled={config.title.get('title_enabled')}, title_text={config.title.get('title_text')}")
         tts_server = config.audio.get("tts_server", "azure-tts-v1")
         voice_name = config.audio.get("voice_name", "")
 
@@ -78,27 +78,30 @@ def get_config(request: Request):
                 "stroke_color": config.subtitle.get("stroke_color", "#000000"),
                 "stroke_width": config.subtitle.get("stroke_width", 1.5),
             },
+            "title": {
+                **config.title,
+                "title_enabled": config.title.get("title_enabled", False),
+                "title_text": config.title.get("title_text", ""),
+                "title_duration": config.title.get("title_duration", 3.0),
+                "title_font_name": config.title.get("title_font_name", "MicrosoftYaHeiBold.ttc"),
+                "title_font_size": config.title.get("title_font_size", 72),
+                "title_text_color": config.title.get("title_text_color", "#FFFFFF"),
+                "title_stroke_color": config.title.get("title_stroke_color", "#000000"),
+                "title_stroke_width": config.title.get("title_stroke_width", 2),
+                "title_background_color": config.title.get("title_background_color", "transparent"),
+                "title_position": config.title.get("title_position", "top"),
+                "title_margin": config.title.get("title_margin", 0.05),
+                "title_margin_left": config.title.get("title_margin_left", 0.05),
+                "title_margin_right": config.title.get("title_margin_right", 0.05),
+                "title_animation": config.title.get("title_animation", "fade"),
+                "title_animation_duration": config.title.get("title_animation_duration", 1.0),
+                "title_background_overlay": config.title.get("title_background_overlay", False),
+                "title_overlay_color": config.title.get("title_overlay_color", "rgba(0,0,0,0.5)"),
+                "title_style": config.title.get("title_style", "none"),
+                "title_align": config.title.get("title_align", "center"),
+            },
             "ui": {
                 **config.ui,
-                "title_enabled": config.ui.get("title_enabled", False),
-                "title_text": config.ui.get("title_text", ""),
-                "title_duration": config.ui.get("title_duration", 3.0),
-                "title_font_name": config.ui.get("title_font_name", "MicrosoftYaHeiBold.ttc"),
-                "title_font_size": config.ui.get("title_font_size", 72),
-                "title_text_color": config.ui.get("title_text_color", "#FFFFFF"),
-                "title_stroke_color": config.ui.get("title_stroke_color", "#000000"),
-                "title_stroke_width": config.ui.get("title_stroke_width", 2),
-                "title_background_color": config.ui.get("title_background_color", "transparent"),
-                "title_position": config.ui.get("title_position", "top"),
-                "title_margin": config.ui.get("title_margin", 0.05),
-                "title_margin_left": config.ui.get("title_margin_left", 0.05),
-                "title_margin_right": config.ui.get("title_margin_right", 0.05),
-                "title_animation": config.ui.get("title_animation", "fade"),
-                "title_animation_duration": config.ui.get("title_animation_duration", 1.0),
-                "title_background_overlay": config.ui.get("title_background_overlay", False),
-                "title_overlay_color": config.ui.get("title_overlay_color", "rgba(0,0,0,0.5)"),
-                "title_style": config.ui.get("title_style", "none"),
-                "title_align": config.ui.get("title_align", "center"),
             },
             "app": {
                 "llm_provider": config.app.get("llm_provider", "openai"),
@@ -205,6 +208,10 @@ def update_config(request: Request, cfg: dict):
         if "video" in cfg:
             for key, value in cfg["video"].items():
                 config.video[key] = value
+
+        if "title" in cfg:
+            for key, value in cfg["title"].items():
+                config.title[key] = value
 
         if "audio" in cfg:
             for key, value in cfg["audio"].items():

@@ -490,6 +490,7 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         ui_config = _cfg.get("ui", {})
         audio_config = _cfg.get("audio", {})
         subtitle_config = _cfg.get("subtitle", {})
+        title_config = _cfg.get("title", {})
 
         # Load original params from script.json for subtitle/TTS/BGM style consistency
         original_params = {}
@@ -585,25 +586,25 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
             bgm_type=bgm_params.get('bgm_type', app_config.get("bgm_type", audio_config.get("bgm_type", ui_config.get("bgm_type", "random")))),
             bgm_file=bgm_params.get('bgm_file', ''),
             bgm_volume=float(bgm_params.get('bgm_volume', app_config.get("bgm_volume", audio_config.get("bgm_volume", ui_config.get("bgm_volume", 0.2))))),
-            # Title params (synthesis-level): title_params > ui_config
-            title_enabled=title_params.get('title_enabled', ui_config.get("title_enabled", False)),
-            title_text=title_params.get('title_text', ui_config.get("title_text", "")),
-            title_duration=title_params.get('title_duration', ui_config.get("title_duration", 3.0)),
-            title_font_name=title_params.get('title_font_name', ui_config.get("title_font_name", ui_config.get("title_font", "MicrosoftYaHeiBold.ttc"))),
-            title_font_size=title_params.get('title_font_size', ui_config.get("title_font_size", 72)),
-            title_text_color=title_params.get('title_text_color', ui_config.get("title_text_color", ui_config.get("title_color", "#FFFFFF"))),
-            title_stroke_color=title_params.get('title_stroke_color', ui_config.get("title_stroke_color", "#000000")),
-            title_stroke_width=title_params.get('title_stroke_width', ui_config.get("title_stroke_width", 2.0)),
-            title_background_color=title_params.get('title_background_color', ui_config.get("title_background_color", ui_config.get("title_bg_color", "transparent"))),
-            title_position=title_params.get('title_position', ui_config.get("title_position", "center")),
-            title_margin=title_params.get('title_margin', ui_config.get("title_margin", 0.05)),
-            title_margin_left=title_params.get('title_margin_left', ui_config.get("title_margin_left", 0.05)),
-            title_margin_right=title_params.get('title_margin_right', ui_config.get("title_margin_right", 0.05)),
-            title_animation=title_params.get('title_animation', ui_config.get("title_animation", "none")),
-            title_animation_duration=title_params.get('title_animation_duration', ui_config.get("title_animation_duration", 0.5)),
-            title_background_overlay=title_params.get('title_background_overlay', ui_config.get("title_background_overlay", False)),
-            title_overlay_color=title_params.get('title_overlay_color', ui_config.get("title_overlay_color", "rgba(0,0,0,0.5)")),
-            title_align=title_params.get('title_align', ui_config.get("title_align", "center"))
+            # Title params (synthesis-level): title_params > title_config > ui_config
+            title_enabled=title_params.get('title_enabled', title_config.get("title_enabled", ui_config.get("title_enabled", False))),
+            title_text=title_params.get('title_text', title_config.get("title_text", ui_config.get("title_text", ""))),
+            title_duration=title_params.get('title_duration', title_config.get("title_duration", ui_config.get("title_duration", 3.0))),
+            title_font_name=title_params.get('title_font_name', title_config.get("title_font_name", ui_config.get("title_font_name", ui_config.get("title_font", "MicrosoftYaHeiBold.ttc")))),
+            title_font_size=title_params.get('title_font_size', title_config.get("title_font_size", ui_config.get("title_font_size", 72))),
+            title_text_color=title_params.get('title_text_color', title_config.get("title_text_color", ui_config.get("title_text_color", ui_config.get("title_color", "#FFFFFF")))),
+            title_stroke_color=title_params.get('title_stroke_color', title_config.get("title_stroke_color", ui_config.get("title_stroke_color", "#000000"))),
+            title_stroke_width=title_params.get('title_stroke_width', title_config.get("title_stroke_width", ui_config.get("title_stroke_width", 2.0))),
+            title_background_color=title_params.get('title_background_color', title_config.get("title_background_color", ui_config.get("title_background_color", ui_config.get("title_bg_color", "transparent")))),
+            title_position=title_params.get('title_position', title_config.get("title_position", ui_config.get("title_position", "center"))),
+            title_margin=title_params.get('title_margin', title_config.get("title_margin", ui_config.get("title_margin", 0.05))),
+            title_margin_left=title_params.get('title_margin_left', title_config.get("title_margin_left", ui_config.get("title_margin_left", 0.05))),
+            title_margin_right=title_params.get('title_margin_right', title_config.get("title_margin_right", ui_config.get("title_margin_right", 0.05))),
+            title_animation=title_params.get('title_animation', title_config.get("title_animation", ui_config.get("title_animation", "none"))),
+            title_animation_duration=title_params.get('title_animation_duration', title_config.get("title_animation_duration", ui_config.get("title_animation_duration", 0.5))),
+            title_background_overlay=title_params.get('title_background_overlay', title_config.get("title_background_overlay", ui_config.get("title_background_overlay", False))),
+            title_overlay_color=title_params.get('title_overlay_color', title_config.get("title_overlay_color", ui_config.get("title_overlay_color", "rgba(0,0,0,0.5)"))),
+            title_align=title_params.get('title_align', title_config.get("title_align", ui_config.get("title_align", "center")))
         )
         
         # Log title parameters for debugging

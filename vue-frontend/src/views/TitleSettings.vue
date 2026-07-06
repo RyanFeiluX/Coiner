@@ -795,64 +795,64 @@ const loadConfig = async () => {
     if (response.status === 200 && response.data) {
       const cfg = response.data;
       console.log('[TitleSettings] loadConfig cfg:', cfg);
-      console.log('[TitleSettings] loadConfig cfg.ui:', cfg.ui);
-      if (cfg.ui) {
-        if (cfg.ui.title_enabled !== undefined) {
-          form.titleEnabled = cfg.ui.title_enabled;
+      console.log('[TitleSettings] loadConfig cfg.title:', cfg.title);
+      if (cfg.title) {
+        if (cfg.title.title_enabled !== undefined) {
+          form.titleEnabled = cfg.title.title_enabled;
         }
-        if (cfg.ui.title_text !== undefined) {
-          form.titleText = cfg.ui.title_text;
+        if (cfg.title.title_text !== undefined) {
+          form.titleText = cfg.title.title_text;
         }
-        if (cfg.ui.title_duration !== undefined) {
-          form.titleDuration = cfg.ui.title_duration;
+        if (cfg.title.title_duration !== undefined) {
+          form.titleDuration = cfg.title.title_duration;
         }
-        if (cfg.ui.title_font_name !== undefined) {
-          form.titleFont = cfg.ui.title_font_name;
+        if (cfg.title.title_font_name !== undefined) {
+          form.titleFont = cfg.title.title_font_name;
         }
-        if (cfg.ui.title_font_size !== undefined) {
-          form.titleFontSize = cfg.ui.title_font_size;
+        if (cfg.title.title_font_size !== undefined) {
+          form.titleFontSize = cfg.title.title_font_size;
         }
-        if (cfg.ui.title_text_color !== undefined) {
-          form.titleColor = cfg.ui.title_text_color;
+        if (cfg.title.title_text_color !== undefined) {
+          form.titleColor = cfg.title.title_text_color;
         }
-        if (cfg.ui.title_stroke_color !== undefined) {
-          form.titleStrokeColor = cfg.ui.title_stroke_color;
+        if (cfg.title.title_stroke_color !== undefined) {
+          form.titleStrokeColor = cfg.title.title_stroke_color;
         }
-        if (cfg.ui.title_stroke_width !== undefined) {
-          form.titleStrokeWidth = cfg.ui.title_stroke_width;
+        if (cfg.title.title_stroke_width !== undefined) {
+          form.titleStrokeWidth = cfg.title.title_stroke_width;
         }
-        if (cfg.ui.title_background_color !== undefined) {
-          form.titleBackgroundColor = cfg.ui.title_background_color;
+        if (cfg.title.title_background_color !== undefined) {
+          form.titleBackgroundColor = cfg.title.title_background_color;
         }
-        if (cfg.ui.title_position !== undefined) {
-          form.titlePosition = cfg.ui.title_position;
+        if (cfg.title.title_position !== undefined) {
+          form.titlePosition = cfg.title.title_position;
         }
-        if (cfg.ui.title_margin !== undefined) {
-          form.titleMargin = cfg.ui.title_margin * 100;
+        if (cfg.title.title_margin !== undefined) {
+          form.titleMargin = cfg.title.title_margin * 100;
         }
-        if (cfg.ui.title_margin_left !== undefined) {
-          form.titleMarginLeft = cfg.ui.title_margin_left * 100;
+        if (cfg.title.title_margin_left !== undefined) {
+          form.titleMarginLeft = cfg.title.title_margin_left * 100;
         }
-        if (cfg.ui.title_margin_right !== undefined) {
-          form.titleMarginRight = cfg.ui.title_margin_right * 100;
+        if (cfg.title.title_margin_right !== undefined) {
+          form.titleMarginRight = cfg.title.title_margin_right * 100;
         }
-        if (cfg.ui.title_animation !== undefined) {
-          form.titleAnimation = cfg.ui.title_animation;
+        if (cfg.title.title_animation !== undefined) {
+          form.titleAnimation = cfg.title.title_animation;
         }
-        if (cfg.ui.title_animation_duration !== undefined) {
-          form.titleAnimationDuration = cfg.ui.title_animation_duration;
+        if (cfg.title.title_animation_duration !== undefined) {
+          form.titleAnimationDuration = cfg.title.title_animation_duration;
         }
-        if (cfg.ui.title_background_overlay !== undefined) {
-          form.titleBackgroundOverlay = cfg.ui.title_background_overlay;
+        if (cfg.title.title_background_overlay !== undefined) {
+          form.titleBackgroundOverlay = cfg.title.title_background_overlay;
         }
-        if (cfg.ui.title_overlay_color !== undefined) {
-          form.titleOverlayColor = cfg.ui.title_overlay_color;
+        if (cfg.title.title_overlay_color !== undefined) {
+          form.titleOverlayColor = cfg.title.title_overlay_color;
         }
-        if (cfg.ui.title_style !== undefined) {
-          form.titleStyle = cfg.ui.title_style;
+        if (cfg.title.title_style !== undefined) {
+          form.titleStyle = cfg.title.title_style;
         }
-        if (cfg.ui.title_align !== undefined) {
-          form.titleAlign = cfg.ui.title_align;
+        if (cfg.title.title_align !== undefined) {
+          form.titleAlign = cfg.title.title_align;
         }
         
         updateTitleSettings();
@@ -865,7 +865,7 @@ const loadConfig = async () => {
 
 const saveConfig = async () => {
   const cfg = {
-    ui: {
+    title: {
       title_enabled: form.titleEnabled,
       title_text: form.titleText,
       title_duration: form.titleDuration,

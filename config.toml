@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.9.4"
+project_version = "2.9.6"
 
 [app]
 host_visible = false
@@ -91,11 +91,9 @@ font_size = 40
 stroke_color = "#000000"
 stroke_width = 1
 
-[ui]
-hide_log = false
-language = "zh"
+[title]
 title_enabled = true
-title_text = "资本套路下的民生陷阱"
+title_text = "最高法加装电梯新规"
 title_duration = 3
 title_font_name = "MicrosoftYaHeiBold.ttc"
 title_font_size = 72
@@ -113,6 +111,10 @@ title_background_overlay = false
 title_overlay_color = "rgba(0,0,0,0.5)"
 title_style = "classic"
 title_align = "center"
+
+[ui]
+hide_log = false
+language = "zh"
 
 [coze]
 

@@ -298,9 +298,45 @@ export const useSettingsStore = defineStore('settings', {
       this.saveToLocalStorage();
     },
     
-    updateTitleSetting<K extends keyof TitleSettings>(key: K, value: TitleSettings[K]) {
+    async updateTitleSetting<K extends keyof TitleSettings>(key: K, value: TitleSettings[K]) {
       this.video.title[key] = value;
       this.saveToLocalStorage();
+      await this.saveTitleToBackend();
+    },
+
+    async saveTitleToBackend() {
+      console.log('[SettingsStore] Saving title settings to backend...');
+      try {
+        const titleConfig = {
+          title: {
+            title_enabled: this.video.title.enabled,
+            title_text: this.video.title.text,
+            title_duration: this.video.title.duration,
+            title_font_name: this.video.title.font,
+            title_font_size: this.video.title.fontSize,
+            title_text_color: this.video.title.color,
+            title_stroke_color: this.video.title.strokeColor,
+            title_stroke_width: this.video.title.strokeWidth,
+            title_background_color: this.video.title.backgroundColor,
+            title_position: this.video.title.position,
+            title_margin: this.video.title.margin,
+            title_margin_left: this.video.title.marginLeft,
+            title_margin_right: this.video.title.marginRight,
+            title_animation: this.video.title.animation,
+            title_animation_duration: this.video.title.animationDuration,
+            title_background_overlay: this.video.title.backgroundOverlay,
+            title_overlay_color: this.video.title.overlayColor,
+            title_style: this.video.title.style,
+            title_align: this.video.title.align,
+          }
+        };
+        console.log('[SettingsStore] Sending config:', JSON.stringify(titleConfig, null, 2));
+        const response = await apiService.updateConfig(titleConfig);
+        console.log('[SettingsStore] Title settings saved successfully:', response);
+      } catch (error) {
+        console.error('[SettingsStore] Failed to save title settings to backend:', error);
+        throw error;
+      }
     },
     
     updateAudioSetting<K extends keyof AudioSettings>(key: K, value: AudioSettings[K]) {
@@ -545,83 +581,85 @@ export const useSettingsStore = defineStore('settings', {
                 }
             }
 
-            if (data.ui) {
-            // Load title settings from config.ui
-            if (typeof data.ui.title_enabled === 'boolean') {
-              this.video.title.enabled = data.ui.title_enabled;
-              console.log('[SettingsStore] Updated video.title.enabled from config.ui:', this.video.title.enabled);
+            if (data.title) {
+            // Load title settings from config.title
+            console.log('[SettingsStore] === Config Title Data ===');
+            console.log('[SettingsStore] config.title:', data.title);
+            if (typeof data.title.title_enabled === 'boolean') {
+              this.video.title.enabled = data.title.title_enabled;
+              console.log('[SettingsStore] Updated video.title.enabled from config.title:', this.video.title.enabled);
             }
-            if (data.ui.title_text !== undefined) {
-              this.video.title.text = data.ui.title_text;
-              console.log('[SettingsStore] Updated video.title.text from config.ui:', this.video.title.text);
+            if (data.title.title_text !== undefined) {
+              this.video.title.text = data.title.title_text;
+              console.log('[SettingsStore] Updated video.title.text from config.title:', this.video.title.text);
             }
-            if (data.ui.title_duration !== undefined) {
-              this.video.title.duration = Number(data.ui.title_duration);
-              console.log('[SettingsStore] Updated video.title.duration from config.ui:', this.video.title.duration);
+            if (data.title.title_duration !== undefined) {
+              this.video.title.duration = Number(data.title.title_duration);
+              console.log('[SettingsStore] Updated video.title.duration from config.title:', this.video.title.duration);
             }
-            if (data.ui.title_font_name !== undefined) {
-              this.video.title.font = data.ui.title_font_name;
-              console.log('[SettingsStore] Updated video.title.font from config.ui:', this.video.title.font);
+            if (data.title.title_font_name !== undefined) {
+              this.video.title.font = data.title.title_font_name;
+              console.log('[SettingsStore] Updated video.title.font from config.title:', this.video.title.font);
             }
-            if (data.ui.title_font_size !== undefined) {
-              this.video.title.fontSize = Number(data.ui.title_font_size);
-              console.log('[SettingsStore] Updated video.title.fontSize from config.ui:', this.video.title.fontSize);
+            if (data.title.title_font_size !== undefined) {
+              this.video.title.fontSize = Number(data.title.title_font_size);
+              console.log('[SettingsStore] Updated video.title.fontSize from config.title:', this.video.title.fontSize);
             }
-            if (data.ui.title_text_color !== undefined) {
-              this.video.title.color = data.ui.title_text_color;
-              console.log('[SettingsStore] Updated video.title.color from config.ui:', this.video.title.color);
+            if (data.title.title_text_color !== undefined) {
+              this.video.title.color = data.title.title_text_color;
+              console.log('[SettingsStore] Updated video.title.color from config.title:', this.video.title.color);
             }
-            if (data.ui.title_stroke_color !== undefined) {
-              this.video.title.strokeColor = data.ui.title_stroke_color;
-              console.log('[SettingsStore] Updated video.title.strokeColor from config.ui:', this.video.title.strokeColor);
+            if (data.title.title_stroke_color !== undefined) {
+              this.video.title.strokeColor = data.title.title_stroke_color;
+              console.log('[SettingsStore] Updated video.title.strokeColor from config.title:', this.video.title.strokeColor);
             }
-            if (data.ui.title_stroke_width !== undefined) {
-              this.video.title.strokeWidth = Number(data.ui.title_stroke_width);
-              console.log('[SettingsStore] Updated video.title.strokeWidth from config.ui:', this.video.title.strokeWidth);
+            if (data.title.title_stroke_width !== undefined) {
+              this.video.title.strokeWidth = Number(data.title.title_stroke_width);
+              console.log('[SettingsStore] Updated video.title.strokeWidth from config.title:', this.video.title.strokeWidth);
             }
-            if (data.ui.title_background_color !== undefined) {
-              this.video.title.backgroundColor = data.ui.title_background_color;
-              console.log('[SettingsStore] Updated video.title.backgroundColor from config.ui:', this.video.title.backgroundColor);
+            if (data.title.title_background_color !== undefined) {
+              this.video.title.backgroundColor = data.title.title_background_color;
+              console.log('[SettingsStore] Updated video.title.backgroundColor from config.title:', this.video.title.backgroundColor);
             }
-            if (data.ui.title_position !== undefined) {
-              this.video.title.position = data.ui.title_position;
-              console.log('[SettingsStore] Updated video.title.position from config.ui:', this.video.title.position);
+            if (data.title.title_position !== undefined) {
+              this.video.title.position = data.title.title_position;
+              console.log('[SettingsStore] Updated video.title.position from config.title:', this.video.title.position);
             }
-            if (data.ui.title_margin !== undefined) {
-              this.video.title.margin = Number(data.ui.title_margin);
-              console.log('[SettingsStore] Updated video.title.margin from config.ui:', this.video.title.margin);
+            if (data.title.title_margin !== undefined) {
+              this.video.title.margin = Number(data.title.title_margin);
+              console.log('[SettingsStore] Updated video.title.margin from config.title:', this.video.title.margin);
             }
-            if (data.ui.title_margin_left !== undefined) {
-              this.video.title.marginLeft = Number(data.ui.title_margin_left);
-              console.log('[SettingsStore] Updated video.title.marginLeft from config.ui:', this.video.title.marginLeft);
+            if (data.title.title_margin_left !== undefined) {
+              this.video.title.marginLeft = Number(data.title.title_margin_left);
+              console.log('[SettingsStore] Updated video.title.marginLeft from config.title:', this.video.title.marginLeft);
             }
-            if (data.ui.title_margin_right !== undefined) {
-              this.video.title.marginRight = Number(data.ui.title_margin_right);
-              console.log('[SettingsStore] Updated video.title.marginRight from config.ui:', this.video.title.marginRight);
+            if (data.title.title_margin_right !== undefined) {
+              this.video.title.marginRight = Number(data.title.title_margin_right);
+              console.log('[SettingsStore] Updated video.title.marginRight from config.title:', this.video.title.marginRight);
             }
-            if (data.ui.title_animation !== undefined) {
-              this.video.title.animation = data.ui.title_animation;
-              console.log('[SettingsStore] Updated video.title.animation from config.ui:', this.video.title.animation);
+            if (data.title.title_animation !== undefined) {
+              this.video.title.animation = data.title.title_animation;
+              console.log('[SettingsStore] Updated video.title.animation from config.title:', this.video.title.animation);
             }
-            if (data.ui.title_animation_duration !== undefined) {
-              this.video.title.animationDuration = Number(data.ui.title_animation_duration);
-              console.log('[SettingsStore] Updated video.title.animationDuration from config.ui:', this.video.title.animationDuration);
+            if (data.title.title_animation_duration !== undefined) {
+              this.video.title.animationDuration = Number(data.title.title_animation_duration);
+              console.log('[SettingsStore] Updated video.title.animationDuration from config.title:', this.video.title.animationDuration);
             }
-            if (typeof data.ui.title_background_overlay === 'boolean') {
-              this.video.title.backgroundOverlay = data.ui.title_background_overlay;
-              console.log('[SettingsStore] Updated video.title.backgroundOverlay from config.ui:', this.video.title.backgroundOverlay);
+            if (typeof data.title.title_background_overlay === 'boolean') {
+              this.video.title.backgroundOverlay = data.title.title_background_overlay;
+              console.log('[SettingsStore] Updated video.title.backgroundOverlay from config.title:', this.video.title.backgroundOverlay);
             }
-            if (data.ui.title_overlay_color !== undefined) {
-              this.video.title.overlayColor = data.ui.title_overlay_color;
-              console.log('[SettingsStore] Updated video.title.overlayColor from config.ui:', this.video.title.overlayColor);
+            if (data.title.title_overlay_color !== undefined) {
+              this.video.title.overlayColor = data.title.title_overlay_color;
+              console.log('[SettingsStore] Updated video.title.overlayColor from config.title:', this.video.title.overlayColor);
             }
-            if (data.ui.title_style !== undefined) {
-              this.video.title.style = data.ui.title_style;
-              console.log('[SettingsStore] Updated video.title.style from config.ui:', this.video.title.style);
+            if (data.title.title_style !== undefined) {
+              this.video.title.style = data.title.title_style;
+              console.log('[SettingsStore] Updated video.title.style from config.title:', this.video.title.style);
             }
-            if (data.ui.title_align !== undefined) {
-              this.video.title.align = data.ui.title_align;
-              console.log('[SettingsStore] Updated video.title.align from config.ui:', this.video.title.align);
+            if (data.title.title_align !== undefined) {
+              this.video.title.align = data.title.title_align;
+              console.log('[SettingsStore] Updated video.title.align from config.title:', this.video.title.align);
             }
           }
 
