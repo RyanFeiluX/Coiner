@@ -956,6 +956,14 @@ def start(task_id, params: VideoParams, stop_at: str = "video", check_cancelled=
         logger.error(f"Exception Message: {str(e)}")
         logger.error(f"Traceback:\n{tb_str}")
         logger.error(f"========================================")
+        # Ensure persistent state is FAILED (may have been set by start_multi_scene,
+        # but if not, this catches all unhandled exceptions)
+        try:
+            task = sm.state.get_task(task_id)
+            if task and task.get("state") != const.TASK_STATE_FAILED:
+                sm.state.update_task(task_id, state=const.TASK_STATE_FAILED)
+        except Exception:
+            pass
         raise
     finally:
         # Set task as completed

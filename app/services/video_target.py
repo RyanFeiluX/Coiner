@@ -787,6 +787,11 @@ def finalize_video(
         
     except Exception as e:
         logger.error(f"failed to merge clips and add audio: {str(e)}")
+        close_clip(final_video)
+        if audio_file:
+            close_clip(audio_clip)
+        for clip in processed_clips:
+            close_clip(clip)
         return None
     
     logger.info("video combining completed")
@@ -1231,6 +1236,7 @@ def process_final_video(
     
     start_time = time.time()
     logger.info(f"Starting process_final_video for task: {task_id}")
+    _owned_clip = False
     
     try:
         # Load video clip if not provided
@@ -1240,6 +1246,7 @@ def process_final_video(
                 return None
             
             video_clip = VideoFileClip(combined_video_path)
+            _owned_clip = True
             logger.info(f"Loaded video clip: {combined_video_path}")
         
         # Validate that the video clip was loaded correctly
@@ -1639,7 +1646,6 @@ def process_final_video(
                     progress_callback=progress_callback,
                 )
                 if ffmpeg_ok:
-                    video_clip.close()
                     try:
                         if os.path.exists(temp_with_title):
                             os.remove(temp_with_title)
@@ -1678,7 +1684,6 @@ def process_final_video(
             )
             
             if ffmpeg_success:
-                video_clip.close()
                 end_time = time.time()
                 logger.success(f"Video generated (fast FFmpeg): {output_file}")
                 _log_durations(end_time, task_create_time, task_start_time, scene_synthesis_start_time)
@@ -1719,8 +1724,6 @@ def process_final_video(
         finally:
             progress_monitor.stop_monitoring()
         
-        video_clip.close()
-        
         end_time = time.time()
         logger.success(f"Video generated successfully: {output_file}")
         _log_durations(end_time, task_create_time, task_start_time, scene_synthesis_start_time)
@@ -1730,3 +1733,6 @@ def process_final_video(
     except Exception as e:
         logger.error(f"Failed to process final video: {e}")
         raise
+    finally:
+        if _owned_clip and video_clip is not None:
+            close_clip(video_clip)
