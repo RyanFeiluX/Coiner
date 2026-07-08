@@ -936,17 +936,7 @@ def _ffmpeg_fast_encode(
         )
         audio_label = "a_delayed"
     
-    # 2. Pillarbox — pad to target dimensions with background color
-    if pillarbox:
-        filter_parts.append(
-            f"[{cur_label}]scale={target_width}:{target_height}:"
-            f"force_original_aspect_ratio=decrease,"
-            f"pad={target_width}:{target_height}:(ow-iw)/2:(oh-ih)/2:"
-            f"color={pillarbox_bg_color}[v_padded]"
-        )
-        cur_label = "v_padded"
-    
-    # 3. Subtitle burn-in via FFmpeg subtitles filter
+    # 2. Subtitle burn-in via FFmpeg subtitles filter (before pillarbox, so font scales with content)
     _temp_ass_file = None
     if subtitle_file and os.path.exists(subtitle_file):
         # Convert SRT to ASS so FontSize is relative to PlayResY = video height (1pt ≈ 1px).
@@ -956,13 +946,11 @@ def _ffmpeg_fast_encode(
             import tempfile
             _temp_ass_file = tempfile.mktemp(suffix=".ass", prefix="coiner_sub_")
 
-            # Determine the actual video height at the point the subtitles filter
-            # will run.  When pillarbox is applied the video is first scaled to
-            # target_height, otherwise it stays at the input video's height.
-            # Using the wrong PlayResY would cause libass to scale the font size
-            # (and marginV / outline) incorrectly — see _srt_to_ass for details.
+            # Determine the video height for subtitle rendering.  Subtitles are
+            # burned in before pillarbox, so they use the input video's height
+            # (content area, not the final padded frame).
             if pillarbox:
-                sub_render_height = target_height
+                sub_render_height = input_video_height or target_height
             else:
                 sub_render_height = input_video_height or target_height
 
@@ -1029,6 +1017,16 @@ def _ffmpeg_fast_encode(
             f"[{cur_label}]subtitles='{escaped_sub}'{fonts_dir_option}{sub_style}[v_sub]"
         )
         cur_label = "v_sub"
+    
+    # 3. Pillarbox — pad to target dimensions with background color (after subtitles)
+    if pillarbox:
+        filter_parts.append(
+            f"[{cur_label}]scale={target_width}:{target_height}:"
+            f"force_original_aspect_ratio=decrease,"
+            f"pad={target_width}:{target_height}:(ow-iw)/2:(oh-ih)/2:"
+            f"color={pillarbox_bg_color}[v_padded]"
+        )
+        cur_label = "v_padded"
     
     # 4. BGM mixing
     if bgm_file and os.path.exists(bgm_file):
@@ -1251,51 +1249,15 @@ def process_final_video(
             logger.error(f"Failed to load video - clip duration not available")
             return None
         
-        # Add pillarbox bars for 3:4 aspect ratio
-        if hasattr(params, 'video_aspect') and params.video_aspect:
-            from app.models.schema import VideoAspect
-            
-            video_aspect = params.video_aspect
-            if isinstance(video_aspect, str):
-                try:
-                    video_aspect = VideoAspect(video_aspect)
-                except ValueError:
-                    video_aspect = None
-            
-            if video_aspect == VideoAspect.portrait_3_4:
-                from app.services.video_utils import parse_color
-                
-                clip_w, clip_h = video_clip.size
-                target_width, target_height = 1080, 1920
-                
-                scale_factor = target_width / clip_w
-                new_width = round(clip_w * scale_factor)
-                new_height = round(clip_h * scale_factor)
-                
-                scaled_clip = video_clip.resized(new_size=(new_width, new_height))
-                y_offset = (target_height - new_height) // 2
-                
-                output_bg_color = getattr(params, 'output_bg_color', None) or 'black'
-                bg_color = parse_color(output_bg_color)
-                
-                background = ColorClip(
-                    size=(target_width, target_height),
-                    color=bg_color,
-                    duration=video_clip.duration
-                )
-                
-                video_clip = create_composite_video_clip([
-                    background,
-                    scaled_clip.with_position(("center", y_offset))
-                ])
-                logger.info(f"Added pillarbox for 3:4 -> 9:16: {clip_w}x{clip_h} -> {target_width}x{target_height}")
+        # Capture content height before any transformations (title, pillarbox) are applied
+        content_height = video_clip.size[1]
         
         # Silence prefix is now added as a standalone scene before combine_all_scenes()
         # Keep the value for BGM delay calculation
         original_silence_duration = silence_duration
         silence_duration = 0
         
-        # Add title AFTER Silence Prefix
+        # Add title BEFORE pillarbox so font scales relative to content area, not black bars
         if hasattr(params, 'title_enabled') and params.title_enabled and hasattr(params, 'title_text') and params.title_text:
             logger.info("Adding title to video")
             video_clip = ensure_clip_duration(video_clip)
@@ -1307,7 +1269,7 @@ def process_final_video(
             except Exception as e:
                 logger.error(f"Failed to add title: {e}")
         
-        # Add subtitle if enabled (and not already pre-burned into scene videos)
+        # Add subtitle BEFORE pillarbox so font scales relative to content area, not black bars
         if params.subtitle_enabled and not skip_subtitles:
             # Merge subtitles from scenes if no subtitle file provided
             using_merged_subtitle = False
@@ -1450,6 +1412,47 @@ def process_final_video(
                     logger.error(f"Failed to add subtitles: {e}")
         elif skip_subtitles:
             logger.info("Skipping subtitle addition - subtitles already pre-burned into scene videos")
+        
+        # Add pillarbox bars for 3:4 aspect ratio (after title and subtitles, so they don't get scaled by pillarbox)
+        if hasattr(params, 'video_aspect') and params.video_aspect:
+            from app.models.schema import VideoAspect
+            
+            video_aspect = params.video_aspect
+            if isinstance(video_aspect, str):
+                try:
+                    video_aspect = VideoAspect(video_aspect)
+                except ValueError:
+                    video_aspect = None
+            
+            if video_aspect == VideoAspect.portrait_3_4:
+                from app.services.video_utils import parse_color
+                
+                clip_w, clip_h = video_clip.size
+                target_width, target_height = 1080, 1920
+                
+                scale_factor = target_width / clip_w
+                new_width = round(clip_w * scale_factor)
+                new_height = round(clip_h * scale_factor)
+                
+                scaled_clip = video_clip.resized(new_size=(new_width, new_height))
+                y_offset = (target_height - new_height) // 2
+                
+                output_bg_color = getattr(params, 'output_bg_color', None) or 'black'
+                bg_color = parse_color(output_bg_color)
+                
+                background = ColorClip(
+                    size=(target_width, target_height),
+                    color=bg_color,
+                    duration=video_clip.duration
+                )
+                
+                video_clip = create_composite_video_clip([
+                    background,
+                    scaled_clip.with_position(("center", y_offset))
+                ])
+                logger.info(f"Added pillarbox for 3:4 -> 9:16: {clip_w}x{clip_h} -> {target_width}x{target_height}")
+        
+
 
         # Add BGM
         logger.info(f"Getting BGM file: bgm_type={getattr(params, 'bgm_type', 'none')}, bgm_file={getattr(params, 'bgm_file', '')}")
@@ -1521,7 +1524,7 @@ def process_final_video(
         
         sub_params = None
         actual_sub_file = subtitle_file if subtitle_file and os.path.exists(subtitle_file) else None
-        _video_height = video_clip.size[1] if video_clip else 1920
+        _video_height = content_height if is_pillarbox else (video_clip.size[1] if video_clip else 1920)
         if actual_sub_file and params.subtitle_enabled and not skip_subtitles:
             from app.services.title import _get_valid_font_path
             font_path = _get_valid_font_path(getattr(params, 'font_name', 'STHeitiMedium.ttc'))
@@ -1573,63 +1576,86 @@ def process_final_video(
         
         bgm_vol = float(getattr(params, 'bgm_volume', 0.2))
         
-        # ── Hybrid path: FFmpeg (pillarbox+subs+BGM) + MoviePy (title only) ──
-        # Silence prefix is now added as a standalone scene before combine_all_scenes()
-        # So hybrid path is safe to use - combined_video_path already has the silence prefix
+        # ── Hybrid path: MoviePy (title only, before pillarbox) + FFmpeg (pillarbox+subs+BGM) ──
+        # Title is applied before pillarbox so font scales relative to content area, not black bars.
+        # Silence prefix is already added as a standalone scene before combine_all_scenes().
         use_hybrid_path = has_title and combined_video_path and os.path.exists(combined_video_path)
         
         if use_hybrid_path:
             import uuid
-            temp_no_title = os.path.join(
+            temp_with_title = os.path.join(
                 os.path.dirname(output_file),
-                f".no_title_{uuid.uuid4().hex[:8]}.mp4"
+                f".with_title_{uuid.uuid4().hex[:8]}.mp4"
             )
             
-            logger.info("Hybrid path: encoding base video via FFmpeg (pillarbox+subs+BGM)...")
-            logger.info("Hybrid path: silence prefix already added as scene, skipping FFmpeg silence")
-            
-            ffmpeg_ok = _ffmpeg_fast_encode(
-                video_path=combined_video_path,
-                output_file=temp_no_title,
-                silence_duration=0,
-                bgm_delay=original_silence_duration,
-                pillarbox=is_pillarbox,
-                pillarbox_bg_color=getattr(params, 'output_bg_color', None) or 'black',
-                subtitle_file=actual_sub_file,
-                subtitle_params=sub_params,
-                bgm_file=bgm_file,
-                bgm_volume=bgm_vol,
-                target_width=1080,
-                target_height=1920,
-                input_video_height=_video_height,
-                task_id=task_id,
-                progress_callback=progress_callback,
-            )
-            
-            if ffmpeg_ok:
-                new_clip = None
-                try:
-                    logger.info("Hybrid path: loading FFmpeg-encoded base and applying title overlay...")
-                    new_clip = VideoFileClip(temp_no_title)
-                    from app.services.title import add_title_to_video
-                    new_clip = add_title_to_video(new_clip, params)
-                    
-                    video_clip.close()
-                    video_clip = new_clip
-                    new_clip = None
-                    logger.success("Hybrid path: title overlay applied successfully, proceeding to MoviePy write")
-                except Exception as e:
-                    logger.warning(f"Hybrid title overlay failed: {e}, falling back to full MoviePy")
-                    if new_clip is not None:
-                        new_clip.close()
-                finally:
+            logger.info("Hybrid path: adding title to content-dimension video via MoviePy...")
+            try:
+                title_clip_base = VideoFileClip(combined_video_path)
+                from app.services.title import add_title_to_video
+                title_clip_base = ensure_clip_duration(title_clip_base)
+                title_clip_with_title = add_title_to_video(title_clip_base, params)
+                
+                logger.info("Hybrid path: writing title-bearing video to temp file...")
+                title_clip_with_title.write_videofile(
+                    filename=temp_with_title,
+                    threads=2,
+                    logger=None,
+                    temp_audiofile_path=os.path.dirname(output_file),
+                    codec=get_video_codec(),
+                    bitrate=get_video_encoding_params()["bitrate"],
+                    preset=get_video_encoding_params()["preset"],
+                    ffmpeg_params=["-pix_fmt", "yuv420p"],
+                    fps=fps,
+                )
+                title_clip_base.close()
+                title_clip_with_title.close()
+                logger.success("Hybrid path: title-bearing video written, proceeding to FFmpeg encode")
+            except Exception as e:
+                logger.warning(f"Hybrid path MoviePy title step failed: {e}, falling back to full MoviePy")
+                if os.path.exists(temp_with_title):
                     try:
-                        if os.path.exists(temp_no_title):
-                            os.remove(temp_no_title)
+                        os.remove(temp_with_title)
                     except OSError:
                         pass
-            else:
-                logger.warning("Hybrid path FFmpeg encode failed, falling back to full MoviePy")
+                use_hybrid_path = False
+            
+            if use_hybrid_path:
+                logger.info("Hybrid path: encoding final video via FFmpeg (pillarbox+subs+BGM)...")
+                ffmpeg_ok = _ffmpeg_fast_encode(
+                    video_path=temp_with_title,
+                    output_file=output_file,
+                    silence_duration=0,
+                    bgm_delay=original_silence_duration,
+                    pillarbox=is_pillarbox,
+                    pillarbox_bg_color=getattr(params, 'output_bg_color', None) or 'black',
+                    subtitle_file=actual_sub_file,
+                    subtitle_params=sub_params,
+                    bgm_file=bgm_file,
+                    bgm_volume=bgm_vol,
+                    target_width=1080,
+                    target_height=1920,
+                    input_video_height=_video_height,
+                    task_id=task_id,
+                    progress_callback=progress_callback,
+                )
+                if ffmpeg_ok:
+                    video_clip.close()
+                    try:
+                        if os.path.exists(temp_with_title):
+                            os.remove(temp_with_title)
+                    except OSError:
+                        pass
+                    end_time = time.time()
+                    logger.success(f"Video generated (hybrid path): {output_file}")
+                    _log_durations(end_time, task_create_time, task_start_time, scene_synthesis_start_time)
+                    return output_file
+                else:
+                    logger.warning("Hybrid path FFmpeg encode failed, falling back to full MoviePy")
+                    if os.path.exists(temp_with_title):
+                        try:
+                            os.remove(temp_with_title)
+                        except OSError:
+                            pass
         
         # ── Fast FFmpeg path (skip MoviePy compositing when no title) ──
         if not has_title and combined_video_path and os.path.exists(combined_video_path):

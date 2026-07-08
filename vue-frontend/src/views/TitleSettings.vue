@@ -569,14 +569,23 @@ const previewStyle = computed(() => {
   
   // PlayResY=1080 is the ASS reference height used in the backend (title.py:161-162).
   // Backend: font_size_px = fontSize * videoHeight / 1080  (converts pt→px scaled to video res)
-  // Preview: scaledFontSize = fontSize * previewHeight / 1080  (same pt→px, scaled to preview)
+  // Preview: scaledFontSize = fontSize * contentHeight / 1080  (scaled to content area)
   const previewHeight = parseInt(previewFrameStyle.value.height);
-  const scaleFactor = previewHeight / 1080;
+  const aspect = settingsStore.video.aspect;
+  
+  // For pillarbox (3:4 → 9:16), content area is compressed relative to the output frame.
+  // Actual video: 1080×1440, Output frame: 1080×1920 (240px black bars top/bottom).
+  // The title scales with content area height, not output frame height.
+  const isPillarbox = aspect === 'portrait_3_4';
+  const contentRatio = isPillarbox ? (1440 / 1920) : 1.0;
+  const barHeightRatio = isPillarbox ? (1 - contentRatio) / 2 : 0;
+  const contentHeight = previewHeight * contentRatio;
+  const scaleFactor = contentHeight / 1080;
   const scaledFontSize = Math.round(form.titleFontSize * scaleFactor);
   
   let topPosition: string;
   if (form.titlePosition === 'top') {
-    topPosition = `${marginPercent}%`;
+    topPosition = `${(barHeightRatio + contentRatio * marginPercent / 100) * 100}%`;
   } else if (form.titlePosition === 'bottom') {
     topPosition = `auto`;
   } else {
@@ -585,7 +594,7 @@ const previewStyle = computed(() => {
   
   let bottomPosition: string;
   if (form.titlePosition === 'bottom') {
-    bottomPosition = `${marginPercent}%`;
+    bottomPosition = `${(barHeightRatio + contentRatio * marginPercent / 100) * 100}%`;
   } else {
     bottomPosition = 'auto';
   }
