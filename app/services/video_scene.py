@@ -37,17 +37,49 @@ from app.services.video_target import finalize_video
 from moviepy import ImageClip
 
 
+def _is_file_corruption_error(e: Exception) -> bool:
+    msg = str(e).lower()
+    keywords = [
+        "failed to read the first frame",
+        "corrupted",
+        "invalid data",
+        "invalid file",
+        "could not find codec",
+        "moov atom not found",
+        "truncated",
+        "end of file",
+        "no video stream",
+        "malformed",
+        "broken",
+    ]
+    return any(kw in msg for kw in keywords)
+
+
 def _load_clip_with_retry(file_path: str, start_time: float, end_time: float, max_retries: int = 3, delay: float = 0.5) -> VideoFileClip:
+    last_exception = None
     for attempt in range(max_retries):
+        clip = None
         try:
-            return VideoFileClip(file_path).subclipped(start_time, end_time)
+            clip = VideoFileClip(file_path)
+            _ = clip.get_frame(0)
+            subclip = clip.subclipped(start_time, end_time)
+            clip = None
+            return subclip
         except Exception as e:
+            last_exception = e
             logger.warning(f"Failed to load clip (attempt {attempt+1}/{max_retries}): {file_path} - {e}")
+            if clip is not None:
+                try:
+                    clip.close()
+                except Exception:
+                    pass
             if attempt < max_retries - 1:
+                if _is_file_corruption_error(e):
+                    logger.error(f"File appears corrupted, skipping retries: {file_path}")
+                    raise
                 time.sleep(delay * (1.5 ** attempt))
                 gc.collect()
-            else:
-                raise
+    raise last_exception
 
 
 @memory_safe_operation

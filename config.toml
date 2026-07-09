@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.9.7"
+project_version = "2.9.8"
 
 [app]
 host_visible = false
@@ -44,11 +44,11 @@ video_contrast = 1.05
 video_concat_mode = "random"
 video_transition_mode = "none"
 min_scene_success_ratio = 0.9
-video_aspect = "portrait_3_4"
+video_aspect = "square"
 video_clip_duration = 5
 video_count = 1
 silence_duration = 0.5
-video_style = "none"
+video_style = "people"
 intro_video_bg_type = "blurred"
 intro_video_bg_blur = 48
 intro_video_bg_color = "black"
@@ -71,8 +71,8 @@ speech_region = ""
 [siliconflow]
 
 [audio]
-tts_server = "coze-tts"
-voice_name = "coze|7468512265151741979|擎苍-Male|https://lf26-appstore-sign.oceancloudapi.com/ocean-cloud-tos/VolcanoSystemVoice/zh_male_qingcang_mars_bigtts.mp3?lk3s=da27ec82&x-expires=1783554476&x-signature=Gde0bW808X%2FFzG1JnV635JFWWAg%3D|无语，擎天之巨首，揽尽世间风云变幻，诸般阻碍，不过是无脉相巅峰之基石。今日之儒，来日必当十倍奉还。 无知威名，必将震慑四海八荒。|"
+tts_server = "qwen-tts"
+voice_name = "qwen|Elias|墨讲师-Female||"
 voice_volume = 1.8
 voice_rate = 1.1
 bgm_type = ""
@@ -81,22 +81,22 @@ bgm_volume = 0.1
 [subtitle]
 subtitle_enabled = true
 subtitle_position = "custom"
-subtitle_custom_position = 85
+subtitle_custom_position = 95
 subtitle_margin = 0.05
 subtitle_auto_fit = true
 font_name = "MicrosoftYaHeiBold.ttc"
 text_fore_color = "rgb(247, 243, 9)"
 text_background_color = true
-font_size = 35
+font_size = 60
 stroke_color = "#000000"
 stroke_width = 1
 
 [title]
 title_enabled = true
-title_text = "提示词工程过时了吗?"
+title_text = "神仙物业竟撤场"
 title_duration = 3
 title_font_name = "MicrosoftYaHeiBold.ttc"
-title_font_size = 54
+title_font_size = 100
 title_text_color = "#FF0000"
 title_stroke_color = "#FFFF00"
 title_stroke_width = 3
