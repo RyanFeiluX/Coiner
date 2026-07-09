@@ -10,6 +10,7 @@ interface Scene {
   introVideo?: string;
   introVideoOriginalPath?: string;
   introVideoDuration?: number;
+  introVideoCoverFull?: boolean;
 }
 
 interface ScriptSettings {

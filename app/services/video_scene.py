@@ -532,6 +532,7 @@ def build_scene_video(
     local_video_paths: List[str] = None,
     intro_video_path: str = None,
     intro_duration: int = 10,
+    intro_video_cover_full: bool = False,
 ) -> str:
     # Ensure video_aspect is a valid VideoAspect enum
     if video_aspect is None:
@@ -612,7 +613,10 @@ def build_scene_video(
                             logger.error(f"Failed to convert PNG to JPG, using original PNG: {e}")
                             processed_image_path = intro_video_path
                     
-                    clip_duration = intro_duration
+                    if intro_video_cover_full:
+                        clip_duration = audio_duration
+                    else:
+                        clip_duration = intro_duration
 
                     aspect = VideoAspect(video_aspect)
                     video_width, video_height = aspect.to_resolution()
@@ -631,12 +635,12 @@ def build_scene_video(
                     if intro_image_animation:
                         zoom_amount = config.video.get("intro_image_zoom_amount", 0.03)
                         clip = fit_intro_image_with_ken_burns(
-                            processed_image_path, video_width, video_height, intro_duration,
+                            processed_image_path, video_width, video_height, clip_duration,
                             bg_color_str=intro_bg_color, bg_type=intro_bg_type,
                             blur_radius=intro_bg_blur, zoom_amount=zoom_amount,
                         )
                     else:
-                        clip = ImageClip(processed_image_path).with_duration(intro_duration)
+                        clip = ImageClip(processed_image_path).with_duration(clip_duration)
                         clip = fit_intro_video_to_target(clip, video_width, video_height,
                             bg_color_str=intro_bg_color, bg_type=intro_bg_type,
                             blur_radius=intro_bg_blur)
@@ -652,7 +656,7 @@ def build_scene_video(
 
                     intro_clips.append(clip)
                     total_intro_duration = clip_duration
-                    logger.info(f"Image intro video processed: {intro_video_path} (duration: {intro_duration:.1f}s)")
+                    logger.info(f"Image intro video processed: {intro_video_path} (duration: {clip_duration:.1f}s)")
                 elif intro_video_path.endswith('.gif'):
                     # Handle animated GIF as video
                     logger.info(f"Processing animated GIF as intro video")
@@ -661,7 +665,7 @@ def build_scene_video(
                     clip_duration = clip.duration
                     clip_w, clip_h = clip.size
                     
-                    if clip_duration > intro_duration:
+                    if not intro_video_cover_full and clip_duration > intro_duration:
                         clip = clip.subclip(0, intro_duration)
                         clip_duration = intro_duration
                     
@@ -698,7 +702,10 @@ def build_scene_video(
                     close_clip(clip)
                     
                     start_time = 0
-                    end_time = min(start_time + intro_duration, clip_duration)
+                    if intro_video_cover_full:
+                        end_time = clip_duration
+                    else:
+                        end_time = min(start_time + intro_duration, clip_duration)
                     subclip = SubClippedVideoClip(file_path=intro_video_path, start_time=start_time, end_time=end_time, width=clip_w, height=clip_h)
                     
                     aspect = VideoAspect(video_aspect)
@@ -746,7 +753,11 @@ def build_scene_video(
         logger.info("No intro video provided")
     
     # Check if intro duration is enough to cover audio duration
-    if intro_clips and total_intro_duration >= audio_duration:
+    if intro_video_cover_full and intro_clips:
+        logger.info(f"Intro video cover full scene mode: intro will fill {audio_duration:.2f}s")
+        all_clips = intro_clips
+        has_enough_intro = True
+    elif intro_clips and total_intro_duration >= audio_duration:
         logger.info(f"Intro video duration ({total_intro_duration:.2f}s) is enough to cover audio duration ({audio_duration:.2f}s). Only using intro video.")
         
         # Trim intro video if it exceeds audio duration

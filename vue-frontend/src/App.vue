@@ -192,6 +192,7 @@ const generateVideo = async () => {
       intro_video: scene.introVideo || scene.intro_video,
       intro_video_original_path: scene.introVideoOriginalPath || scene.intro_video_original_path,
       intro_duration: scene.introVideoDuration || scene.intro_duration || 10,
+      intro_video_cover_full: scene.introVideoCoverFull || false,
     }));
     
     const hasScenes = scenes.length > 0;

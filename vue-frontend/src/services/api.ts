@@ -83,6 +83,7 @@ export interface Scene {
   introVideo?: string;
   introVideoOriginalPath?: string;
   introVideoDuration?: number;
+  introVideoCoverFull?: boolean;
 }
 
 export interface ParseScriptResponse {

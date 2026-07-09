@@ -139,8 +139,9 @@
                     </div>
                     <div class="intro-video-duration">
                       <el-icon class="video-icon"><VideoCamera /></el-icon>
-                      <el-input v-model.number="scene.introVideoDuration" type="number" :placeholder="t('Duration')" class="duration-input" />
+                      <el-input v-model.number="scene.introVideoDuration" type="number" :placeholder="t('Duration')" class="duration-input" :disabled="scene.introVideoCoverFull" />
                       <span class="duration-unit">{{ t('s') }}</span>
+                      <el-switch v-model="scene.introVideoCoverFull" :active-text="t('Cover Full Scene')" class="cover-full-switch" />
                     </div>
                   </div>
                   <div class="intro-video-placeholder" v-else>
@@ -210,6 +211,7 @@ interface Scene {
   introVideo?: string;
   introVideoOriginalPath?: string;
   introVideoDuration?: number;
+  introVideoCoverFull?: boolean;
 }
 
 const addNewScene = () => {
@@ -221,7 +223,8 @@ const addNewScene = () => {
     keywords: '',
     script: '',
     introVideo: undefined,
-    introVideoDuration: 10
+    introVideoDuration: 10,
+    introVideoCoverFull: false
   };
   scriptStore.addScene(newScene);
 };
@@ -241,7 +244,8 @@ const copyScene = (index: number) => {
     script: sceneToCopy.script,
     introVideo: sceneToCopy.introVideo,
     introVideoOriginalPath: sceneToCopy.introVideoOriginalPath,
-    introVideoDuration: sceneToCopy.introVideoDuration
+    introVideoDuration: sceneToCopy.introVideoDuration,
+    introVideoCoverFull: sceneToCopy.introVideoCoverFull
   };
   // Copy to index+1 position
   const newScenes = [...scenes.value];
@@ -929,6 +933,10 @@ defineExpose({
 .duration-unit {
   font-size: 14px;
   color: #606266;
+}
+
+.cover-full-switch {
+  margin-left: auto;
 }
 
 

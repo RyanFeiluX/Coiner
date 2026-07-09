@@ -671,7 +671,8 @@ def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_
         scene_info=f"(scene {scene_num}/{total_scenes})",
         local_video_paths=local_video_paths,
         intro_video_path=actual_intro_video if actual_intro_video and os.path.exists(actual_intro_video) else None,
-        intro_duration=scene.get("intro_duration", 10))
+        intro_duration=scene.get("intro_duration", 10),
+        intro_video_cover_full=scene.get("intro_video_cover_full", False))
     
     # build_result is the combined_video_path, used_local_paths contains actual used local material paths
     result = build_result
