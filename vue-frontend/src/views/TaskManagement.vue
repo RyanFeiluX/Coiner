@@ -27,6 +27,8 @@
         :delete-text="t('Delete')"
         :cancel-text="t('Cancel')"
         :sequence-number-text="t('Task #')"
+        :start-time-text="t('Start Time')"
+        :end-time-text="t('End Time')"
         @refresh="refreshTasks"
         @delete="deleteTask"
         @cancel="cancelTask"

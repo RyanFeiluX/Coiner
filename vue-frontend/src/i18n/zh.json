@@ -522,6 +522,8 @@
     "Cyan": "青色",
     "Brown": "棕色",
     "Gold": "金色",
-    "Silver": "银色"
+    "Silver": "银色",
+    "Start Time": "开始时间",
+    "End Time": "结束时间"
   }
 }

@@ -228,6 +228,8 @@
     "Gold": "Золотой",
     "Silver": "Серебряный",
     "Video Synthesis": "<strong>Видеосинтез</strong>",
-    "Silence Prefix": "Тихий Префикс"
+    "Silence Prefix": "Тихий Префикс",
+    "Start Time": "Время начала",
+    "End Time": "Время окончания"
   }
 }

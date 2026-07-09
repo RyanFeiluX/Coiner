@@ -518,6 +518,8 @@
     "Cyan": "Cyan",
     "Brown": "Brown",
     "Gold": "Gold",
-    "Silver": "Silver"
+    "Silver": "Silver",
+    "Start Time": "Start Time",
+    "End Time": "End Time"
   }
 }

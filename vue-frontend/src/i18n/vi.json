@@ -245,6 +245,8 @@
     "Gold": "Vàng Đồng",
     "Silver": "Bạc",
     "Video Synthesis": "<strong>Tổng Hợp Video</strong>",
-    "Silence Prefix": "Tiền Tố Im Lặng"
+    "Silence Prefix": "Tiền Tố Im Lặng",
+    "Start Time": "Thời Gian Bắt Đầu",
+    "End Time": "Thời Gian Kết Thúc"
   }
 }

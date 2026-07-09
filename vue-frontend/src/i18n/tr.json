@@ -228,6 +228,8 @@
     "Gold": "Altın",
     "Silver": "Gümüş",
     "Video Synthesis": "<strong>Video Sentezi</strong>",
-    "Silence Prefix": "Sessiz Önek"
+    "Silence Prefix": "Sessiz Önek",
+    "Start Time": "Başlangıç Zamanı",
+    "End Time": "Bitiş Zamanı"
   }
 }

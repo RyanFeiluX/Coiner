@@ -245,6 +245,8 @@
     "Gold": "Gold",
     "Silver": "Silber",
     "Video Synthesis": "<strong>Video-Synthese</strong>",
-    "Silence Prefix": "Stiller Präfix"
+    "Silence Prefix": "Stiller Präfix",
+    "Start Time": "Startzeit",
+    "End Time": "Endzeit"
   }
 }
