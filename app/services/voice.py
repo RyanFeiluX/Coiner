@@ -1802,12 +1802,14 @@ def tts(
         result = azure_tts_v1(text, voice_name, voice_rate, voice_file, voice_volume)
     
     # --- Speed post-processing for providers that don't support native speed ---
-    # Coze, SiliconFlow, and Edge TTS (Azure v1) apply speed via their APIs.
-    # Qwen, Gemini, and Azure v2 do NOT support speed natively — apply via pydub.
+    # Coze, SiliconFlow apply speed via their APIs. Qwen applies speed internally
+    # via pitch-preserving time-stretching. Edge TTS (Azure v1) applies speed via rate=.
+    # Gemini and Azure v2 do NOT support speed natively — apply via pydub.
     _native_speed_providers = (
         is_coze_voice(voice_name) or
         is_siliconflow_voice(voice_name) or
-        not (is_azure_v2_voice(voice_name) or is_gemini_voice(voice_name) or is_qwen_voice(voice_name))
+        is_qwen_voice(voice_name) or
+        not (is_azure_v2_voice(voice_name) or is_gemini_voice(voice_name))
     )
 
     if not _native_speed_providers and voice_rate != 1.0 and os.path.exists(voice_file):
@@ -2642,7 +2644,16 @@ def qwen_tts(
                 logger.error(f"Qwen TTS API exception for segment {i+1}: {error_msg}")
                 return None
         
-        # Merge audio segments and apply volume adjustment
+        # Merge audio segments and apply volume / speed adjustment
+        def _adjust_speed(seg):
+            """Pitch-preserving time-stretch via pydub speedup, fallback to frame-rate resampling."""
+            try:
+                from pydub.effects import speedup as _su
+                return _su(seg, playback_speed=voice_rate)
+            except Exception:
+                new_fr = int(seg.frame_rate * voice_rate)
+                return seg._spawn(seg.raw_data, overrides={'frame_rate': new_fr}).set_frame_rate(seg.frame_rate)
+
         if len(audio_segments) == 1:
             audio_segment = audio_segments[0]
             logger.info(f"Qwen TTS: 1 segment, duration={len(audio_segment)/1000:.1f}s")
@@ -2651,6 +2662,9 @@ def qwen_tts(
                 import math
                 volume_change_db = 20 * math.log10(voice_volume)
                 audio_segment = audio_segment + volume_change_db
+            if voice_rate != 1.0:
+                logger.info(f"Applying speed adjustment in Qwen TTS: {voice_rate}x")
+                audio_segment = _adjust_speed(audio_segment)
             audio_segment.export(voice_file, format="mp3")
         else:
             durations = [f"{len(seg)/1000:.1f}s" for seg in audio_segments]
@@ -2665,6 +2679,10 @@ def qwen_tts(
                 import math
                 volume_change_db = 20 * math.log10(voice_volume)
                 combined = combined + volume_change_db
+            
+            if voice_rate != 1.0:
+                logger.info(f"Applying speed adjustment in Qwen TTS: {voice_rate}x")
+                combined = _adjust_speed(combined)
             
             combined.export(voice_file, format="mp3")
         
