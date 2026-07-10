@@ -566,7 +566,6 @@ def preview_subtitle(request: Request, body: dict):
     stroke_width = body.get('stroke_width', 1.5)
     subtitle_position = body.get('subtitle_position', 'bottom')
     custom_position = float(body.get('custom_position', 80.0))
-    subtitle_auto_fit = body.get('subtitle_auto_fit', False)
     subtitle_margin = body.get('subtitle_margin')
     if subtitle_margin is None:
         subtitle_margin = config.subtitle.get("subtitle_margin", 0.05)
@@ -621,12 +620,12 @@ def preview_subtitle(request: Request, body: dict):
     font_size_px = max(1, int(font_size_pt * height / _play_res_y))
 
     margin_px = height * subtitle_margin
-    max_width = width * (1 - 2 * subtitle_margin) * 0.95
+    max_width = width * (1 - 2 * subtitle_margin)
 
     try:
         wrapped_text, text_h, actual_font_size_px = wrap_text(
             subtitle_text, max_width=max_width, font=font_path,
-            font_size_px=font_size_px, auto_fit=subtitle_auto_fit
+            font_size_px=font_size_px
         )
     except Exception as e:
         logger.warning(f"wrap_text failed for subtitle preview: {e}")

@@ -1388,17 +1388,19 @@ def wrap_text(text, max_width, font="Arial", font_size_px=60, auto_fit=False, mi
         else:
             best_split_pos = target_chars
         
-        # Look for punctuation/space near the greedy split position
-        best_split_pos = _find_punctuation_split(current_line, best_split_pos, punctuation_chars)
+        # Look for punctuation/space near the greedy split position (backward only, keep first line within max_width)
+        best_split_pos = _find_punctuation_split(current_line, best_split_pos, max_width, get_text_size, punctuation_chars)
         
         # Balanced line breaking: if the second line would be too short, 
         # try moving words back from line 1 to line 2
         if balance_lines:
             second_line = current_line[best_split_pos:].strip()
-            if second_line and len(second_line) <= 3:
-                best_split_pos = _balance_split(
-                    current_line, best_split_pos, max_width, get_text_size, word_boundary_chars
-                )
+            if second_line:
+                w2, _ = get_text_size(second_line)
+                if w2 < max_width * 0.25:
+                    best_split_pos = _balance_split(
+                        current_line, best_split_pos, max_width, get_text_size, word_boundary_chars
+                    )
         
         line = current_line[:best_split_pos].strip()
         
@@ -1415,14 +1417,15 @@ def wrap_text(text, max_width, font="Arial", font_size_px=60, auto_fit=False, mi
     return wrapped_text, total_height, actual_font_size_px
 
 
-def _find_punctuation_split(text, split_pos, punctuation_chars):
+def _find_punctuation_split(text, split_pos, max_width, get_text_size, punctuation_chars):
     look_range = 5
     start_look = max(0, split_pos - look_range)
-    end_look = min(len(text), split_pos + look_range)
     
-    for i in range(end_look, start_look, -1):
-        if i < len(text) and (text[i] in punctuation_chars or text[i] == ' '):
-            return i + 1
+    for i in range(split_pos - 1, start_look - 1, -1):
+        if text[i] in punctuation_chars or text[i] == ' ':
+            line1 = text[:i + 1].strip()
+            if line1 and get_text_size(line1) <= max_width:
+                return i + 1
     return split_pos
 
 

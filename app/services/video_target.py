@@ -1318,8 +1318,7 @@ def process_final_video(
                     _cfg = load_config()
                     subtitle_config = _cfg.get("subtitle", {})
                     subtitle_margin = subtitle_config.get("subtitle_margin", 0.05)
-                    max_width = video_width * (1 - 2 * subtitle_margin) * 0.95
-                    subtitle_auto_fit = subtitle_config.get("subtitle_auto_fit", False)
+                    max_width = video_width * (1 - 2 * subtitle_margin)
                     
                     _play_res_y = 1080
                     font_size_pt = int(params.font_size)
@@ -1354,9 +1353,9 @@ def process_final_video(
                                 continue
                             
                             try:
-                                wrapped_text, text_h, _ = wrap_text(
-                                    text, max_width=max_width, font=font_to_use, 
-                                    font_size_px=font_size_px, auto_fit=subtitle_auto_fit
+                                wrapped_text, text_h, actual_font_size_px = wrap_text(
+                                    text, max_width=max_width, font=font_to_use,
+                                    font_size_px=font_size_px
                                 )
                             except Exception as e:
                                 logger.warning(f"wrap_text failed for subtitle {index}: {e}")
@@ -1378,7 +1377,7 @@ def process_final_video(
                                 txt_clip = TextClip(
                                     text=wrapped_text,
                                     font=font_to_use,
-                                    font_size=font_size_px,
+                                    font_size=actual_font_size_px,
                                     color=parse_color(params.text_fore_color),
                                     bg_color=bg_color,
                                     stroke_color=parse_color(params.stroke_color),
