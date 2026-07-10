@@ -1,12 +1,22 @@
 <template>
   <div class="task-management">
-    <el-card :body-style="{ padding: '20px' }">
+    <el-card class="task-card" :body-style="{ padding: '20px' }">
       <template #header>
         <div class="card-header">
           <h2 class="title">📋 {{ t('Task Management') }}</h2>
         </div>
       </template>
       
+      <el-alert
+        v-if="showTaskLimitWarning"
+        :title="t('Task Limit Warning')"
+        type="warning"
+        show-icon
+        :closable="false"
+        :description="taskLimitDescription"
+        style="margin-bottom: 16px;"
+      />
+
       <TaskStatus
         :tasks="tasks"
         :loading="loading"
@@ -69,6 +79,12 @@ const runningTasks = computed(() => tasksStore.runningTasks);
 const completedTasks = computed(() => tasksStore.completedTasks);
 const failedTasks = computed(() => tasksStore.failedTasks);
 
+const showTaskLimitWarning = computed(() => tasks.value.length > 20);
+
+const taskLimitDescription = computed(() => {
+  return `${t('Task Limit Description')}（${tasks.value.length}）`;
+});
+
 const refreshInterval = ref<number | null>(null);
 
 const refreshTasks = async () => {
@@ -91,7 +107,7 @@ onMounted(async () => {
   // Set auto refresh interval (every 5 seconds)
   refreshInterval.value = window.setInterval(async () => {
     // 轮询时不显示 loading 状态，避免界面闪动
-    await tasksStore.fetchAllTasks(1, 10, false);
+    await tasksStore.fetchAllTasks(1, 100, false);
   }, 5000);
 });
 
@@ -106,6 +122,24 @@ onUnmounted(() => {
 <style scoped>
 .task-management {
   width: 100%;
+  height: calc(100vh - 104px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.task-card :deep(.el-card__body) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .card-header {

@@ -195,6 +195,8 @@
     "Completed": "Concluído",
     "Failed": "Falhou",
     "Task": "Tarefa",
+    "Task Limit Warning": "Muitas Tarefas",
+    "Task Limit Description": "Há muitas tarefas. Limpe tarefas antigas concluídas ou com falha para manter o desempenho do sistema",
     "Title Settings": "Configurações de Título",
     "Enable Title": "Ativar Título",
     "Title Text": "Texto do Título",

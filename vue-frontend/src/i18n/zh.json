@@ -395,6 +395,8 @@
     "Task": "任务",
     "Task #": "任务 #",
     "Task queued, waiting for previous task to complete...": "任务已排队，等待前一个任务完成...",
+    "Task Limit Warning": "任务数量过多",
+    "Task Limit Description": "当前有大量任务，建议清除已完成或失败的老任务以保持系统性能",
     "Task Type": "任务类型",
     "Video Generation": "视频生成",
     "Scene Integration": "场景集成",

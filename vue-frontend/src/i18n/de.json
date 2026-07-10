@@ -195,6 +195,8 @@
     "Completed": "Abgeschlossen",
     "Failed": "Fehlgeschlagen",
     "Task": "Aufgabe",
+    "Task Limit Warning": "Zu viele Aufgaben",
+    "Task Limit Description": "Es gibt viele Aufgaben. Bitte löschen Sie abgeschlossene oder fehlgeschlagene alte Aufgaben, um die Systemleistung zu erhalten",
     "Title Settings": "Titel-Einstellungen",
     "Enable Title": "Titel aktivieren",
     "Title Text": "Titeltext",

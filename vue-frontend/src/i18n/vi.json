@@ -195,6 +195,8 @@
     "Completed": "Hoàn Thành",
     "Failed": "Thất Bại",
     "Task": "Công Việc",
+    "Task Limit Warning": "Quá Nhiều Công Việc",
+    "Task Limit Description": "Có quá nhiều công việc. Vui lòng xóa các công việc cũ đã hoàn thành hoặc thất bại để duy trì hiệu suất hệ thống",
     "Title Settings": "Cài Đặt Tiêu Đề",
     "Enable Title": "Bật Tiêu Đề",
     "Title Text": "Văn Bản Tiêu Đề",

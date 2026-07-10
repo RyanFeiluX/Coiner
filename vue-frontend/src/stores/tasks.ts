@@ -13,6 +13,7 @@ export interface Task {
   updated_at?: string;
   start_time?: string;
   end_time?: string;
+  sequence_number?: number;
 }
 
 export const useTasksStore = defineStore('tasks', {
@@ -50,7 +51,7 @@ export const useTasksStore = defineStore('tasks', {
   },
   
   actions: {
-    async fetchAllTasks(page: number = 1, pageSize: number = 10, showLoading: boolean = true) {
+    async fetchAllTasks(page: number = 1, pageSize: number = 100, showLoading: boolean = true) {
       if (showLoading) {
         this.loading = true;
       }
@@ -76,12 +77,8 @@ export const useTasksStore = defineStore('tasks', {
             }
           });
           
-          // 按创建时间排序（最新的在前面）
-          this.tasks.sort((a, b) => {
-            const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-            const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-            return dateB - dateA;
-          });
+          // 按任务编号升序排列
+          this.tasks.sort((a, b) => (a.sequence_number ?? 0) - (b.sequence_number ?? 0));
         }
       } catch (error) {
         this.error = 'Failed to fetch tasks';

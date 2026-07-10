@@ -95,7 +95,7 @@ export interface ParseScriptResponse {
 
 export const apiService = {
   // Task related
-  getAllTasks: async (page: number = 1, pageSize: number = 10): Promise<ApiResponse> => {
+  getAllTasks: async (page: number = 1, pageSize: number = 100): Promise<ApiResponse> => {
     const response = await api.get('/tasks', { params: { page, page_size: pageSize } });
     return response.data;
   },

@@ -473,6 +473,8 @@
     "Task": "Task",
     "Task #": "Task #",
     "Task queued, waiting for previous task to complete...": "Task queued, waiting for previous task to complete...",
+    "Task Limit Warning": "Too Many Tasks",
+    "Task Limit Description": "There are many tasks. Please clear completed or failed old tasks to maintain system performance",
     "Task Type": "Task Type",
     "Video Generation": "Video Generation",
     "Scene Integration": "Scene Integration",

@@ -72,7 +72,7 @@ speech_region = ""
 
 [audio]
 tts_server = "coze-tts"
-voice_name = "coze|7468512265151741979|擎苍-Male|https://lf26-appstore-sign.oceancloudapi.com/ocean-cloud-tos/VolcanoSystemVoice/zh_male_qingcang_mars_bigtts.mp3?lk3s=da27ec82&x-expires=1783700379&x-signature=FG%2FheQ46IC0hdOS%2F%2FqWV95BkR3U%3D|无语，擎天之巨首，揽尽世间风云变幻，诸般阻碍，不过是无脉相巅峰之基石。今日之儒，来日必当十倍奉还。 无知威名，必将震慑四海八荒。|"
+voice_name = "coze|7468512265151741979|擎苍-Male|https://lf26-appstore-sign.oceancloudapi.com/ocean-cloud-tos/VolcanoSystemVoice/zh_male_qingcang_mars_bigtts.mp3?lk3s=da27ec82&x-expires=1783734232&x-signature=%2FauZCIfFath3DPpEot4CVtLveHc%3D|无语，擎天之巨首，揽尽世间风云变幻，诸般阻碍，不过是无脉相巅峰之基石。今日之儒，来日必当十倍奉还。 无知威名，必将震慑四海八荒。|"
 voice_volume = 1.8
 voice_rate = 1.1
 bgm_type = ""
@@ -93,7 +93,7 @@ stroke_width = 1
 
 [title]
 title_enabled = true
-title_text = "韦神获奖秘密"
+title_text = "韦神获奖揭秘"
 title_duration = 3
 title_font_name = "MicrosoftYaHeiBold.ttc"
 title_font_size = 54

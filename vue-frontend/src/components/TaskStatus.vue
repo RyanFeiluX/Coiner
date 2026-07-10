@@ -33,104 +33,103 @@
       </div>
       
       <div v-else class="tasks-list">
-        <el-collapse v-model="activeNames">
-          <el-collapse-item v-for="task in tasks" :key="task.task_id" :title="getTaskTitle(task)" :name="task.task_id">
-            <div class="task-details">
-              <div class="task-info">
-                <div class="info-item" v-if="task.sequence_number">
-                  <span class="label">{{ sequenceNumberText }}:</span>
-                  <el-tag type="primary">#{{ task.sequence_number }}</el-tag>
+        <div class="tasks-scroll">
+          <el-collapse v-model="activeNames">
+            <el-collapse-item v-for="task in tasks" :key="task.task_id" :title="getTaskTitle(task)" :name="task.task_id">
+              <div class="task-details">
+                <div class="task-info">
+                  <div class="info-item" v-if="task.sequence_number">
+                    <span class="label">{{ sequenceNumberText }}:</span>
+                    <el-tag type="primary">#{{ task.sequence_number }}</el-tag>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">{{ statusText }}:</span>
+                    <transition name="fade" mode="out-in">
+                      <el-tag :key="task.status" :type="getStatusType(task.status)">{{ getStatusText(task.status) }}</el-tag>
+                    </transition>
+                  </div>
+                  <div class="info-item" v-if="task.task_type">
+                    <span class="label">{{ taskTypeText }}:</span>
+                    <el-tag type="info">{{ getTaskTypeText(task.task_type) }}</el-tag>
+                  </div>
+                  <div class="info-item" v-if="task.progress !== undefined">
+                    <span class="label">{{ progressText }}:</span>
+                    <transition name="fade">
+                      <el-progress :key="task.progress" :percentage="task.progress" :format="formatProgress" />
+                    </transition>
+                  </div>
+                  <div class="info-item" v-if="task.created_at">
+                    <span class="label">{{ createdAtText }}:</span>
+                    <span>{{ formatDate(task.created_at) }}</span>
+                  </div>
+                  <div class="info-item" v-if="task.updated_at">
+                    <span class="label">{{ updatedAtText }}:</span>
+                    <span>{{ formatDate(task.updated_at) }}</span>
+                  </div>
+                  <div class="info-item" v-if="task.start_time">
+                    <span class="label">{{ startTimeText }}:</span>
+                    <span>{{ formatDate(task.start_time) }}</span>
+                  </div>
+                  <div class="info-item" v-if="task.end_time">
+                    <span class="label">{{ endTimeText }}:</span>
+                    <span>{{ formatDate(task.end_time) }}</span>
+                  </div>
+                  <div class="info-item" v-if="task.error">
+                    <span class="label">{{ errorText }}:</span>
+                    <span class="error-message">{{ task.error }}</span>
+                  </div>
                 </div>
-                <div class="info-item">
-                  <span class="label">{{ statusText }}:</span>
-                  <transition name="fade" mode="out-in">
-                    <el-tag :key="task.status" :type="getStatusType(task.status)">{{ getStatusText(task.status) }}</el-tag>
-                  </transition>
-                </div>
-                <div class="info-item" v-if="task.task_type">
-                  <span class="label">{{ taskTypeText }}:</span>
-                  <el-tag type="info">{{ getTaskTypeText(task.task_type) }}</el-tag>
-                </div>
-                <div class="info-item" v-if="task.progress !== undefined">
-                  <span class="label">{{ progressText }}:</span>
-                  <transition name="fade">
-                    <el-progress :key="task.progress" :percentage="task.progress" :format="formatProgress" />
-                  </transition>
-                </div>
-                <div class="info-item" v-if="task.created_at">
-                  <span class="label">{{ createdAtText }}:</span>
-                  <span>{{ formatDate(task.created_at) }}</span>
-                </div>
-                <div class="info-item" v-if="task.updated_at">
-                  <span class="label">{{ updatedAtText }}:</span>
-                  <span>{{ formatDate(task.updated_at) }}</span>
-                </div>
-                <div class="info-item" v-if="task.start_time">
-                  <span class="label">{{ startTimeText }}:</span>
-                  <span>{{ formatDate(task.start_time) }}</span>
-                </div>
-                <div class="info-item" v-if="task.end_time">
-                  <span class="label">{{ endTimeText }}:</span>
-                  <span>{{ formatDate(task.end_time) }}</span>
-                </div>
-                <div class="info-item" v-if="task.error">
-                  <span class="label">{{ errorText }}:</span>
-                  <span class="error-message">{{ task.error }}</span>
-                </div>
-              </div>
 
-              <div v-if="task.status === 'completed' && task.scene_loss_warning" class="scene-loss-banner">
-                <el-alert
-                  :title="task.scene_loss_warning"
-                  type="warning"
-                  show-icon
-                  :closable="false"
-                >
-                  <template #default>
-                    <span>{{ t('Some scenes were lost during generation. You can recover them via Scene Integration.') }}</span>
-                  </template>
-                </el-alert>
-                <el-button
-                  v-if="task.videos && task.videos.length > 0"
-                  type="primary"
-                  size="small"
-                  class="recover-btn"
-                  @click="navigateToSceneIntegration(task.task_id)"
-                >
-                  {{ t('Recover Lost Scenes') }}
-                </el-button>
-              </div>
-              
-              <div class="task-actions">
-                <!-- 下载按钮 - 仅在任务完成且有视频时显示 -->
-                <transition name="fade">
-                  <el-button v-if="task.status === 'completed' && task.videos && task.videos.length > 0" :key="'download-'+task.task_id" type="primary" size="small" @click="handleDownload(task.videos[0])">
-                    <el-icon><Download /></el-icon>
-                    {{ downloadText }}
+                <div v-if="task.status === 'completed' && task.scene_loss_warning" class="scene-loss-banner">
+                  <el-alert
+                    :title="task.scene_loss_warning"
+                    type="warning"
+                    show-icon
+                    :closable="false"
+                  >
+                    <template #default>
+                      <span>{{ t('Some scenes were lost during generation. You can recover them via Scene Integration.') }}</span>
+                    </template>
+                  </el-alert>
+                  <el-button
+                    v-if="task.videos && task.videos.length > 0"
+                    type="primary"
+                    size="small"
+                    class="recover-btn"
+                    @click="navigateToSceneIntegration(task.task_id)"
+                  >
+                    {{ t('Recover Lost Scenes') }}
                   </el-button>
-                </transition>
+                </div>
                 
-                <!-- 取消按钮 - 任务运行时显示；cancelling 时显示为已禁用的加载状态 -->
-                <transition name="fade">
-                  <el-button v-if="task.status === 'running'" :key="'cancel-'+task.task_id" type="warning" size="small" @click="$emit('cancel', task.task_id)">
-                    <el-icon><Close /></el-icon>
-                    {{ cancelText }}
+                <div class="task-actions">
+                  <transition name="fade">
+                    <el-button v-if="task.status === 'completed' && task.videos && task.videos.length > 0" :key="'download-'+task.task_id" type="primary" size="small" @click="handleDownload(task.videos[0])">
+                      <el-icon><Download /></el-icon>
+                      {{ downloadText }}
+                    </el-button>
+                  </transition>
+                  
+                  <transition name="fade">
+                    <el-button v-if="task.status === 'running'" :key="'cancel-'+task.task_id" type="warning" size="small" @click="$emit('cancel', task.task_id)">
+                      <el-icon><Close /></el-icon>
+                      {{ cancelText }}
+                    </el-button>
+                    <el-button v-else-if="task.status === 'cancelling'" :key="'cancelling-'+task.task_id" type="warning" size="small" disabled>
+                      <el-icon><Loading /></el-icon>
+                      {{ t('Cancelling...') }}
+                    </el-button>
+                  </transition>
+                  
+                  <el-button type="danger" size="small" @click.stop="$emit('delete', task.task_id)">
+                    <el-icon><Delete /></el-icon>
+                    {{ deleteText }}
                   </el-button>
-                  <el-button v-else-if="task.status === 'cancelling'" :key="'cancelling-'+task.task_id" type="warning" size="small" disabled>
-                    <el-icon><Loading /></el-icon>
-                    {{ t('Cancelling...') }}
-                  </el-button>
-                </transition>
-                
-                <!-- 删除按钮 - 对所有状态的任务都显示 -->
-                <el-button type="danger" size="small" @click.stop="$emit('delete', task.task_id)">
-                  <el-icon><Delete /></el-icon>
-                  {{ deleteText }}
-                </el-button>
+                </div>
               </div>
-            </div>
-          </el-collapse-item>
-        </el-collapse>
+            </el-collapse-item>
+          </el-collapse>
+        </div>
       </div>
     </el-card>
   </div>
@@ -271,6 +270,21 @@ const navigateToSceneIntegration = (taskId: string) => {
 <style scoped>
 .task-status {
   width: 100%;
+  flex: 1;
+  overflow: hidden;
+}
+
+.task-status :deep(.el-card) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-status :deep(.el-card__body) {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .card-header {
@@ -296,6 +310,15 @@ const navigateToSceneIntegration = (taskId: string) => {
 
 .tasks-list {
   margin-top: 10px;
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.tasks-scroll {
+  overflow-y: auto;
+  flex: 1;
 }
 
 .task-details {

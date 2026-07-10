@@ -178,6 +178,8 @@
     "Completed": "Tamamlandı",
     "Failed": "Başarısız",
     "Task": "Görev",
+    "Task Limit Warning": "Çok Fazla Görev",
+    "Task Limit Description": "Çok sayıda görev var. Sistem performansını korumak için tamamlanmış veya başarısız eski görevleri temizleyin",
     "Title Settings": "Başlık Ayarları",
     "Enable Title": "Başlığı Etkinleştir",
     "Title Text": "Başlık Metni",
