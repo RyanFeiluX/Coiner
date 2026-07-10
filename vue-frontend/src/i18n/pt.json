@@ -173,6 +173,8 @@
     "Delete Selected Pixabay API Key": "Excluir chave de API do Pixabay selecionada",
     "Pixabay API Key deleted successfully": "Chave de API do Pixabay excluída com sucesso",
     "Scene Integration": "Integração de Cena",
+    "Improve Integration": "Melhorar Integração",
+    "Apply current config instead of original task config": "Usar configuração atual em vez da configuração original da tarefa",
     "Task Management": "Gerenciamento de Tarefas",
     "Task Statistics": "Estatísticas de Tarefas",
     "Total Tasks": "Total de Tarefas",

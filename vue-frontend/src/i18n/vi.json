@@ -173,6 +173,8 @@
     "Delete Selected Pixabay API Key": "Xóa API Key Pixabay đã chọn",
     "Pixabay API Key deleted successfully": "Xóa API Key Pixabay thành công",
     "Scene Integration": "Tích Hợp Scene",
+    "Improve Integration": "Cải Thiện Tích Hợp",
+    "Apply current config instead of original task config": "Sử dụng cấu hình hiện tại thay vì cấu hình tác vụ gốc",
     "Task Management": "Quản Lý Công Việc",
     "Task Statistics": "Thống Kê Công Việc",
     "Total Tasks": "Tổng Số Công Việc",

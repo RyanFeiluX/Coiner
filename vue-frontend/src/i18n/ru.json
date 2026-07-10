@@ -156,6 +156,8 @@
     "LLM Settings": "<strong>Настройки LLM</strong>",
     "Video Source Settings": "<strong>Настройки источника видео</strong>",
     "Scene Integration": "Интеграция сцен",
+    "Improve Integration": "Улучшить интеграцию",
+    "Apply current config instead of original task config": "Использовать текущую конфигурацию вместо исходной",
     "Task Management": "Управление задачами",
     "Task Statistics": "Статистика задач",
     "Total Tasks": "Всего задач",

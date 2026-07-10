@@ -257,6 +257,8 @@
     "Processing video integration...": "正在处理场景集成...",
     "Video integration completed": "场景集成完成",
     "Video integration failed": "场景集成失败",
+    "Improve Integration": "改进集成",
+    "Apply current config instead of original task config": "使用当前配置替代原任务配置",
     "Current Keys:": "当前 Keys:",
     "No Pexels API Keys currently": "暂无 Pexels API Keys",
     "Add Pexels API Key": "新增 Pexels API Key",

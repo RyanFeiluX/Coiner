@@ -156,6 +156,8 @@
     "LLM Settings": "<strong>LLM Ayarları</strong>",
     "Video Source Settings": "<strong>Video Kaynağı Ayarları</strong>",
     "Scene Integration": "Sahne Entegrasyonu",
+    "Improve Integration": "Entegrasyonu Geliştir",
+    "Apply current config instead of original task config": "Orijinal görev yapılandırması yerine mevcut yapılandırmayı kullan",
     "Task Management": "Görev Yönetimi",
     "Task Statistics": "Görev İstatistikleri",
     "Total Tasks": "Toplam Görevler",

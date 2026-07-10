@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.9.12"
+project_version = "2.9.13"
 
 [app]
 host_visible = false

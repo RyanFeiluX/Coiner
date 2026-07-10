@@ -89,6 +89,23 @@
             </div>
           </div>
           
+          <!-- Improve Integration Toggle -->
+          <div v-if="taskFiles.sceneVideos > 0" class="improve-section">
+            <el-divider />
+            <div class="improve-toggle">
+              <el-switch v-model="improveIntegration" />
+              <span class="improve-label">{{ t('Improve Integration') }}</span>
+              <el-tooltip :content="t('Apply current config instead of original task config')" placement="top">
+                <el-icon class="improve-info"><InfoFilled /></el-icon>
+              </el-tooltip>
+            </div>
+            <div v-if="improveIntegration" class="improve-items">
+              <el-checkbox v-model="improveSubtitle">{{ t('Subtitle Settings') }}</el-checkbox>
+              <el-checkbox v-model="improveBgm">{{ t('Background Music') }}</el-checkbox>
+              <el-checkbox v-model="improveTitle">{{ t('Title Settings') }}</el-checkbox>
+            </div>
+          </div>
+
           <!-- Start Integration Button -->
           <div v-if="taskFiles.sceneVideos > 0" class="form-item">
             <el-button
@@ -129,6 +146,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onUnmounted, onMounted } from 'vue';
+import { InfoFilled } from '@element-plus/icons-vue';
 import { useI18nStore } from '../stores/i18n';
 import { useSettingsStore } from '../stores/settings';
 import { apiService } from '../services/api';
@@ -151,6 +169,11 @@ const startScene = ref(1);
 const endScene = ref(1);
 // Whether it's running
 const isRunning = ref(false);
+// Improve integration toggle
+const improveIntegration = ref(false);
+const improveSubtitle = ref(true);
+const improveBgm = ref(true);
+const improveTitle = ref(true);
 // Progress
 const progress = ref(0);
 // Status
@@ -300,8 +323,14 @@ const startIntegration = async () => {
   };
   
   try {
-    // Merge subtitle, BGM, and title parameters
-    const requestParams = { ...subtitleParams, ...bgmParams, ...titleParams };
+    // Build request params: only include param groups selected in improve mode
+    const requestParams = {};
+    if (improveIntegration.value) {
+      if (improveSubtitle.value) Object.assign(requestParams, subtitleParams);
+      if (improveBgm.value) Object.assign(requestParams, bgmParams);
+      if (improveTitle.value) Object.assign(requestParams, titleParams);
+    }
+    // When toggle is OFF, requestParams is empty → backend uses original_task config / defaults
     
     const response = await apiService.recoverSceneIntegration(
       taskInput.value, 
@@ -500,6 +529,38 @@ defineExpose({
 
 .range-selectors .form-item {
   flex: 1;
+}
+
+.improve-section {
+  margin: 8px 0;
+}
+
+.improve-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.improve-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.improve-info {
+  font-size: 14px;
+  color: #909399;
+  cursor: help;
+}
+
+.improve-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: 4px;
+  padding-left: 12px;
+  border-left: 2px solid #e0e0e0;
 }
 
 .progress-container {
