@@ -165,17 +165,53 @@
           </div>
         </div>
 
-        <div class="form-item">
-          <label class="form-label">{{ t('Silence Prefix') }} (s)</label>
-          <div class="slider-control">
-            <el-slider
-              v-model="form.silenceDuration"
-              :min="0.0"
-              :max="5.0"
-              :step="0.1"
-              :show-input="true"
-              :input-size="'small'"
-            />
+        <div class="form-group video-enhance-group">
+          <div class="group-title">{{ t('Video Enhancement') }}</div>
+
+          <div class="form-item">
+            <label class="form-label">{{ t('Silence Prefix') }} (s)</label>
+            <div class="slider-control">
+              <el-slider
+                v-model="form.silenceDuration"
+                :min="0.0"
+                :max="5.0"
+                :step="0.1"
+                :show-input="true"
+                :input-size="'small'"
+              />
+            </div>
+          </div>
+
+          <div class="form-item">
+            <label class="form-label">{{ t('Output Background Color') }}</label>
+            <div class="color-select-wrapper">
+              <div class="color-preview" :style="{ backgroundColor: getColorValue(form.outputBgColor) }">
+                <span v-if="isLightColor(form.outputBgColor)" class="preview-label">{{ getColorName(form.outputBgColor) }}</span>
+                <span v-else class="preview-label light-text">{{ getColorName(form.outputBgColor) }}</span>
+              </div>
+              <div class="color-options">
+                <button
+                  v-for="color in colorOptions"
+                  :key="color.value"
+                  class="color-option"
+                  :class="{ active: form.outputBgColor === color.value }"
+                  :style="{ backgroundColor: color.hex }"
+                  :title="t(color.label)"
+                  @click="form.outputBgColor = color.value"
+                >
+                  <span v-if="form.outputBgColor === color.value" class="check-icon">✓</span>
+                </button>
+              </div>
+              <div class="custom-color-picker">
+                <el-color-picker
+                  v-model="customColor"
+                  show-alpha
+                  class="color-picker"
+                  @change="handleCustomColorChange"
+                />
+                <span class="custom-color-label">{{ t('Custom Color') }}</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -204,38 +240,6 @@
               :show-input="true"
               :input-size="'small'"
             />
-          </div>
-        </div>
-
-        <div class="form-item">
-          <label class="form-label">{{ t('Output Background Color') }}</label>
-          <div class="color-select-wrapper">
-            <div class="color-preview" :style="{ backgroundColor: getColorValue(form.outputBgColor) }">
-              <span v-if="isLightColor(form.outputBgColor)" class="preview-label">{{ getColorName(form.outputBgColor) }}</span>
-              <span v-else class="preview-label light-text">{{ getColorName(form.outputBgColor) }}</span>
-            </div>
-            <div class="color-options">
-              <button
-                v-for="color in colorOptions"
-                :key="color.value"
-                class="color-option"
-                :class="{ active: form.outputBgColor === color.value }"
-                :style="{ backgroundColor: color.hex }"
-                :title="t(color.label)"
-                @click="form.outputBgColor = color.value"
-              >
-                <span v-if="form.outputBgColor === color.value" class="check-icon">✓</span>
-              </button>
-            </div>
-            <div class="custom-color-picker">
-              <el-color-picker
-                v-model="customColor"
-                show-alpha
-                class="color-picker"
-                @change="handleCustomColorChange"
-              />
-              <span class="custom-color-label">{{ t('Custom Color') }}</span>
-            </div>
           </div>
         </div>
       </div>
@@ -786,5 +790,26 @@ defineExpose({
 
 .intro-video-background-group .form-item:last-child {
   margin-bottom: 0;
+}
+
+.video-enhance-group {
+  border: 1px solid #e4e7ed;
+}
+
+.video-enhance-group .form-item {
+  margin-bottom: 16px;
+}
+
+.video-enhance-group .form-item:last-child {
+  margin-bottom: 0;
+}
+
+.group-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e4e7ed;
 }
 </style>

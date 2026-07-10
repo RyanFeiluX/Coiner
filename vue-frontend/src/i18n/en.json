@@ -93,6 +93,7 @@
     "Generating Video Keywords": "AI is generating video keywords...",
     "Video Keywords": "Video Keywords (:blue[① Optional, AI generated ② Use <strong>English commas</strong> for separation, English only])",
     "Video Settings": "Video Settings",
+    "Video Enhancement": "Video Enhancement",
     "Video Concat Mode": "Video Concatenation Mode",
     "Random": "Random Concatenation (Recommended)",
     "Sequential": "Sequential Concatenation",

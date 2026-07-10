@@ -86,6 +86,7 @@
     "Generating Video Keywords": "AI正在生成视频关键词...",
     "Video Keywords": "视频关键词（:blue[①可不填，使用AI生成 ②用<strong>英文逗号</strong>分隔，只支持英文]）",
     "Video Settings": "视频设置",
+    "Video Enhancement": "视频增强",
     "Video Concat Mode": "视频拼接模式",
     "Random": "随机拼接（推荐）",
     "Sequential": "顺序拼接",
