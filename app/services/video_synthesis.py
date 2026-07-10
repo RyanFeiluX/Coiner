@@ -278,7 +278,7 @@ def _rebuild_scene_video(scene_info: dict, task_dir: str) -> str:
     return None
 
 
-def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_scene=None, end_scene=None, task_id: str = None, subtitle_params: dict = None, bgm_params: dict = None, title_params: dict = None, check_cancelled=None, task_create_time: float = None) -> str:
+def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_scene=None, end_scene=None, task_id: str = None, subtitle_params: dict = None, bgm_params: dict = None, title_params: dict = None, video_enhance_params: dict = None, check_cancelled=None, task_create_time: float = None) -> str:
     """
     Recover video synthesis from existing task files.
     
@@ -568,6 +568,10 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         if title_params is None:
             title_params = {}
         
+        # Use video_enhance_params if provided, otherwise fall back to config
+        if video_enhance_params is None:
+            video_enhance_params = {}
+        
         params = VideoParams(
             video_subject="Recovered Video",
             video_aspect=VideoAspect(aspect_ratio),
@@ -586,6 +590,8 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
             bgm_type=bgm_params.get('bgm_type', app_config.get("bgm_type", audio_config.get("bgm_type", ui_config.get("bgm_type", "random")))),
             bgm_file=bgm_params.get('bgm_file', ''),
             bgm_volume=float(bgm_params.get('bgm_volume', app_config.get("bgm_volume", audio_config.get("bgm_volume", ui_config.get("bgm_volume", 0.2))))),
+            # Video enhancement params: video_enhance_params > app_config > default
+            output_bg_color=video_enhance_params.get('output_bg_color', app_config.get("output_bg_color", "black")),
             # Title params (synthesis-level): title_params > title_config > ui_config
             title_enabled=title_params.get('title_enabled', title_config.get("title_enabled", ui_config.get("title_enabled", False))),
             title_text=title_params.get('title_text', title_config.get("title_text", ui_config.get("title_text", ""))),
@@ -625,7 +631,8 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         
         # Create silence prefix video BEFORE subtitle burning
         # This ensures the silence prefix uses the ORIGINAL first frame (without subtitles)
-        from app.config.config import silence_duration as config_silence_duration
+        from app.config.config import silence_duration as default_silence_duration
+        config_silence_duration = video_enhance_params.get('silence_duration', default_silence_duration)
         silence_video_path = None
         if config_silence_duration > 0 and video_paths:
             from app.services.video_target import create_silence_prefix_video, analyze_audio_params

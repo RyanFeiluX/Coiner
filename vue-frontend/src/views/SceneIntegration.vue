@@ -103,6 +103,7 @@
               <el-checkbox v-model="improveSubtitle">{{ t('Subtitle Settings') }}</el-checkbox>
               <el-checkbox v-model="improveBgm">{{ t('Background Music') }}</el-checkbox>
               <el-checkbox v-model="improveTitle">{{ t('Title Settings') }}</el-checkbox>
+              <el-checkbox v-model="improveVideoEnhancement">{{ t('Video Enhancement') }}</el-checkbox>
             </div>
           </div>
 
@@ -174,6 +175,7 @@ const improveIntegration = ref(false);
 const improveSubtitle = ref(true);
 const improveBgm = ref(true);
 const improveTitle = ref(true);
+const improveVideoEnhancement = ref(true);
 // Progress
 const progress = ref(0);
 // Status
@@ -300,6 +302,12 @@ const startIntegration = async () => {
     bgm_volume: parseFloat(settingsStore.audio.backgroundMusicVolume) || 0.2
   };
   
+  // Get latest video enhancement settings from settings store
+  const videoEnhanceParams = {
+    output_bg_color: settingsStore.video.outputBgColor,
+    silence_duration: settingsStore.video.silenceDuration,
+  };
+
   // Get latest title settings from settings store
   const titleParams = {
     title_enabled: settingsStore.video.title.enabled,
@@ -329,6 +337,7 @@ const startIntegration = async () => {
       if (improveSubtitle.value) Object.assign(requestParams, subtitleParams);
       if (improveBgm.value) Object.assign(requestParams, bgmParams);
       if (improveTitle.value) Object.assign(requestParams, titleParams);
+      if (improveVideoEnhancement.value) Object.assign(requestParams, videoEnhanceParams);
     }
     // When toggle is OFF, requestParams is empty → backend uses original_task config / defaults
     

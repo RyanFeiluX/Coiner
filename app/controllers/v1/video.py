@@ -851,6 +851,12 @@ def recover_scene_integration(request: Request, body: dict):
         'title_align': body.get('title_align'),
     }.items() if v is not None}
     
+    # Extract video enhancement parameters from request (filter None so fallback chain works)
+    video_enhance_params = {k: v for k, v in {
+        'output_bg_color': body.get('output_bg_color'),
+        'silence_duration': body.get('silence_duration'),
+    }.items() if v is not None}
+    
     if not task_id_or_path:
         raise HttpException(task_id="", status_code=400, message="Task ID or path is required")
     
@@ -881,6 +887,7 @@ def recover_scene_integration(request: Request, body: dict):
         subtitle_params=subtitle_params,
         bgm_params=bgm_params,
         title_params=title_params,
+        video_enhance_params=video_enhance_params,
         task_create_time=task_create_time,
     )
     
