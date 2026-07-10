@@ -21,7 +21,8 @@ export const useTasksStore = defineStore('tasks', {
     tasks: [] as Task[],
     currentTask: null as Task | null,
     loading: false,
-    error: null as string | null
+    error: null as string | null,
+    unviewedCompletedIds: JSON.parse(localStorage.getItem('coiner_unviewed_tasks') || '[]') as string[]
   }),
   
   getters: {
@@ -47,10 +48,27 @@ export const useTasksStore = defineStore('tasks', {
     
     failedTasks: (state) => {
       return state.tasks.filter(task => task.status === 'failed');
+    },
+    
+    isNewlyCompleted: (state) => (taskId: string) => {
+      return state.unviewedCompletedIds.includes(taskId);
     }
   },
   
   actions: {
+    _saveUnviewedToStorage() {
+      try {
+        localStorage.setItem('coiner_unviewed_tasks', JSON.stringify(this.unviewedCompletedIds));
+      } catch {
+        // localStorage full or unavailable - silently ignore
+      }
+    },
+
+    markTaskViewed(taskId: string) {
+      this.unviewedCompletedIds = this.unviewedCompletedIds.filter(id => id !== taskId);
+      this._saveUnviewedToStorage();
+    },
+
     async fetchAllTasks(page: number = 1, pageSize: number = 100, showLoading: boolean = true) {
       if (showLoading) {
         this.loading = true;
@@ -67,13 +85,23 @@ export const useTasksStore = defineStore('tasks', {
 
           newTasks.forEach((newTask: Task) => {
             const existingIndex = this.tasks.findIndex((task: Task) => task.task_id === newTask.task_id);
+            let wasAlreadyCompleted = false;
             if (existingIndex !== -1) {
               const existingTask = this.tasks[existingIndex];
+              wasAlreadyCompleted = existingTask.status === 'completed';
               if (existingTask.status !== newTask.status || existingTask.progress !== newTask.progress) {
                 this.tasks[existingIndex] = newTask;
               }
             } else {
               this.tasks.push(newTask);
+            }
+
+            // Detect newly completed tasks with videos (transitioned or first-seen)
+            if (newTask.status === 'completed' && newTask.videos && newTask.videos.length > 0) {
+              if (!wasAlreadyCompleted && !this.unviewedCompletedIds.includes(newTask.task_id)) {
+                this.unviewedCompletedIds.push(newTask.task_id);
+                this._saveUnviewedToStorage();
+              }
             }
           });
           
@@ -162,6 +190,8 @@ export const useTasksStore = defineStore('tasks', {
           if (this.currentTask?.task_id === taskId) {
             this.currentTask = null;
           }
+          this.unviewedCompletedIds = this.unviewedCompletedIds.filter(id => id !== taskId);
+          this._saveUnviewedToStorage();
           return true;
         }
       } catch (error) {

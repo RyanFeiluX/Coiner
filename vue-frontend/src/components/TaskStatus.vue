@@ -34,8 +34,17 @@
       
       <div v-else class="tasks-list">
         <div class="tasks-scroll">
-          <el-collapse v-model="activeNames">
-            <el-collapse-item v-for="task in tasks" :key="task.task_id" :title="getTaskTitle(task)" :name="task.task_id">
+          <el-collapse v-model="activeNames" @change="onCollapseChange">
+            <el-collapse-item v-for="task in tasks" :key="task.task_id" :name="task.task_id">
+              <template #title>
+                <span class="task-title-wrapper">
+                  {{ getTaskTitle(task) }}
+                  <el-icon v-if="tasksStore.isNewlyCompleted(task.task_id)"
+                           class="new-star-icon">
+                    <StarFilled />
+                  </el-icon>
+                </span>
+              </template>
               <div class="task-details">
                 <div class="task-info">
                   <div class="info-item" v-if="task.sequence_number">
@@ -104,7 +113,7 @@
                 
                 <div class="task-actions">
                   <transition name="fade">
-                    <el-button v-if="task.status === 'completed' && task.videos && task.videos.length > 0" :key="'download-'+task.task_id" type="primary" size="small" @click="handleDownload(task.videos[0])">
+                    <el-button v-if="task.status === 'completed' && task.videos && task.videos.length > 0" :key="'download-'+task.task_id" type="primary" size="small" @click="handleDownload(task)">
                       <el-icon><Download /></el-icon>
                       {{ downloadText }}
                     </el-button>
@@ -138,11 +147,13 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Refresh, Download, Delete, Close, Loading } from '@element-plus/icons-vue';
+import { Refresh, Download, Delete, Close, Loading, StarFilled } from '@element-plus/icons-vue';
 import { useI18nStore } from '../stores/i18n';
+import { useTasksStore } from '../stores/tasks';
 
 const i18nStore = useI18nStore();
 const t = i18nStore.t;
+const tasksStore = useTasksStore();
 
 interface Task {
   task_id: string;
@@ -212,6 +223,14 @@ withDefaults(defineProps<Props>(), {
 const emit = defineEmits(['refresh', 'delete', 'cancel']);
 
 const activeNames = ref<string[]>([]);
+const prevActiveNames = ref<string[]>([]);
+
+const onCollapseChange = (newNames: string | string[]) => {
+  const arr = typeof newNames === 'string' ? [newNames] : newNames;
+  const newlyOpened = arr.filter(name => !prevActiveNames.value.includes(name));
+  newlyOpened.forEach(taskId => tasksStore.markTaskViewed(taskId));
+  prevActiveNames.value = arr;
+};
 
 const getTaskTitle = (task: Task): string => {
   const taskNumber = task.sequence_number ? `#${task.sequence_number}` : '';
@@ -257,8 +276,11 @@ const formatDate = (dateString: string): string => {
   return date.toLocaleString();
 };
 
-const handleDownload = (videoUrl: string) => {
-  window.open(videoUrl, '_blank');
+const handleDownload = (task: Task) => {
+  if (task.videos && task.videos.length > 0) {
+    tasksStore.markTaskViewed(task.task_id);
+    window.open(task.videos[0], '_blank');
+  }
 };
 
 const router = useRouter();
@@ -360,6 +382,31 @@ const navigateToSceneIntegration = (taskId: string) => {
 
 .scene-loss-banner .recover-btn {
   margin-top: 8px;
+}
+
+.task-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.new-star-icon {
+  color: #E6A23C;
+  font-size: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+  animation: star-pulse 1.5s ease-in-out infinite;
+  transition: transform 0.2s ease;
+}
+
+.new-star-icon:hover {
+  transform: scale(1.3);
+}
+
+@keyframes star-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.15); }
 }
 
 /* 过渡效果 */
