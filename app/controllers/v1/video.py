@@ -585,14 +585,19 @@ def preview_subtitle(request: Request, body: dict):
     normalized = aspect_map.get(video_aspect, '9:16')
     if normalized == '9:16':
         width, height = 1080, 1920
+        content_h = height
     elif normalized == '16:9':
         width, height = 1920, 1080
+        content_h = height
     elif normalized == '1:1':
         width, height = 1080, 1080
+        content_h = height
     elif normalized == '3:4':
         width, height = 1080, 1920
+        content_h = 1440
     else:
         width, height = 1080, 1920
+        content_h = height
 
     if not subtitle_enabled or not subtitle_text.strip():
         preview_dir = utils.storage_dir("subtitle_previews", create=True)
@@ -600,7 +605,6 @@ def preview_subtitle(request: Request, body: dict):
         preview_path = os.path.join(preview_dir, preview_name)
         duration = 3.0
         if normalized == '3:4':
-            content_h = 1440
             pad_h = (height - content_h) // 2
             content_bg = ColorClip(size=(width, content_h), color=(80, 80, 80), duration=duration)
             bar = ColorClip(size=(width, pad_h), color=(20, 20, 20), duration=duration)
@@ -617,10 +621,11 @@ def preview_subtitle(request: Request, body: dict):
         return utils.get_response(200, response)
 
     _play_res_y = 1080
-    font_size_px = max(1, int(font_size_pt * height / _play_res_y))
+    font_size_px = max(1, int(font_size_pt * content_h / _play_res_y))
 
-    margin_px = height * subtitle_margin
+    margin_px = content_h * subtitle_margin
     max_width = width * (1 - 2 * subtitle_margin)
+    pad_h = (height - content_h) // 2 if normalized == '3:4' else 0
 
     try:
         wrapped_text, text_h, actual_font_size_px = wrap_text(
@@ -729,13 +734,13 @@ def preview_subtitle(request: Request, body: dict):
         raise HttpException(task_id="", status_code=400, message="Subtitle clip has zero size")
 
     if subtitle_position == "bottom":
-        y_pos = height - margin_px - txt_clip.h
+        y_pos = pad_h + content_h - margin_px - txt_clip.h
     elif subtitle_position == "top":
-        y_pos = margin_px
+        y_pos = pad_h + margin_px
     elif subtitle_position == "custom":
-        max_y = height - txt_clip.h - margin_px
-        min_y = margin_px
-        y_pos = (height - txt_clip.h) * (custom_position / 100)
+        max_y = pad_h + content_h - txt_clip.h - margin_px
+        min_y = pad_h + margin_px
+        y_pos = pad_h + (content_h - txt_clip.h) * (custom_position / 100)
         y_pos = max(min_y, min(y_pos, max_y))
     else:
         y_pos = "center"
@@ -748,8 +753,6 @@ def preview_subtitle(request: Request, body: dict):
 
     duration = 3.0
     if normalized == '3:4':
-        content_h = 1440
-        pad_h = (height - content_h) // 2
         content_bg = ColorClip(size=(width, content_h), color=(80, 80, 80), duration=duration)
         bar = ColorClip(size=(width, pad_h), color=(20, 20, 20), duration=duration)
         bg = CompositeVideoClip([

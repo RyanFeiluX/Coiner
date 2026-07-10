@@ -229,7 +229,9 @@ def _srt_to_ass(srt_path: str, ass_path: str, video_height: int,
                 outline_color: str = "&H00000000",
                 outline_width: int = 2,
                 alignment: int = 2,
-                margin_v: int = None) -> bool:
+                margin_v: int = None,
+                font_path: str = None,
+                text_max_width: int = None) -> bool:
     """
     Convert an SRT subtitle file to ASS with PlayResY matching video height,
     so FontSize is interpreted as video-pixel-relative units (1pt ≈ 1px at 72 DPI).
@@ -245,6 +247,8 @@ def _srt_to_ass(srt_path: str, ass_path: str, video_height: int,
         outline_width: Outline thickness.
         alignment: ASS alignment value (2 = bottom-centre).
         margin_v: Vertical margin from the edge.
+        font_path: Path to the font file for pre-wrapping text via PIL.
+        text_max_width: Max pixel width for text pre-wrapping (requires font_path).
 
     Returns:
         True on success, False on failure.
@@ -256,6 +260,8 @@ def _srt_to_ass(srt_path: str, ass_path: str, video_height: int,
 
     try:
         # ── Parse SRT ──
+        from app.services.video_utils import wrap_text as _wrap_text
+
         entries = []
         with open(srt_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -279,6 +285,18 @@ def _srt_to_ass(srt_path: str, ass_path: str, video_height: int,
             text = "\\N".join(l.strip() for l in text_lines if l.strip())
             if not text:
                 continue
+
+            # Pre-wrap text using PIL to ensure lines fit within text_max_width
+            if font_path and text_max_width and os.path.isfile(font_path):
+                try:
+                    raw_text = text.replace("\\N", "\n")
+                    wrapped, _, _ = _wrap_text(
+                        raw_text, max_width=text_max_width,
+                        font=font_path, font_size_px=font_size_px
+                    )
+                    text = wrapped.replace("\n", "\\N")
+                except Exception:
+                    pass  # fall back to original text on any error
 
             # Convert SRT timing (HH:MM:SS,mmm) to ASS timing (H:MM:SS.cc)
             times = _re.findall(r"(\d{2}:\d{2}:\d{2}[,\.]\d{3})", timing_line)
@@ -402,6 +420,7 @@ def burn_subtitles_to_scene_video(
     sub_params["alignment"] = align_map.get(pos, 2)
 
     _subtitle_cfg = load_config().get("subtitle", {})
+    margin_ratio = _subtitle_cfg.get("subtitle_margin", 0.05)
     if pos == 'custom':
         custom_pos = float(getattr(params, 'custom_position', 70.0))
         estimated_h = int(font_size_px * 1.5)
@@ -425,7 +444,6 @@ def burn_subtitles_to_scene_video(
         if sub_params["margin_v"] < 0:
             sub_params["margin_v"] = 0
     else:
-        margin_ratio = _subtitle_cfg.get("subtitle_margin", 0.05)
         sub_params["margin_v"] = int(video_height * margin_ratio)
 
     stroke_w = int(getattr(params, 'stroke_width', 0) or 0)
@@ -436,6 +454,8 @@ def burn_subtitles_to_scene_video(
 
     import tempfile
     _temp_ass_file = tempfile.mktemp(suffix=".ass", prefix="coiner_scene_sub_")
+    text_max_width = int(video_width * (1 - 2 * margin_ratio))
+
     _srt_to_ass(
         srt_path=subtitle_file,
         ass_path=_temp_ass_file,
@@ -447,6 +467,8 @@ def burn_subtitles_to_scene_video(
         outline_width=sub_params.get("outline_width", 2),
         alignment=sub_params.get("alignment", 2),
         margin_v=sub_params.get("margin_v", None),
+        font_path=font_path,
+        text_max_width=text_max_width,
     )
 
     sub_file_to_use = _temp_ass_file if os.path.exists(_temp_ass_file) else subtitle_file
@@ -970,6 +992,8 @@ def _ffmpeg_fast_encode(
                 outline_width=subtitle_params.get("outline_width", 2),
                 alignment=subtitle_params.get("alignment", 2),
                 margin_v=subtitle_params.get("margin_v", None),
+                font_path=subtitle_params.get("font_path"),
+                text_max_width=subtitle_params.get("text_max_width"),
             )
             if os.path.exists(_temp_ass_file):
                 sub_file_to_use = _temp_ass_file
@@ -1549,11 +1573,16 @@ def process_final_video(
             text_fore_color = getattr(params, 'text_fore_color', '#FFFFFF')
             primary_color = hex_to_ass_color(text_fore_color)
             
+            margin_ratio = _subtitle_cfg.get("subtitle_margin", 0.05)
+            text_max_width = int(1080 * (1 - 2 * margin_ratio))
+
             sub_params = {
                 "font_name": font_family,
                 "font_size": font_size_px,
                 "primary_color": primary_color,
                 "fonts_dir": os.path.dirname(font_path) if font_path else None,
+                "font_path": font_path,
+                "text_max_width": text_max_width,
             }
             
             pos = getattr(params, 'subtitle_position', 'bottom')
