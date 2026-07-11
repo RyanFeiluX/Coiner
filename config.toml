@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.9.17"
+project_version = "2.9.18"
 
 [app]
 host_visible = false
@@ -44,7 +44,7 @@ video_contrast = 1.05
 video_concat_mode = "random"
 video_transition_mode = "none"
 min_scene_success_ratio = 0.9
-video_aspect = "square"
+video_aspect = "portrait_3_4"
 video_clip_duration = 5
 video_count = 1
 silence_duration = 0.5
@@ -81,25 +81,25 @@ bgm_volume = 0.1
 [subtitle]
 subtitle_enabled = true
 subtitle_position = "custom"
-subtitle_custom_position = 96
+subtitle_custom_position = 95
 subtitle_margin = 0.05
 subtitle_auto_fit = true
 font_name = "MicrosoftYaHeiBold.ttc"
 text_fore_color = "rgb(247, 243, 9)"
 text_background_color = true
-font_size = 42
+font_size = 36
 stroke_color = "#000000"
-stroke_width = 1
+stroke_width = 1.2
 
 [title]
 title_enabled = true
-title_text = "韦神获奖揭秘"
+title_text = "“巴威”登陆，积极防范"
 title_duration = 3
 title_font_name = "MicrosoftYaHeiBold.ttc"
 title_font_size = 72
-title_text_color = "#FF0000"
+title_text_color = "#808080"
 title_stroke_color = "#FFFF00"
-title_stroke_width = 3
+title_stroke_width = 8
 title_background_color = "transparent"
 title_position = "center"
 title_margin = 0.05

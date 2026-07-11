@@ -181,7 +181,7 @@ if "!PID_FOUND!" == "true" (
 rem Start backend
 if not defined SKIP_BACKEND (
     echo Starting backend API...
-    start "Backend API" cmd /d /e:on /v:on /c "cd /d %CD% && call conda activate condaenv-coiner && python main.py"
+    start "Coiner - Backend API (:8000)" cmd /d /e:on /v:on /c "cd /d %CD% && call conda activate condaenv-coiner && python main.py"
 
     rem Wait for backend to start
     echo Waiting for backend to start...
@@ -248,10 +248,10 @@ if not defined SKIP_FRONTEND (
     echo Starting Vue frontend...
     if exist "%VUE_DIST%" if not defined BUILD_FAILED (
         echo Starting production server with serve...
-        start "Vue Frontend" cmd /c "cd /d %CD% && npx serve vue-frontend/dist -l 3000 --single"
+        start "Coiner - Vue Frontend (:3000)" cmd /c "cd /d %CD% && npx serve vue-frontend/dist -l 3000 --single"
     ) else (
         echo Starting development server...
-        start "Vue Frontend" cmd /c "cd /d %CD%\vue-frontend && npm run dev"
+        start "Coiner - Vue Frontend (:3000)" cmd /c "cd /d %CD%\vue-frontend && npm run dev"
     )
 ) else (
     echo Skipping frontend start as requested...
@@ -303,12 +303,12 @@ pause > nul
 echo Stopping...
 rem Stop backend processes
 echo Stopping backend processes...
-taskkill /F /FI "WINDOWTITLE eq Backend API*" > nul 2>&1
+taskkill /F /FI "WINDOWTITLE eq Coiner - Backend API*" > nul 2>&1
 taskkill /F /IM python.exe /FI "COMMANDLINE like %%main.py%%" > nul 2>&1
 
 rem Stop frontend processes
 echo Stopping frontend processes...
-taskkill /F /FI "WINDOWTITLE eq Vue Frontend*" > nul 2>&1
+taskkill /F /FI "WINDOWTITLE eq Coiner - Vue Frontend*" > nul 2>&1
 taskkill /F /IM python.exe /FI "COMMANDLINE like %%http.server%%" > nul 2>&1
 taskkill /F /IM node.exe /FI "COMMANDLINE like %%vite%%" > nul 2>&1
 
