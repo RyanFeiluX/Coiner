@@ -22,7 +22,8 @@ export const useTasksStore = defineStore('tasks', {
     currentTask: null as Task | null,
     loading: false,
     error: null as string | null,
-    unviewedCompletedIds: JSON.parse(localStorage.getItem('coiner_unviewed_tasks') || '[]') as string[]
+    unviewedCompletedIds: JSON.parse(localStorage.getItem('coiner_unviewed_tasks') || '[]') as string[],
+    _initialLoadDone: false
   }),
   
   getters: {
@@ -96,8 +97,8 @@ export const useTasksStore = defineStore('tasks', {
               this.tasks.push(newTask);
             }
 
-            // Detect newly completed tasks with videos (transitioned or first-seen)
-            if (newTask.status === 'completed' && newTask.videos && newTask.videos.length > 0) {
+            // Detect newly completed tasks with videos — only during polling, not on initial load
+            if (this._initialLoadDone && newTask.status === 'completed' && newTask.videos && newTask.videos.length > 0) {
               if (!wasAlreadyCompleted && !this.unviewedCompletedIds.includes(newTask.task_id)) {
                 this.unviewedCompletedIds.push(newTask.task_id);
                 this._saveUnviewedToStorage();
@@ -106,6 +107,8 @@ export const useTasksStore = defineStore('tasks', {
           });
           
           // 按任务编号升序排列
+          this._initialLoadDone = true;
+
           this.tasks.sort((a, b) => (a.sequence_number ?? 0) - (b.sequence_number ?? 0));
         }
       } catch (error) {
