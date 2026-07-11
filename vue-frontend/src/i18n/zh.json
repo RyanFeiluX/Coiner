@@ -101,7 +101,7 @@
     "Portrait": "竖屏 9:16 (抖音)",
     "Landscape": "横屏 16:9 (西瓜视频)",
     "Square": "方形 1:1 (小红书)",
-    "3:4 Portrait": "竖屏 3:4",
+    "3:4 Portrait": "竖屏 3:4 (9:16扩展)",
     "Clip Duration": "视频片段最大时长(秒)（<strong>不是视频总长度</strong>，是指每个<strong>合成片段</strong>的长度）",
     "Number of Videos Generated Simultaneously": "同时生成视频数量",
     "Video Style": "视频风格",
