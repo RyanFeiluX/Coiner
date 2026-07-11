@@ -75,6 +75,7 @@
             <el-option :label="t('Portrait')" value="portrait" />
             <el-option :label="t('Square')" value="square" />
             <el-option :label="t('3:4 Portrait')" value="portrait_3_4" />
+            <el-option :label="t('4:3 Landscape')" value="landscape_4_3" />
           </el-select>
         </div>
         

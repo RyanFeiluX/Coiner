@@ -540,6 +540,10 @@ const previewFrameStyle = computed(() => {
     // 16:9
     width = maxDim;
     height = Math.round(maxDim * 9 / 16);
+  } else if (aspect === 'landscape_4_3') {
+    // 4:3
+    width = maxDim;
+    height = Math.round(maxDim * 3 / 4);
   } else if (aspect === 'square') {
     // 1:1
     width = maxDim;

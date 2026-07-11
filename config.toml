@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.9.19"
+project_version = "2.10.0"
 
 [app]
 host_visible = false
@@ -44,7 +44,7 @@ video_contrast = 1.05
 video_concat_mode = "random"
 video_transition_mode = "none"
 min_scene_success_ratio = 0.9
-video_aspect = "portrait_3_4"
+video_aspect = "landscape_4_3"
 video_clip_duration = 5
 video_count = 1
 silence_duration = 0.5
@@ -71,8 +71,8 @@ speech_region = ""
 [siliconflow]
 
 [audio]
-tts_server = "qwen-tts"
-voice_name = "qwen|Elias|墨讲师-Female||"
+tts_server = "coze-tts"
+voice_name = "coze|7468512265151741979|擎苍-Male|https://lf26-appstore-sign.oceancloudapi.com/ocean-cloud-tos/VolcanoSystemVoice/zh_male_qingcang_mars_bigtts.mp3?lk3s=da27ec82&x-expires=1783833232&x-signature=T6GfEnAiJAOSMpOvpOZu1uIpn50%3D|无语，擎天之巨首，揽尽世间风云变幻，诸般阻碍，不过是无脉相巅峰之基石。今日之儒，来日必当十倍奉还。 无知威名，必将震慑四海八荒。|"
 voice_volume = 1.8
 voice_rate = 1.1
 bgm_type = ""
@@ -87,16 +87,16 @@ subtitle_auto_fit = true
 font_name = "MicrosoftYaHeiBold.ttc"
 text_fore_color = "rgb(247, 243, 9)"
 text_background_color = true
-font_size = 36
+font_size = 50
 stroke_color = "#000000"
 stroke_width = 1.2
 
 [title]
 title_enabled = true
-title_text = "“巴威”登陆，积极防范"
+title_text = "宇树机器人能做手术"
 title_duration = 3
 title_font_name = "MicrosoftYaHeiBold.ttc"
-title_font_size = 72
+title_font_size = 82
 title_text_color = "#808080"
 title_stroke_color = "#FFFF00"
 title_stroke_width = 8
@@ -107,7 +107,7 @@ title_margin_left = 0.05
 title_margin_right = 0.05
 title_animation = "fade_out"
 title_animation_duration = 0.5
-title_background_overlay = false
+title_background_overlay = true
 title_overlay_color = "rgba(0,0,0,0.5)"
 title_style = "classic"
 title_align = "center"

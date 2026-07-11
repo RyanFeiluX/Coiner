@@ -132,6 +132,8 @@ def create_silence_prefix_video(task_id: str, params, duration: float = 0.5, fir
 
                 if video_aspect == VideoAspect.portrait_3_4:
                     target_width, target_height = 1080, 1440
+                elif video_aspect == VideoAspect.landscape_4_3:
+                    target_width, target_height = 1440, 1080
                 elif video_aspect == VideoAspect.landscape_16_9:
                     target_width, target_height = 1920, 1080
                 elif video_aspect == VideoAspect.square:

@@ -501,7 +501,8 @@ def preview_title(request: Request, body: dict):
         'portrait': '9:16', 'portrait_9_16': '9:16',
         'landscape': '16:9', 'landscape_16_9': '16:9',
         'square': '1:1', 'portrait_3_4': '3:4',
-        '1:1': '1:1', '9:16': '9:16', '16:9': '16:9', '3:4': '3:4',
+        'landscape_4_3': '4:3',
+        '1:1': '1:1', '9:16': '9:16', '16:9': '16:9', '3:4': '3:4', '4:3': '4:3',
     }
     normalized = aspect_map.get(video_aspect, '9:16')
     if normalized == '9:16':
@@ -512,6 +513,8 @@ def preview_title(request: Request, body: dict):
         width, height = 1080, 1080
     elif normalized == '3:4':
         width, height = 1080, 1920
+    elif normalized == '4:3':
+        width, height = 1440, 1080
     else:
         width, height = 1080, 1920
     
@@ -580,7 +583,8 @@ def preview_subtitle(request: Request, body: dict):
         'portrait': '9:16', 'portrait_9_16': '9:16',
         'landscape': '16:9', 'landscape_16_9': '16:9',
         'square': '1:1', 'portrait_3_4': '3:4',
-        '1:1': '1:1', '9:16': '9:16', '16:9': '16:9', '3:4': '3:4',
+        'landscape_4_3': '4:3',
+        '1:1': '1:1', '9:16': '9:16', '16:9': '16:9', '3:4': '3:4', '4:3': '4:3',
     }
     normalized = aspect_map.get(video_aspect, '9:16')
     if normalized == '9:16':
@@ -595,6 +599,9 @@ def preview_subtitle(request: Request, body: dict):
     elif normalized == '3:4':
         width, height = 1080, 1920
         content_h = 1440
+    elif normalized == '4:3':
+        width, height = 1440, 1080
+        content_h = height
     else:
         width, height = 1080, 1920
         content_h = height

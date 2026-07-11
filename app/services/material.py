@@ -87,7 +87,7 @@ def search_videos_pexels(
     # Map aspect to Pexels API orientation parameter
     if aspect == VideoAspect.portrait or aspect == VideoAspect.portrait_3_4:
         video_orientation = "portrait"
-    elif aspect == VideoAspect.landscape:
+    elif aspect == VideoAspect.landscape or aspect == VideoAspect.landscape_4_3:
         video_orientation = "landscape"
     elif aspect == VideoAspect.square:
         video_orientation = "square"

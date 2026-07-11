@@ -216,6 +216,9 @@ const previewFrameStyle = computed(() => {
   } else if (aspect === 'landscape' || aspect === 'landscape_16_9') {
     width = maxDim;
     height = Math.round(maxDim * 9 / 16);
+  } else if (aspect === 'landscape_4_3') {
+    width = maxDim;
+    height = Math.round(maxDim * 3 / 4);
   } else if (aspect === 'square') {
     width = maxDim;
     height = maxDim;

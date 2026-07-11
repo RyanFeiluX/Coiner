@@ -32,6 +32,7 @@ class VideoAspect(str, Enum):
     portrait = "9:16"
     square = "1:1"
     portrait_3_4 = "3:4"
+    landscape_4_3 = "4:3"
 
     def to_resolution(self):
         if self == VideoAspect.landscape:
@@ -42,6 +43,8 @@ class VideoAspect(str, Enum):
             return 1080, 1080
         elif self == VideoAspect.portrait_3_4:
             return 1080, 1440
+        elif self == VideoAspect.landscape_4_3:
+            return 1440, 1080
         else:
             # Default to portrait 9:16
             return 1080, 1920
