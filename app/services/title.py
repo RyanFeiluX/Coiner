@@ -128,6 +128,7 @@ def create_title_clip(
     params: VideoParams
 ) -> Optional[Union[VideoClip, CompositeVideoClip]]:
     if not params.title_enabled or not params.title_text:
+        logger.warning(f"create_title_clip: skipping - title_enabled={params.title_enabled}, title_text='{params.title_text}'")
         return None
     
     logger.info(f"Creating title clip: '{params.title_text}' ({video_width}x{video_height})")
@@ -306,13 +307,9 @@ def create_title_clip(
             draw_y = current_y - top_offset
             logger.info(f"  Line {i}: '{line}', line_width={line_width}, x={x}, current_y={current_y}, draw_y={draw_y}")
             
-            # Draw text with stroke
-            if stroke_color and stroke_width > 0:
-                draw.text((x, draw_y), line, font=font, fill=stroke_color,
-                          stroke_width=stroke_width, stroke_fill=stroke_color)
-            
-            # Draw text on top
-            draw.text((x, draw_y), line, font=font, fill=text_color)
+            draw.text((x, draw_y), line, font=font, fill=text_color,
+                      stroke_width=stroke_width if stroke_color and stroke_width > 0 else 0,
+                      stroke_fill=stroke_color if stroke_color and stroke_width > 0 else None)
         
         # Always advance y, even for empty lines!
         current_y += line_height
@@ -393,6 +390,7 @@ def add_title_to_video(
     params: VideoParams
 ) -> CompositeVideoClip:
     if not params.title_enabled or not params.title_text:
+        logger.warning(f"add_title_to_video: skipping - title_enabled={params.title_enabled}, title_text='{params.title_text}'")
         return video_clip
     
     logger.debug(f"add_title_to_video - Input video_clip duration: {getattr(video_clip, 'duration', 'NOT SET')}")

@@ -1297,7 +1297,10 @@ def process_final_video(
         silence_duration = 0
         
         # Add title BEFORE pillarbox so font scales relative to content area, not black bars
-        if hasattr(params, 'title_enabled') and params.title_enabled and hasattr(params, 'title_text') and params.title_text:
+        title_enabled = getattr(params, 'title_enabled', False)
+        title_text = getattr(params, 'title_text', '')
+        logger.info(f"[Title] title_enabled={title_enabled}, title_text='{title_text}'")
+        if title_enabled and title_text:
             logger.info("Adding title to video")
             video_clip = ensure_clip_duration(video_clip)
             from app.services.title import add_title_to_video
@@ -1534,8 +1537,7 @@ def process_final_video(
             return None
         
         # ── Determine whether title is enabled ──
-        has_title = (hasattr(params, 'title_enabled') and params.title_enabled
-                     and hasattr(params, 'title_text') and params.title_text)
+        has_title = title_enabled and title_text
 
         # ── Build shared FFmpeg params (used by both fast & hybrid paths) ──
         is_pillarbox = False
