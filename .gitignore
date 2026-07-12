@@ -42,6 +42,9 @@ test/
 .qoder/
 *TEMP*.mp4
 vue-frontend/public/
+vue-frontend/*.tsbuildinfo
+vue-frontend/vite.config.d.ts
+vue-frontend/vite.config.js
 secrets.toml
 installer/output/
 dist/
