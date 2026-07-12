@@ -358,7 +358,11 @@ def _generate_response(prompt: str) -> str:
 
 
 def generate_script(
-    video_subject: str, language: str = None, paragraph_number: int = 1
+    video_subject: str,
+    language: str = None,
+    paragraph_number: int = 1,
+    search_context: str = "",
+    options: dict = None,
 ) -> str:
     # Default language to Chinese if video_subject is empty
     if not video_subject:
@@ -387,6 +391,22 @@ Generate a script for a video, depending on the subject of the video.
 - video subject: {video_subject}
 - number of paragraphs: {paragraph_number}
 """.strip()
+    if search_context:
+        prompt += f"""
+
+# Web Search Reference Material
+The following information was retrieved from real-time web search to supplement the topic.
+Use this as factual reference, prioritize it over your internal knowledge when there are conflicts.
+
+<search_results>
+{search_context}
+</search_results>
+"""
+
+    if options:
+        from app.services.script_options import build_length_instructions
+        prompt += f"\n\n{build_length_instructions(options)}"
+
     if language and language != "":
         prompt += f"\n- language: {language}\n- IMPORTANT: Please respond in {language} language."
     else:
@@ -831,7 +851,9 @@ def generate_multi_scene_script(
     language: str = "",
     max_scenes: int = 16,
     content_type: str = "",
-    host_visible: bool = True
+    host_visible: bool = True,
+    search_context: str = "",
+    options: dict = None,
 ) -> str:
     """
     Generate multi-scene script for video.
@@ -987,6 +1009,24 @@ Your output MUST conform to this JSON Schema:
         # Auto-detect language from video content
         detected_language = detect_language(video_content)
         prompt += f"\n- Language: {detected_language}\n- IMPORTANT: Please respond in {detected_language} language. All content, including scene titles, visual descriptions, dialogue scripts, and emotion markers, must be in {detected_language}."
+
+    # Add search context if available
+    if search_context:
+        prompt += f"""
+
+# Web Search Reference Material
+The following information was retrieved from real-time web search to supplement the topic.
+Use this as factual reference, prioritize it over your internal knowledge when there are conflicts.
+
+<search_results>
+{search_context}
+</search_results>
+"""
+
+    # Add length/depth instructions from options
+    if options:
+        from app.services.script_options import build_length_instructions
+        prompt += f"\n\n{build_length_instructions(options)}"
 
     # Add content-type-specific opening scene guidance
     if content_type:
@@ -1306,7 +1346,9 @@ def convert_to_multi_scene(
     video_subject: str = "",
     language: str = None,
     content_type: str = "",
-    host_visible: bool = True
+    host_visible: bool = True,
+    search_context: str = "",
+    options: dict = None,
 ) -> str:
     """
     Convert single-scene script to multi-scene format.
@@ -1397,6 +1439,24 @@ Please read the user-provided [Original Text] and adapt it into a standardized *
 
     if language:
         prompt += f"\n- Language: {language}\n- IMPORTANT: Please respond in {language} language. All content, including scene titles, visual descriptions, dialogue scripts, and emotion markers, must be in {language}."
+
+    # Add search context if available
+    if search_context:
+        prompt += f"""
+
+# Web Search Reference Material
+The following information was retrieved from real-time web search to supplement the topic.
+Use this as factual reference, prioritize it over your internal knowledge when there are conflicts.
+
+<search_results>
+{search_context}
+</search_results>
+"""
+
+    # Add length/depth instructions from options
+    if options:
+        from app.services.script_options import build_length_instructions
+        prompt += f"\n\n{build_length_instructions(options)}"
 
     # Add content-type-specific opening scene guidance
     if content_type:

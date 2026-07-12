@@ -153,6 +153,9 @@ def get_config(request: Request):
             "qwen": {
                 "api_key": config.qwen.get("api_key", ""),
             },
+            "tavily": {
+                "api_key": config.tavily.get("api_key", ""),
+            },
             "whisper": {
                 "device": config.whisper.get("device", "CPU"),
             }
@@ -196,6 +199,10 @@ def update_config(request: Request, cfg: dict):
         if "qwen" in cfg:
             for key, value in cfg["qwen"].items():
                 config.qwen[key] = value
+
+        if "tavily" in cfg:
+            for key, value in cfg["tavily"].items():
+                config.tavily[key] = value
 
         if "whisper" in cfg:
             for key, value in cfg["whisper"].items():

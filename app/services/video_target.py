@@ -1106,6 +1106,12 @@ def _ffmpeg_fast_encode(
         )
     audio_label = "a_loudnorm"
     
+    # If video hasn't been through any filter but filter_complex is non-empty
+    # (e.g., audio-only loudnorm), add a null pass-through so -map has a valid label.
+    if cur_label == "0:v" and filter_parts:
+        filter_parts.insert(0, "[0:v]null[v_pass]")
+        cur_label = "v_pass"
+    
     # Build -filter_complex string
     filter_complex = ";".join(filter_parts) if filter_parts else ""
     

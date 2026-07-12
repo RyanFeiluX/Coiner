@@ -51,6 +51,14 @@ export interface VideoScriptRequest {
   video_subject: string;
   video_language: string | null;
   paragraph_number: number;
+  script_preset?: string;
+  web_search_enabled?: boolean;
+  search_results_count?: number;
+  search_rounds?: number;
+  search_source_preference?: string;
+  expansion_depth?: string;
+  paragraph_detail?: string;
+  script_style?: string;
 }
 
 export interface VideoScriptResponse {

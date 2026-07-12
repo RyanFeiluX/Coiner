@@ -66,6 +66,7 @@ interface AudioSettings {
   siliconflowApiKey: string;
   cozeApiKey: string;
   qwenApiKey: string;
+  tavilyApiKey: string;
   voiceEmotion: string;
   speechVolume: string;
   speechRate: string;
@@ -193,6 +194,7 @@ export const useSettingsStore = defineStore('settings', {
       siliconflowApiKey: '',
       cozeApiKey: '',
       qwenApiKey: '',
+      tavilyApiKey: '',
       voiceEmotion: '',
       speechVolume: '1.0',
       speechRate: '1.0',
@@ -800,6 +802,12 @@ export const useSettingsStore = defineStore('settings', {
           if (data.qwen && data.qwen.api_key) {
             this.audio.qwenApiKey = data.qwen.api_key;
             console.log('[SettingsStore] Updated qwenApiKey from config:', this.audio.qwenApiKey);
+          }
+
+          // Load tavily config
+          if (data.tavily && data.tavily.api_key) {
+            this.audio.tavilyApiKey = data.tavily.api_key;
+            console.log('[SettingsStore] Updated tavilyApiKey from config:', this.audio.tavilyApiKey);
           }
 
           this.saveToLocalStorage();

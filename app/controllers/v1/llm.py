@@ -23,10 +23,40 @@ router = new_router()
     summary="Create a script for the video",
 )
 def generate_video_script(request: Request, body: VideoScriptRequest):
+    search_context = ""
+    options = None
+
+    if body.web_search_enabled:
+        from app.services.search import search_and_summarize
+        search_context = search_and_summarize(
+            topic=body.video_subject,
+            rounds=body.search_rounds or 1,
+            num_results=body.search_results_count or 5,
+            source_preference=body.search_source_preference or "balanced",
+            expansion_depth=body.expansion_depth or "moderate",
+        )
+        logger.info(f"Web search context length: {len(search_context)} chars for subject '{body.video_subject}'")
+
+    if body.script_preset:
+        from app.services.script_options import resolve_options
+        options = resolve_options(
+            script_preset=body.script_preset,
+            web_search_enabled=body.web_search_enabled,
+            search_results_count=body.search_results_count,
+            search_rounds=body.search_rounds,
+            search_source_preference=body.search_source_preference,
+            expansion_depth=body.expansion_depth,
+            paragraph_detail=body.paragraph_detail,
+            script_style=body.script_style,
+            paragraph_number=body.paragraph_number,
+        )
+
     video_script = llm.generate_script(
         video_subject=body.video_subject,
         language=body.video_language,
         paragraph_number=body.paragraph_number,
+        search_context=search_context,
+        options=options,
     )
     response = {"video_script": video_script}
     return utils.get_response(200, response)

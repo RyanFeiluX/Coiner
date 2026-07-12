@@ -117,6 +117,16 @@ class VideoParams(BaseModel):
     scenes: Optional[List[dict]] = None  # Scene data for multi-scene mode
     host_visible: Optional[bool] = True  # Whether the video host appears on camera
 
+    # Script generation options
+    script_preset: Optional[str] = "standard"  # concise | standard | in-depth | custom
+    web_search_enabled: Optional[bool] = False
+    search_results_count: Optional[int] = 5
+    search_rounds: Optional[int] = 1
+    search_source_preference: Optional[str] = "balanced"  # authoritative | latest | balanced
+    expansion_depth: Optional[str] = "moderate"  # topic_only | moderate | deep
+    paragraph_detail: Optional[str] = "normal"  # concise | normal | detailed
+    script_style: Optional[str] = "general"  # general | professional | popular | passionate | storytelling
+
     voice_name: Optional[str] = ""
     voice_volume: Optional[float] = 1.8  # Increased default volume for social media compatibility (WeChat, Douyin, etc.)
     voice_rate: Optional[float] = 1.0
@@ -198,13 +208,29 @@ class VideoScriptParams:
     {
       "video_subject": "春天的花海",
       "video_language": "",
-      "paragraph_number": 1
+      "paragraph_number": 1,
+      "script_preset": "standard",
+      "web_search_enabled": false,
+      "search_results_count": 5,
+      "search_rounds": 1,
+      "search_source_preference": "balanced",
+      "expansion_depth": "moderate",
+      "paragraph_detail": "normal",
+      "script_style": "general"
     }
     """
 
     video_subject: Optional[str] = "春天的花海"
     video_language: Optional[str] = ""
     paragraph_number: Optional[int] = 1
+    script_preset: Optional[str] = "standard"
+    web_search_enabled: Optional[bool] = False
+    search_results_count: Optional[int] = 5
+    search_rounds: Optional[int] = 1
+    search_source_preference: Optional[str] = "balanced"
+    expansion_depth: Optional[str] = "moderate"
+    paragraph_detail: Optional[str] = "normal"
+    script_style: Optional[str] = "general"
 
 
 class VideoTermsParams:

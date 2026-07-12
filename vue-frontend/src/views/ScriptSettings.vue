@@ -23,16 +23,22 @@
         
         <div class="form-item">
           <label class="form-label" v-html="parseLabelMarkdown(t('Language for video script'))"></label>
-          <el-select v-model="form.language" :placeholder="t('Select language')" class="form-select">
-            <el-option :label="t('Auto Detect')" value="auto" />
-            <el-option :label="t('Chinese')" value="zh" />
-            <el-option :label="t('English')" value="en" />
-            <el-option :label="t('German')" value="de" />
-            <el-option :label="t('Portuguese')" value="pt" />
-            <el-option :label="t('Russian')" value="ru" />
-            <el-option :label="t('Turkish')" value="tr" />
-            <el-option :label="t('Vietnamese')" value="vi" />
-          </el-select>
+          <div class="language-row">
+            <el-select v-model="form.language" :placeholder="t('Select language')" class="language-select">
+              <el-option :label="t('Auto Detect')" value="auto" />
+              <el-option :label="t('Chinese')" value="zh" />
+              <el-option :label="t('English')" value="en" />
+              <el-option :label="t('German')" value="de" />
+              <el-option :label="t('Portuguese')" value="pt" />
+              <el-option :label="t('Russian')" value="ru" />
+              <el-option :label="t('Turkish')" value="tr" />
+              <el-option :label="t('Vietnamese')" value="vi" />
+            </el-select>
+            <el-button size="small" @click="scriptOptionsDialogVisible = true">
+              <el-icon><Setting /></el-icon>
+              {{ t('Script Options') }}
+            </el-button>
+          </div>
         </div>
         
         <div class="form-item">
@@ -170,6 +176,113 @@
     
 
   </div>
+
+    <!-- Script Options Dialog -->
+    <el-dialog v-model="scriptOptionsDialogVisible" :title="t('Script Options')" width="550px" destroy-on-close>
+      <div class="options-section">
+        <label class="form-label">{{ t('Script Mode') }}</label>
+        <div class="preset-buttons">
+          <el-button
+            :type="form.scriptPreset === 'concise' ? 'primary' : 'default'"
+            size="small"
+            @click="setPreset('concise')"
+            :title="t('Concise mode: 30-60s video, 3-5 scenes, no web search')"
+          >{{ t('⚡ Concise') }}</el-button>
+          <el-button
+            :type="form.scriptPreset === 'standard' ? 'primary' : 'default'"
+            size="small"
+            @click="setPreset('standard')"
+            :title="t('Standard mode: 2-5min video, 6-10 scenes, web search enabled')"
+          >{{ t('📐 Standard') }}</el-button>
+          <el-button
+            :type="form.scriptPreset === 'in_depth' ? 'primary' : 'default'"
+            size="small"
+            @click="setPreset('in_depth')"
+            :title="t('In-depth mode: 5-15min video, 10-20 scenes, deep web search')"
+          >{{ t('📚 In-Depth') }}</el-button>
+        </div>
+      </div>
+
+      <div class="dialog-divider"></div>
+
+      <div class="options-section">
+        <label class="form-label">{{ t('Advanced Options') }}</label>
+        <div class="advanced-options">
+          <div class="form-item">
+            <el-checkbox v-model="form.webSearchEnabled" @change="onFieldChange('webSearchEnabled', form.webSearchEnabled)">
+              {{ t('Enable Web Search') }}
+            </el-checkbox>
+          </div>
+
+          <template v-if="form.webSearchEnabled">
+            <div class="form-item">
+              <label class="form-label">{{ t('Search Rounds') }}</label>
+              <el-slider
+                v-model="form.searchRounds"
+                :min="1"
+                :max="3"
+                :step="1"
+                show-stops
+                :marks="{1: '1', 2: '2', 3: '3'}"
+                @change="onFieldChange('searchRounds', form.searchRounds)"
+              />
+            </div>
+
+            <div class="form-item">
+              <label class="form-label">{{ t('Results per Round') }}</label>
+              <el-slider
+                v-model="form.searchResultsCount"
+                :min="3"
+                :max="15"
+                :step="1"
+                show-stops
+                :marks="{3: '3', 5: '5', 10: '10', 15: '15'}"
+                @change="onFieldChange('searchResultsCount', form.searchResultsCount)"
+              />
+            </div>
+
+            <div class="form-item">
+              <label class="form-label" v-html="parseLabelMarkdown(t('Source Preference'))"></label>
+              <el-select v-model="form.searchSourcePreference" @change="onFieldChange('searchSourcePreference', form.searchSourcePreference)" class="form-select">
+                <el-option :label="t('Balanced')" value="balanced" />
+                <el-option :label="t('Authoritative')" value="authoritative" />
+                <el-option :label="t('Latest News')" value="latest" />
+              </el-select>
+            </div>
+          </template>
+
+          <div class="form-item">
+            <label class="form-label" v-html="parseLabelMarkdown(t('Expansion Depth'))"></label>
+            <el-radio-group v-model="form.expansionDepth" @change="onFieldChange('expansionDepth', form.expansionDepth)">
+              <el-radio-button value="topic_only">{{ t('Topic Only') }}</el-radio-button>
+              <el-radio-button value="moderate">{{ t('Moderate') }}</el-radio-button>
+              <el-radio-button value="deep">{{ t('Deep') }}</el-radio-button>
+            </el-radio-group>
+          </div>
+
+          <div class="form-item">
+            <label class="form-label" v-html="parseLabelMarkdown(t('Paragraph Detail'))"></label>
+            <el-radio-group v-model="form.paragraphDetail" @change="onFieldChange('paragraphDetail', form.paragraphDetail)">
+              <el-radio-button value="concise">{{ t('Concise') }}</el-radio-button>
+              <el-radio-button value="normal">{{ t('Normal') }}</el-radio-button>
+              <el-radio-button value="detailed">{{ t('Detailed') }}</el-radio-button>
+            </el-radio-group>
+          </div>
+
+          <div class="form-item">
+            <label class="form-label" v-html="parseLabelMarkdown(t('Script Style'))"></label>
+            <el-select v-model="form.scriptStyle" @change="onFieldChange('scriptStyle', form.scriptStyle)" class="form-select">
+              <el-option :label="t('General')" value="general" />
+              <el-option :label="t('Professional')" value="professional" />
+              <el-option :label="t('Popular')" value="popular" />
+              <el-option :label="t('Passionate')" value="passionate" />
+              <el-option :label="t('Storytelling')" value="storytelling" />
+            </el-select>
+          </div>
+        </div>
+      </div>
+    </el-dialog>
+
 </template>
 
 <script setup lang="ts">
@@ -178,9 +291,10 @@ import { useScriptStore } from '../stores/script';
 import { useI18nStore } from '../stores/i18n';
 import { useSettingsStore } from '../stores/settings';
 import { ElMessage } from 'element-plus';
-import { VideoCamera } from '@element-plus/icons-vue';
+import { VideoCamera, Setting } from '@element-plus/icons-vue';
 import { parseLabelMarkdown } from '../utils/markdownParser';
 import { generateVideoScript, parseVideoScript as apiParseVideoScript } from '../services/api';
+import type { ScriptSettings } from '../stores/script';
 import api from '../services/api';
 
 const scriptStore = useScriptStore();
@@ -196,6 +310,81 @@ const loading = ref({
   generateScript: false,
   parseScript: false
 });
+
+// Script options dialog visibility
+const scriptOptionsDialogVisible = ref(false);
+
+// Preset mode mappings
+const presetDefaults: Record<string, Partial<ScriptSettings>> = {
+  concise: {
+    scriptPreset: 'concise',
+    webSearchEnabled: false,
+    searchResultsCount: 3,
+    searchRounds: 1,
+    searchSourcePreference: 'balanced',
+    expansionDepth: 'topic_only',
+    paragraphDetail: 'concise',
+    scriptStyle: 'general',
+  },
+  standard: {
+    scriptPreset: 'standard',
+    webSearchEnabled: true,
+    searchResultsCount: 5,
+    searchRounds: 1,
+    searchSourcePreference: 'balanced',
+    expansionDepth: 'moderate',
+    paragraphDetail: 'normal',
+    scriptStyle: 'general',
+  },
+  in_depth: {
+    scriptPreset: 'in_depth',
+    webSearchEnabled: true,
+    searchResultsCount: 10,
+    searchRounds: 2,
+    searchSourcePreference: 'authoritative',
+    expansionDepth: 'deep',
+    paragraphDetail: 'detailed',
+    scriptStyle: 'professional',
+  },
+};
+
+const setPreset = (preset: string) => {
+  const defaults = presetDefaults[preset];
+  if (!defaults) return;
+  Object.assign(form, defaults);
+  scriptStore.updateScriptPreset(preset);
+  scriptStore.updateWebSearchEnabled(defaults.webSearchEnabled ?? false);
+  scriptStore.updateSearchResultsCount(defaults.searchResultsCount ?? 5);
+  scriptStore.updateSearchRounds(defaults.searchRounds ?? 1);
+  scriptStore.updateSearchSourcePreference(defaults.searchSourcePreference ?? 'balanced');
+  scriptStore.updateExpansionDepth(defaults.expansionDepth ?? 'moderate');
+  scriptStore.updateParagraphDetail(defaults.paragraphDetail ?? 'normal');
+  scriptStore.updateScriptStyle(defaults.scriptStyle ?? 'general');
+  ElMessage.success(t('Preset applied'));
+};
+
+const onFieldChange = (field: string, value: any) => {
+  // When user changes any advanced option, mark preset as custom
+  if (field !== 'scriptPreset') {
+    form.scriptPreset = 'custom';
+    scriptStore.updateScriptPreset('custom');
+  }
+  
+  const actions: Record<string, (v: any) => void> = {
+    webSearchEnabled: (v) => scriptStore.updateWebSearchEnabled(v),
+    searchResultsCount: (v) => scriptStore.updateSearchResultsCount(v),
+    searchRounds: (v) => scriptStore.updateSearchRounds(v),
+    searchSourcePreference: (v) => scriptStore.updateSearchSourcePreference(v),
+    expansionDepth: (v) => scriptStore.updateExpansionDepth(v),
+    paragraphDetail: (v) => scriptStore.updateParagraphDetail(v),
+    scriptStyle: (v) => scriptStore.updateScriptStyle(v),
+  };
+  
+  const action = actions[field];
+  if (action) {
+    action(value);
+  }
+};
 
 // Get data from store
 const form = scriptStore;
@@ -614,6 +803,70 @@ watch(
   }
 );
 
+watch(
+  () => form.scriptPreset,
+  (newValue) => {
+    scriptStore.updateScriptPreset(newValue);
+    scriptStore.saveToLocalStorage();
+  }
+);
+
+watch(
+  () => form.webSearchEnabled,
+  (newValue) => {
+    scriptStore.updateWebSearchEnabled(newValue);
+    scriptStore.saveToLocalStorage();
+  }
+);
+
+watch(
+  () => form.searchResultsCount,
+  (newValue) => {
+    scriptStore.updateSearchResultsCount(newValue);
+    scriptStore.saveToLocalStorage();
+  }
+);
+
+watch(
+  () => form.searchRounds,
+  (newValue) => {
+    scriptStore.updateSearchRounds(newValue);
+    scriptStore.saveToLocalStorage();
+  }
+);
+
+watch(
+  () => form.searchSourcePreference,
+  (newValue) => {
+    scriptStore.updateSearchSourcePreference(newValue);
+    scriptStore.saveToLocalStorage();
+  }
+);
+
+watch(
+  () => form.expansionDepth,
+  (newValue) => {
+    scriptStore.updateExpansionDepth(newValue);
+    scriptStore.saveToLocalStorage();
+  }
+);
+
+watch(
+  () => form.paragraphDetail,
+  (newValue) => {
+    scriptStore.updateParagraphDetail(newValue);
+    scriptStore.saveToLocalStorage();
+  }
+);
+
+watch(
+  () => form.scriptStyle,
+  (newValue) => {
+    scriptStore.updateScriptStyle(newValue);
+    scriptStore.saveToLocalStorage();
+  }
+);
+
 // Generate video script from topic
 const handleGenerateVideoScript = async () => {
   if (!form.videoSubject) {
@@ -628,7 +881,15 @@ const handleGenerateVideoScript = async () => {
     const response = await generateVideoScript({
       video_subject: form.videoSubject,
       video_language: language,
-      paragraph_number: 1
+      paragraph_number: 1,
+      script_preset: form.scriptPreset || 'standard',
+      web_search_enabled: form.webSearchEnabled,
+      search_results_count: form.searchResultsCount,
+      search_rounds: form.searchRounds,
+      search_source_preference: form.searchSourcePreference,
+      expansion_depth: form.expansionDepth,
+      paragraph_detail: form.paragraphDetail,
+      script_style: form.scriptStyle,
     });
     form.videoScript = response.video_script;
     ElMessage.success('Video script generated successfully');
@@ -695,7 +956,15 @@ watch([
   () => form.videoSubject,
   () => form.videoScript,
   () => form.language,
-  () => form.videoTitle
+  () => form.videoTitle,
+  () => form.scriptPreset,
+  () => form.webSearchEnabled,
+  () => form.searchResultsCount,
+  () => form.searchRounds,
+  () => form.searchSourcePreference,
+  () => form.expansionDepth,
+  () => form.paragraphDetail,
+  () => form.scriptStyle,
 ], () => {
   scriptStore.saveToLocalStorage();
 });
@@ -786,6 +1055,63 @@ defineExpose({
 
 .form-button:hover {
   opacity: 0.9;
+}
+
+.language-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.language-select {
+  flex: 1;
+}
+
+.dialog-divider {
+  height: 1px;
+  background: #e0e0e0;
+  margin: 16px 0;
+}
+
+.options-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.preset-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preset-buttons .el-button {
+  flex: 1;
+  min-width: 90px;
+}
+
+.advanced-options {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 0;
+}
+
+.advanced-options .form-item {
+  margin: 0;
+}
+
+.advanced-options :deep(.el-radio-group) {
+  display: flex;
+  width: 100%;
+}
+
+.advanced-options :deep(.el-radio-button) {
+  flex: 1;
+}
+
+.advanced-options :deep(.el-radio-button__inner) {
+  width: 100%;
 }
 
 .form-label {

@@ -184,6 +184,18 @@
       
       <el-card :body-style="{ padding: '20px' }" class="mt-4">
         <template #header>
+          <span v-html="t('Web Search Settings')"></span>
+        </template>
+        
+        <el-form :model="form" label-width="150px">
+          <el-form-item :label="t('Tavily API Key')">
+            <el-input v-model="form.tavilyApiKey" type="password" placeholder="tmpl_xxx" />
+          </el-form-item>
+        </el-form>
+      </el-card>
+      
+      <el-card :body-style="{ padding: '20px' }" class="mt-4">
+        <template #header>
           <span v-html="t('Cloned Voices Setting')"></span>
         </template>
         
@@ -351,6 +363,9 @@ const loadSettingsToForm = () => {
   
   // Load Host Visible configuration
   form.hostVisible = settingsStore.video.hostVisible;
+  
+  // Load Tavily API Key
+  form.tavilyApiKey = settingsStore.audio.tavilyApiKey || '';
 };
 
 const form = reactive({
@@ -365,7 +380,8 @@ const form = reactive({
   whisperDevice: 'CPU',
   videoEncoder: 'CPU',
   silenceDuration: 0.3,
-  hostVisible: true
+  hostVisible: true,
+  tavilyApiKey: ''
 });
 
 // Cloned voices data
@@ -687,6 +703,9 @@ const saveSettings = async () => {
     
     // Save Host Visible configuration
     settingsStore.updateVideoSetting('hostVisible', form.hostVisible);
+    
+    // Save Tavily API Key
+    settingsStore.updateAudioSetting('tavilyApiKey', form.tavilyApiKey);
 
     // Build app config based on LLM provider
     const appConfig: Record<string, any> = {
@@ -727,6 +746,9 @@ const saveSettings = async () => {
       video: videoConfig,
       whisper: {
         device: form.whisperDevice
+      },
+      tavily: {
+        api_key: form.tavilyApiKey
       }
     }));
 

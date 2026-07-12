@@ -68,7 +68,7 @@
         
         <el-main class="app-content">
           <router-view v-slot="{ Component }">
-            <transition name="fade" mode="out-in">
+            <transition name="fade">
               <component :is="Component" />
             </transition>
           </router-view>
@@ -265,7 +265,15 @@ const generateVideo = async () => {
       title_animation_duration: titleSettings.animationDuration,
       title_background_overlay: titleSettings.backgroundOverlay,
       title_overlay_color: titleSettings.overlayColor,
-      title_align: titleSettings.align
+      title_align: titleSettings.align,
+      script_preset: scriptStore.scriptPreset || 'standard',
+      web_search_enabled: scriptStore.webSearchEnabled || false,
+      search_results_count: scriptStore.searchResultsCount || 5,
+      search_rounds: scriptStore.searchRounds || 1,
+      search_source_preference: scriptStore.searchSourcePreference || 'balanced',
+      expansion_depth: scriptStore.expansionDepth || 'moderate',
+      paragraph_detail: scriptStore.paragraphDetail || 'normal',
+      script_style: scriptStore.scriptStyle || 'general',
     };
 
     if (settingsStore.video.source === 'local' && settingsStore.video.localFiles && settingsStore.video.localFiles.length > 0) {

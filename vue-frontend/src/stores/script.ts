@@ -13,12 +13,20 @@ interface Scene {
   introVideoCoverFull?: boolean;
 }
 
-interface ScriptSettings {
+export interface ScriptSettings {
   videoSubject: string;
   videoScript: string;
   language: string;
   videoTitle: string;
   scenes: Scene[];
+  scriptPreset: string;
+  webSearchEnabled: boolean;
+  searchResultsCount: number;
+  searchRounds: number;
+  searchSourcePreference: string;
+  expansionDepth: string;
+  paragraphDetail: string;
+  scriptStyle: string;
 }
 
 export const useScriptStore = defineStore('script', {
@@ -27,7 +35,15 @@ export const useScriptStore = defineStore('script', {
     videoScript: '',
     language: 'auto',
     videoTitle: '',
-    scenes: []
+    scenes: [],
+    scriptPreset: 'standard',
+    webSearchEnabled: false,
+    searchResultsCount: 5,
+    searchRounds: 1,
+    searchSourcePreference: 'balanced',
+    expansionDepth: 'moderate',
+    paragraphDetail: 'normal',
+    scriptStyle: 'general',
   }),
   
   actions: {
@@ -83,13 +99,61 @@ export const useScriptStore = defineStore('script', {
       }
     },
     
+    updateScriptPreset(value: string) {
+      this.scriptPreset = value;
+      this.saveToLocalStorage();
+    },
+
+    updateWebSearchEnabled(value: boolean) {
+      this.webSearchEnabled = value;
+      this.saveToLocalStorage();
+    },
+
+    updateSearchResultsCount(value: number) {
+      this.searchResultsCount = value;
+      this.saveToLocalStorage();
+    },
+
+    updateSearchRounds(value: number) {
+      this.searchRounds = value;
+      this.saveToLocalStorage();
+    },
+
+    updateSearchSourcePreference(value: string) {
+      this.searchSourcePreference = value;
+      this.saveToLocalStorage();
+    },
+
+    updateExpansionDepth(value: string) {
+      this.expansionDepth = value;
+      this.saveToLocalStorage();
+    },
+
+    updateParagraphDetail(value: string) {
+      this.paragraphDetail = value;
+      this.saveToLocalStorage();
+    },
+
+    updateScriptStyle(value: string) {
+      this.scriptStyle = value;
+      this.saveToLocalStorage();
+    },
+
     saveToLocalStorage() {
       const data = {
         videoSubject: this.videoSubject,
         videoScript: this.videoScript,
         language: this.language,
         videoTitle: this.videoTitle,
-        scenes: JSON.parse(JSON.stringify(this.scenes))
+        scenes: JSON.parse(JSON.stringify(this.scenes)),
+        scriptPreset: this.scriptPreset,
+        webSearchEnabled: this.webSearchEnabled,
+        searchResultsCount: this.searchResultsCount,
+        searchRounds: this.searchRounds,
+        searchSourcePreference: this.searchSourcePreference,
+        expansionDepth: this.expansionDepth,
+        paragraphDetail: this.paragraphDetail,
+        scriptStyle: this.scriptStyle,
       };
       localStorage.setItem('coiner-script', JSON.stringify(data));
     }

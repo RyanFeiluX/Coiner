@@ -467,6 +467,7 @@ const form = reactive({
   titleAlign: settingsStore.video.title.align || 'center'
 });
 
+const loadingConfig = ref(true);
 const previewImageUrl = ref<string | null>(null);
 const isLoadingPreview = ref(false);
 let previewTimer: ReturnType<typeof setTimeout> | null = null;
@@ -801,6 +802,7 @@ const loadTitleStyles = async () => {
 };
 
 const loadConfig = async () => {
+  loadingConfig.value = true;
   try {
     console.log('[TitleSettings] loadConfig called');
     const response = await apiService.getConfig();
@@ -867,12 +869,36 @@ const loadConfig = async () => {
         if (cfg.title.title_align !== undefined) {
           form.titleAlign = cfg.title.title_align;
         }
-        
-        updateTitleSettings();
+
+        // Batch sync store + localStorage without triggering backend
+        Object.assign(settingsStore.video.title, {
+          enabled: form.titleEnabled,
+          text: form.titleText,
+          duration: form.titleDuration,
+          font: form.titleFont,
+          fontSize: form.titleFontSize,
+          color: form.titleColor,
+          strokeColor: form.titleStrokeColor,
+          strokeWidth: form.titleStrokeWidth,
+          backgroundColor: form.titleBackgroundColor,
+          position: form.titlePosition,
+          margin: form.titleMargin / 100,
+          marginLeft: form.titleMarginLeft / 100,
+          marginRight: form.titleMarginRight / 100,
+          animation: form.titleAnimation,
+          animationDuration: form.titleAnimationDuration,
+          backgroundOverlay: form.titleBackgroundOverlay,
+          overlayColor: form.titleOverlayColor,
+          style: form.titleStyle,
+          align: form.titleAlign,
+        });
+        settingsStore.saveToLocalStorage();
       }
     }
   } catch (error: any) {
     console.error('Failed to load config:', error);
+  } finally {
+    loadingConfig.value = false;
   }
 };
 
@@ -961,6 +987,7 @@ watch([
   () => form.titleStyle,
   () => form.titleAlign
 ], async () => {
+  if (loadingConfig.value) return;
   try {
     await saveConfig();
     updateTitleSettings();
@@ -998,6 +1025,7 @@ onMounted(async () => {
     titleFont: form.titleFont,
     titleFontSize: form.titleFontSize
   });
+  scriptStore.loadFromLocalStorage();
   await loadConfig();
   console.log('[TitleSettings] Form state after loadConfig:', {
     titleEnabled: form.titleEnabled,

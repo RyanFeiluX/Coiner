@@ -66,12 +66,13 @@ SECRET_KEYS = {
         "openai_api_key", "moonshot_api_key", "oneapi_api_key",
         "azure_api_key", "gemini_api_key", "qwen_api_key",
         "deepseek_api_key", "modelscope_api_key", "redis_password",
-        "ollama_api_key",
+        "ollama_api_key", "tavily_api_key",
     ],
     "azure": ["speech_key"],
     "siliconflow": ["api_key"],
     "coze": ["api_key"],
     "qwen": ["api_key"],
+    "tavily": ["api_key"],
 }
 
 
@@ -120,6 +121,7 @@ def save_config():
     _cfg["siliconflow"] = siliconflow
     _cfg["coze"] = coze
     _cfg["qwen"] = qwen
+    _cfg["tavily"] = tavily
     _cfg["audio"] = audio
     _cfg["subtitle"] = subtitle
     _cfg["title"] = title
@@ -160,6 +162,7 @@ azure = _cfg.get("azure", {})
 siliconflow = _cfg.get("siliconflow", {})
 coze = _cfg.get("coze", {})
 qwen = _cfg.get("qwen", {})
+tavily = _cfg.get("tavily", {})
 audio = _cfg.get("audio", {})
 subtitle = _cfg.get("subtitle", {})
 title = _cfg.get("title", {})

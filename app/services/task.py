@@ -57,13 +57,17 @@ def _seconds_to_srt_time(seconds):
     return "00:00:00,000"
 
 
-def save_script_data(task_id, video_script, video_terms, params):
+def save_script_data(task_id, video_script, video_terms, params, script_options=None, search_context=None):
     script_file = path.join(utils.task_dir(task_id), "script.json")
     script_data = {
         "script": video_script,
         "search_terms": video_terms,
         "params": params,
     }
+    if script_options:
+        script_data["script_options"] = script_options
+    if search_context:
+        script_data["search_context"] = search_context
 
     with open(script_file, "w", encoding="utf-8") as f:
         f.write(utils.to_json(script_data))
@@ -90,7 +94,7 @@ def generate_multi_scene_script(task_id, params):
         for i, scene in enumerate(params.scenes):
             combined_script += f"[Scene {i+1}] {scene.get('title', '')}\n"
             combined_script += f"{scene.get('script', '')}\n\n"
-        return combined_script, params.scenes
+        return combined_script, params.scenes, None, None
     
     # Log params.host_visible value
     logger.info(f"[generate_multi_scene_script] Checking host_visible directly: {params.host_visible}")
@@ -111,6 +115,38 @@ def generate_multi_scene_script(task_id, params):
         logger.info(f"Matched Keywords: {', '.join(content_type_result['matched_keywords'])}")
     logger.info(f"=== Content Type Detection End ===")
     
+    # Resolve script options
+    from app.services.script_options import resolve_options
+    resolved_options = resolve_options(
+        script_preset=getattr(params, 'script_preset', None),
+        web_search_enabled=getattr(params, 'web_search_enabled', None),
+        search_results_count=getattr(params, 'search_results_count', None),
+        search_rounds=getattr(params, 'search_rounds', None),
+        search_source_preference=getattr(params, 'search_source_preference', None),
+        expansion_depth=getattr(params, 'expansion_depth', None),
+        paragraph_detail=getattr(params, 'paragraph_detail', None),
+        script_style=getattr(params, 'script_style', None),
+        paragraph_number=getattr(params, 'paragraph_number', None),
+    )
+    logger.info(f"Resolved script options for task {task_id}: {resolved_options}")
+
+    # Perform web search if enabled
+    search_context = ""
+    if resolved_options.get("web_search_enabled", False):
+        from app.services.search import search_and_summarize
+        search_topic = params.video_subject if params.video_subject else (
+            params.video_script[:100] if params.video_script else "topic"
+        )
+        logger.info(f"Performing web search for task {task_id}, topic='{search_topic}'")
+        search_context = search_and_summarize(
+            topic=search_topic,
+            rounds=resolved_options.get("search_rounds", 1),
+            num_results=resolved_options.get("search_results_count", 5),
+            source_preference=resolved_options.get("search_source_preference", "balanced"),
+            expansion_depth=resolved_options.get("expansion_depth", "moderate"),
+        )
+        logger.info(f"Web search context length: {len(search_context)} chars for task {task_id}")
+
     if not video_script:
         # User provided subject only, generate multi-scene script from scratch
         logger.info("generating multi-scene script from subject")
@@ -119,9 +155,11 @@ def generate_multi_scene_script(task_id, params):
         video_script = llm.generate_multi_scene_script(
             video_content=params.video_subject,
             language=params.video_language,
-            max_scenes=16,
+            max_scenes=resolved_options.get("max_scenes", 16),
             content_type=content_type_result['content_type'],
-            host_visible=host_visible_to_send
+            host_visible=host_visible_to_send,
+            search_context=search_context,
+            options=resolved_options,
         )
     else:
         # User provided script, convert to multi-scene format
@@ -133,13 +171,15 @@ def generate_multi_scene_script(task_id, params):
             video_subject=params.video_subject,
             language=params.video_language,
             content_type=content_type_result['content_type'],
-            host_visible=host_visible_to_send
+            host_visible=host_visible_to_send,
+            search_context=search_context,
+            options=resolved_options,
         )
     
     if not video_script or "Error: " in video_script:
         sm.state.update_task(task_id, state=const.TASK_STATE_FAILED)
         logger.error("failed to generate multi-scene script.")
-        return None, None
+        return None, None, None, None
     
     # Parse the multi-scene script into structured data
     scenes_data = llm.parse_multi_scene_script(video_script)
@@ -147,7 +187,7 @@ def generate_multi_scene_script(task_id, params):
     if not scenes_data:
         sm.state.update_task(task_id, state=const.TASK_STATE_FAILED)
         logger.error("failed to parse multi-scene script.")
-        return None, None
+        return None, None, None, None
     
     # Check for lazy/placeholder scripts
     lazy_count = sum(1 for s in scenes_data if llm._is_lazy_script(s.get('script', s.get('audio', ''))))
@@ -155,7 +195,7 @@ def generate_multi_scene_script(task_id, params):
         logger.warning(f"[Lazy Script Warning] {lazy_count} of {len(scenes_data)} scenes have placeholder scripts")
     
     logger.success(f"generated {len(scenes_data)} scenes")
-    return video_script, scenes_data
+    return video_script, scenes_data, resolved_options, search_context
 
 
 def generate_scene_terms(task_id, params, scenes):
@@ -1034,7 +1074,7 @@ def start_multi_scene(task_id, params: VideoParams, stop_at: str = "video", task
         sm.state.update_task(task_id, state=const.TASK_STATE_FAILED, **{"status": "cancelled"})
         return None
         
-    video_script, scenes = generate_multi_scene_script(task_id, params)
+    video_script, scenes, resolved_options, search_context = generate_multi_scene_script(task_id, params)
     if not video_script or not scenes:
         logger.error("Multi-scene: failed to generate script, returning None")
         sm.state.update_task(task_id, state=const.TASK_STATE_FAILED)
@@ -1059,7 +1099,7 @@ def start_multi_scene(task_id, params: VideoParams, stop_at: str = "video", task
     if not scene_terms_list:
         logger.warning("failed to generate scene terms, continuing with defaults")
     
-    save_script_data(task_id, video_script, scene_terms_list, params)
+    save_script_data(task_id, video_script, scene_terms_list, params, script_options=resolved_options, search_context=search_context)
     
     if stop_at == "terms":
         logger.info("Multi-scene: returning at stop_at='terms'")
