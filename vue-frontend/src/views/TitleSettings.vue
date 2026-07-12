@@ -370,25 +370,6 @@
   font-weight: 500;
   font-display: swap;
 }
-
-@font-face {
-  font-family: 'Charm Bold';
-  src: url('/fonts/Charm-Bold.ttf') format('truetype');
-  font-weight: bold;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Charm Regular';
-  src: url('/fonts/Charm-Regular.ttf') format('truetype');
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'UTM Kabel KT';
-  src: url('/fonts/UTM Kabel KT.ttf') format('truetype');
-  font-display: swap;
-}
 </style>
 
 <script setup lang="ts">
@@ -411,9 +392,6 @@ const availableFonts = [
   'MicrosoftYaHeiNormal.ttc',
   'STHeitiLight.ttc',
   'STHeitiMedium.ttc',
-  'Charm-Bold.ttf',
-  'Charm-Regular.ttf',
-  'UTM Kabel KT.ttf',
 ];
 
 const fontNameMapping: { [key: string]: string } = {
@@ -421,9 +399,6 @@ const fontNameMapping: { [key: string]: string } = {
   'MicrosoftYaHeiNormal.ttc': 'Microsoft YaHei Normal',
   'STHeitiLight.ttc': 'STHeiti Light',
   'STHeitiMedium.ttc': 'STHeiti Medium',
-  'Charm-Bold.ttf': 'Charm Bold',
-  'Charm-Regular.ttf': 'Charm Regular',
-  'UTM Kabel KT.ttf': 'UTM Kabel KT',
 };
 
 const colorOptions = [
@@ -617,8 +592,6 @@ const previewStyle = computed(() => {
     fontFamilyValue = `${mappedFont}, "Microsoft YaHei", "PingFang SC", sans-serif`;
   } else if (mappedFont.includes('Heiti')) {
     fontFamilyValue = `${mappedFont}, "STHeiti", "SimHei", sans-serif`;
-  } else if (mappedFont.includes('Charm')) {
-    fontFamilyValue = `${mappedFont}, cursive, sans-serif`;
   } else {
     fontFamilyValue = `${mappedFont}, sans-serif`;
   }
@@ -729,7 +702,7 @@ const applyStyle = async (styleName: string) => {
       titleOverlayColor: 'rgba(0,0,0,0.5)'
     },
     gradient: {
-      titleFont: 'UTM Kabel KT.ttf',
+      titleFont: 'MicrosoftYaHeiBold.ttc',
       titleFontSize: 76,
       titleColor: '#FF6B6B',
       titleStrokeColor: '#4ECDC4',
@@ -741,38 +714,6 @@ const applyStyle = async (styleName: string) => {
       titleMarginRight: 5,
       titleAnimation: 'slide_up',
       titleAnimationDuration: 0.7,
-      titleBackgroundOverlay: false,
-      titleOverlayColor: 'rgba(0,0,0,0.5)'
-    },
-    charm_elegant: {
-      titleFont: 'Charm-Bold.ttf',
-      titleFontSize: 76,
-      titleColor: '#FFFFFF',
-      titleStrokeColor: '#000000',
-      titleStrokeWidth: 2.0,
-      titleBackgroundColor: 'transparent',
-      titlePosition: 'center',
-      titleMargin: 5,
-      titleMarginLeft: 5,
-      titleMarginRight: 5,
-      titleAnimation: 'fade_in',
-      titleAnimationDuration: 0.6,
-      titleBackgroundOverlay: false,
-      titleOverlayColor: 'rgba(0,0,0,0.5)'
-    },
-    charm_regular: {
-      titleFont: 'Charm-Regular.ttf',
-      titleFontSize: 72,
-      titleColor: '#F5F5F5',
-      titleStrokeColor: '#333333',
-      titleStrokeWidth: 1.5,
-      titleBackgroundColor: 'transparent',
-      titlePosition: 'center',
-      titleMargin: 5,
-      titleMarginLeft: 5,
-      titleMarginRight: 5,
-      titleAnimation: 'slide_down',
-      titleAnimationDuration: 0.5,
       titleBackgroundOverlay: false,
       titleOverlayColor: 'rgba(0,0,0,0.5)'
     }

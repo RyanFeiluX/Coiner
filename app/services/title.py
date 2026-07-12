@@ -49,12 +49,9 @@ def _get_valid_font_path(font_name: str, text: str = "") -> str:
     # Fallback fonts in order of preference - only include fonts that exist
     fallback_fonts = [
         "STHeitiMedium.ttc",
-        "MicrosoftYaHeiBold.ttc", 
+        "MicrosoftYaHeiBold.ttc",
         "MicrosoftYaHeiNormal.ttc",
         "STHeitiLight.ttc",
-        "Charm-Bold.ttf",
-        "Charm-Regular.ttf",
-        "UTM Kabel KT.ttf",
     ]
     
     # Try fallback fonts

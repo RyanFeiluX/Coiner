@@ -21,22 +21,6 @@
   font-weight: 500;
 }
 
-@font-face {
-  font-family: 'Charm Bold';
-  src: url('/fonts/Charm-Bold.ttf') format('truetype');
-  font-weight: bold;
-}
-
-@font-face {
-  font-family: 'Charm Regular';
-  src: url('/fonts/Charm-Regular.ttf') format('truetype');
-}
-
-@font-face {
-  font-family: 'UTM Kabel KT';
-  src: url('/fonts/UTM Kabel KT.ttf') format('truetype');
-}
-
 .title {
   margin: 0;
   font-size: 1.2rem;

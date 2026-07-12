@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.11.4"
+project_version = "2.11.5"
 
 [app]
 host_visible = false
@@ -84,7 +84,7 @@ subtitle_position = "custom"
 subtitle_custom_position = 95
 subtitle_margin = 0.05
 subtitle_auto_fit = true
-font_name = "MicrosoftYaHeiBold.ttc"
+font_name = "STHeitiMedium.ttc"
 text_fore_color = "rgb(247, 243, 9)"
 text_background_color = true
 font_size = 60
@@ -93,12 +93,12 @@ stroke_width = 1.2
 
 [title]
 title_enabled = true
-title_text = "业委会监管漏洞"
+title_text = "小区自治制度的系统性警示"
 title_duration = 5
-title_font_name = "MicrosoftYaHeiBold.ttc"
+title_font_name = "STHeitiLight.ttc"
 title_font_size = 100
 title_text_color = "#FFFFFF"
-title_stroke_color = "#800080"
+title_stroke_color = "#A52A2A"
 title_stroke_width = 8
 title_background_color = "transparent"
 title_position = "center"
