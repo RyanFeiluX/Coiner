@@ -411,28 +411,26 @@ class ThreadManager:
 
     def cancel_task(self, task_id: str) -> bool:
         """Cancel task
-        
+
         Args:
             task_id: Task ID
-            
+
         Returns:
             Whether cancellation was successful
         """
-        # Acquire lock manually
-        self.lock.acquire()
-        try:
+        with self.lock:
             if task_id not in self.task_infos:
                 return False
-            
+
             task_info = self.task_infos[task_id]
-            
+
             # If task is running, set cancellation flag
             if task_info.status == TaskStatus.RUNNING:
                 task_info.cancelled = True
                 task_info.status = TaskStatus.CANCELLING
                 # The running task will call _process_queue() when it exits
                 return True
-            
+
             # If task is in queue, remove from queue
             elif task_info.status == TaskStatus.PENDING:
                 # Rebuild queue, removing specified task
@@ -443,25 +441,16 @@ class ThreadManager:
                         new_queue.put(tid)
                 self.task_queue = new_queue
                 del self.task_infos[task_id]
-                # Release lock before calling _process_queue()
-                self.lock.release()
-                try:
-                    self._process_queue()
-                finally:
-                    # Don't re-acquire, since we were done
-                    pass
+                # Process queue immediately while still holding the lock
+                self._process_queue_locked()
                 return True
-            
+
             # Task is already completed or failed, delete directly
             else:
                 del self.task_infos[task_id]
                 # Remove from history
                 self.history = [t for t in self.history if t.task_id != task_id]
                 return True
-        finally:
-            # Only release lock if we still hold it
-            if self.lock.locked():
-                self.lock.release()
 
     def shutdown(self):
         """Shutdown thread manager"""

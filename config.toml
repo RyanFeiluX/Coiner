@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.11.0"
+project_version = "2.11.1"
 
 [app]
 host_visible = false
@@ -87,27 +87,27 @@ subtitle_auto_fit = true
 font_name = "MicrosoftYaHeiBold.ttc"
 text_fore_color = "rgb(247, 243, 9)"
 text_background_color = true
-font_size = 54
+font_size = 60
 stroke_color = "#000000"
 stroke_width = 1.2
 
 [title]
 title_enabled = true
-title_text = "全球首例机器人操刀手术"
+title_text = "被律师偷走的信任"
 title_duration = 5
 title_font_name = "MicrosoftYaHeiBold.ttc"
 title_font_size = 100
-title_text_color = "#808080"
-title_stroke_color = "#FFFF00"
+title_text_color = "#FFFFFF"
+title_stroke_color = "#0000FF"
 title_stroke_width = 8
 title_background_color = "transparent"
 title_position = "center"
 title_margin = 0.05
 title_margin_left = 0.05
 title_margin_right = 0.05
-title_animation = "fade_out"
+title_animation = "none"
 title_animation_duration = 0.5
-title_background_overlay = true
+title_background_overlay = false
 title_overlay_color = "rgba(0,0,0,0.5)"
 title_style = "classic"
 title_align = "center"
@@ -115,6 +115,25 @@ title_align = "center"
 [ui]
 hide_log = false
 language = "zh"
+title_enabled = true
+title_text = "循环工程\n不为人知的秘密"
+title_duration = 3
+title_font_name = "MicrosoftYaHeiBold.ttc"
+title_font_size = 66
+title_text_color = "#FF0000"
+title_stroke_color = "#FFFF00"
+title_stroke_width = 3
+title_background_color = "transparent"
+title_position = "center"
+title_margin = 0.05
+title_margin_left = 0.05
+title_margin_right = 0.05
+title_animation = "fade_out"
+title_animation_duration = 0.5
+title_background_overlay = false
+title_overlay_color = "rgba(0,0,0,0.5)"
+title_style = "classic"
+title_align = "center"
 
 [coze]
 

@@ -240,6 +240,10 @@ def delete_video(request: Request, task_id: str = Path(..., description="Task ID
         from app.services.log_service import log_service
         log_service.clear_task_logs(task_id)
 
+        # 同时从 thread_manager 队列中移除（如果还在排队）
+        from app.services.thread_manager import thread_manager
+        thread_manager.cancel_task(task_id)
+
         sm.state.delete_task(task_id)
         logger.success(f"video deleted: {utils.to_json(task)}")
         return utils.get_response(200)
