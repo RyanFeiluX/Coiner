@@ -944,26 +944,29 @@ const copyFromScenePanel = () => {
   }
 };
 
-const updateTitleSettings = () => {
-  settingsStore.updateTitleSetting('enabled', form.titleEnabled);
-  settingsStore.updateTitleSetting('text', form.titleText);
-  settingsStore.updateTitleSetting('duration', form.titleDuration);
-  settingsStore.updateTitleSetting('font', form.titleFont);
-  settingsStore.updateTitleSetting('fontSize', form.titleFontSize);
-  settingsStore.updateTitleSetting('color', form.titleColor);
-  settingsStore.updateTitleSetting('strokeColor', form.titleStrokeColor);
-  settingsStore.updateTitleSetting('strokeWidth', form.titleStrokeWidth);
-  settingsStore.updateTitleSetting('backgroundColor', form.titleBackgroundColor);
-  settingsStore.updateTitleSetting('position', form.titlePosition);
-  settingsStore.updateTitleSetting('margin', form.titleMargin / 100);
-  settingsStore.updateTitleSetting('marginLeft', form.titleMarginLeft / 100);
-  settingsStore.updateTitleSetting('marginRight', form.titleMarginRight / 100);
-  settingsStore.updateTitleSetting('animation', form.titleAnimation);
-  settingsStore.updateTitleSetting('animationDuration', form.titleAnimationDuration);
-  settingsStore.updateTitleSetting('backgroundOverlay', form.titleBackgroundOverlay);
-  settingsStore.updateTitleSetting('overlayColor', form.titleOverlayColor);
-  settingsStore.updateTitleSetting('style', form.titleStyle);
-  settingsStore.updateTitleSetting('align', form.titleAlign);
+const updateTitleSettings = async () => {
+  const title = settingsStore.video.title;
+  title.enabled = form.titleEnabled;
+  title.text = form.titleText;
+  title.duration = form.titleDuration;
+  title.font = form.titleFont;
+  title.fontSize = form.titleFontSize;
+  title.color = form.titleColor;
+  title.strokeColor = form.titleStrokeColor;
+  title.strokeWidth = form.titleStrokeWidth;
+  title.backgroundColor = form.titleBackgroundColor;
+  title.position = form.titlePosition;
+  title.margin = form.titleMargin / 100;
+  title.marginLeft = form.titleMarginLeft / 100;
+  title.marginRight = form.titleMarginRight / 100;
+  title.animation = form.titleAnimation;
+  title.animationDuration = form.titleAnimationDuration;
+  title.backgroundOverlay = form.titleBackgroundOverlay;
+  title.overlayColor = form.titleOverlayColor;
+  title.style = form.titleStyle;
+  title.align = form.titleAlign;
+  settingsStore.saveToLocalStorage();
+  await settingsStore.saveTitleToBackend();
 };
 
 watch([
@@ -990,7 +993,7 @@ watch([
   if (loadingConfig.value) return;
   try {
     await saveConfig();
-    updateTitleSettings();
+    await updateTitleSettings();
   } catch (error) {
     console.error('[TitleSettings] Failed to save config, reverting form:', error);
     const title = settingsStore.video.title;

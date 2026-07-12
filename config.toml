@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.11.3"
+project_version = "2.11.4"
 
 [app]
 host_visible = false
@@ -93,12 +93,12 @@ stroke_width = 1.2
 
 [title]
 title_enabled = true
-title_text = "被律师偷走的信任"
+title_text = "业委会监管漏洞"
 title_duration = 5
 title_font_name = "MicrosoftYaHeiBold.ttc"
 title_font_size = 100
 title_text_color = "#FFFFFF"
-title_stroke_color = "#0000FF"
+title_stroke_color = "#800080"
 title_stroke_width = 8
 title_background_color = "transparent"
 title_position = "center"
