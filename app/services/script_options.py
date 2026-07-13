@@ -2,6 +2,50 @@ from typing import Dict, Optional
 
 from loguru import logger
 
+STYLE_INSTRUCTIONS = {
+    "general": """## Script Style: General (通用风格)
+- **Tone**: Balanced, neutral, and clear — suitable for most audiences
+- **Language**: Straightforward and easy to follow
+- **Structure**: Standard informative flow — opening hook → main content → conclusion
+- **Goal**: Convey information clearly without strong emotional coloring""",
+
+    "professional": """## Script Style: Professional (专业深度)
+- **Tone**: Authoritative, precise, and well-researched
+- **Language**: Use domain-specific terminology where appropriate, support claims with data/examples
+- **Structure**: Formal — thesis → evidence/analysis → conclusion with actionable insights
+- **Goal**: Establish credibility and deliver in-depth expertise""",
+
+    "popular": """## Script Style: Popular (通俗易懂)
+- **Tone**: Friendly, accessible, and relatable
+- **Language**: Use analogies, metaphors, and everyday examples — avoid jargon
+- **Structure**: Engaging — relatable hook → simplified explanation → takeaway
+- **Goal**: Make complex topics easy and enjoyable for a general audience""",
+
+    "passionate": """## Script Style: Passionate (激情推广)
+- **Tone**: Energetic, enthusiastic, and emotionally charged
+- **Language**: Use strong, evocative words; short punchy sentences; rhetorical devices
+- **Structure**: High-energy — bold claim → emotional buildup → inspiring call to action
+- **Goal**: Excite, inspire, and motivate the audience to act""",
+
+    "storytelling": """## Script Style: Storytelling (故事叙述)
+- **Tone**: Narrative, immersive, and character-driven
+- **Language**: Vivid descriptions, sensory details, dialogue-like delivery
+- **Structure**: Classic story arc — setup (characters/conflict) → rising action → climax → resolution
+- **Goal**: Engage emotions through narrative, make the audience feel invested""",
+
+    "commentary": """## Script Style: Commentary (观点评论)
+- **Overall Script Architecture**: The entire script follows a commentary/opinion structure, NOT per-scene transformation:
+  1. **Opening Hook** (开场): 提出有争议性或引人深思的核心议题，直接亮明立场 — 用"你可能没想到…"或"很多人都错了…"式开场
+  2. **Fact Foundation** (事实铺垫): 客观阐述原文的核心事实/观点，建立信息基础，让观众理解讨论的起点
+  3. **Multi-Angle Analysis** (多角度剖析): 对核心观点进行至少2-3个角度的深入分析——支持方论据、反方批评、中立调和视角。每个角度单独展开，逻辑清晰
+  4. **Engagement Climax** (互动高潮): 提出开放性问题，邀请观众站队和讨论 — "你觉得哪种观点更有道理？"
+  5. **Closing with CTA** (收尾引导): 总结核心论点，以引导评论互动结束 — "在评论区告诉我你的想法"
+- **Across All Scenes**: Maintain a provocative, analytical, debate-driven tone throughout the ENTIRE script
+- **Interaction Hooks**: At key turning points, insert rhetorical questions or challenges that invite audience reflection and participation
+- **Depth Control**: The selected preset (concise/standard/in-depth) controls how many perspectives each viewpoint gets and how much supporting data is included""",
+}
+
+
 PRESETS = {
     "concise": {
         "web_search_enabled": False,
@@ -126,6 +170,12 @@ def build_length_instructions(options: Dict) -> str:
     return instructions
 
 
+def build_style_instructions(options: Dict) -> str:
+    style = options.get("script_style", "general")
+    instructions = STYLE_INSTRUCTIONS.get(style, STYLE_INSTRUCTIONS["general"])
+    return f"\n\n{instructions}"
+
+
 def validate_enum(value: Optional[str], allowed: list, default: str, name: str) -> str:
     if value is None:
         return default
@@ -148,7 +198,7 @@ def validate_paragraph_detail(value: Optional[str]) -> str:
 
 
 def validate_script_style(value: Optional[str]) -> str:
-    return validate_enum(value, ["general", "professional", "popular", "passionate", "storytelling"], "general", "script_style")
+    return validate_enum(value, ["general", "professional", "popular", "passionate", "storytelling", "commentary"], "general", "script_style")
 
 
 def validate_script_preset(value: Optional[str]) -> str:

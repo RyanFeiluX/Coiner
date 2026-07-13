@@ -277,6 +277,7 @@
               <el-option :label="t('Popular')" value="popular" />
               <el-option :label="t('Passionate')" value="passionate" />
               <el-option :label="t('Storytelling')" value="storytelling" />
+              <el-option :label="t('Commentary')" value="commentary" />
             </el-select>
           </div>
         </div>
@@ -915,7 +916,8 @@ const parseVideoScript = async () => {
     const response = await apiParseVideoScript({
       video_script: form.videoScript,
       language: language,
-      host_visible: settingsStore.video.hostVisible
+      host_visible: settingsStore.video.hostVisible,
+      script_style: form.scriptStyle
     });
     
     if (response.status === 'success' || response.status === 'manual') {

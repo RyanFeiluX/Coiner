@@ -44,11 +44,11 @@ video_contrast = 1.05
 video_concat_mode = "random"
 video_transition_mode = "none"
 min_scene_success_ratio = 0.9
-video_aspect = "landscape"
+video_aspect = "landscape_4_3"
 video_clip_duration = 5
 video_count = 1
 silence_duration = 1
-video_style = "none"
+video_style = "tech"
 intro_video_bg_type = "blurred"
 intro_video_bg_blur = 48
 intro_video_bg_color = "black"
@@ -71,8 +71,8 @@ speech_region = ""
 [siliconflow]
 
 [audio]
-tts_server = "qwen-tts"
-voice_name = "qwen|Elias|墨讲师-Female||"
+tts_server = "coze-tts"
+voice_name = "coze|7468512265151741979|擎苍-Male|https://lf3-appstore-sign.oceancloudapi.com/ocean-cloud-tos/VolcanoSystemVoice/zh_male_qingcang_mars_bigtts.mp3?lk3s=da27ec82&x-expires=1784022663&x-signature=x1DQ257nISneixrWgRJ6aKvyA4A%3D|无语，擎天之巨首，揽尽世间风云变幻，诸般阻碍，不过是无脉相巅峰之基石。今日之儒，来日必当十倍奉还。 无知威名，必将震慑四海八荒。|"
 voice_volume = 1.8
 voice_rate = 1.1
 bgm_type = ""
@@ -85,21 +85,21 @@ subtitle_custom_position = 95
 subtitle_margin = 0.05
 subtitle_auto_fit = true
 font_name = "MicrosoftYaHeiBold.ttc"
-text_fore_color = "rgb(247, 243, 9)"
+text_fore_color = "rgb(255, 208, 0)"
 text_background_color = true
 font_size = 60
-stroke_color = "#000000"
-stroke_width = 1.2
+stroke_color = "rgb(0, 0, 0)"
+stroke_width = 0.9
 
 [title]
 title_enabled = true
-title_text = "小区自治制度的系统性警示"
+title_text = "npm前世今生"
 title_duration = 5
 title_font_name = "STHeitiLight.ttc"
 title_font_size = 100
-title_text_color = "#FFFFFF"
-title_stroke_color = "#A52A2A"
-title_stroke_width = 8
+title_text_color = "#FF0000"
+title_stroke_color = "#FFFF00"
+title_stroke_width = 3
 title_background_color = "transparent"
 title_position = "center"
 title_margin = 0.05

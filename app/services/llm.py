@@ -404,8 +404,9 @@ Use this as factual reference, prioritize it over your internal knowledge when t
 """
 
     if options:
-        from app.services.script_options import build_length_instructions
+        from app.services.script_options import build_length_instructions, build_style_instructions
         prompt += f"\n\n{build_length_instructions(options)}"
+        prompt += build_style_instructions(options)
 
     if language and language != "":
         prompt += f"\n- language: {language}\n- IMPORTANT: Please respond in {language} language."
@@ -1025,8 +1026,9 @@ Use this as factual reference, prioritize it over your internal knowledge when t
 
     # Add length/depth instructions from options
     if options:
-        from app.services.script_options import build_length_instructions
+        from app.services.script_options import build_length_instructions, build_style_instructions
         prompt += f"\n\n{build_length_instructions(options)}"
+        prompt += build_style_instructions(options)
 
     # Add content-type-specific opening scene guidance
     if content_type:
@@ -1455,8 +1457,9 @@ Use this as factual reference, prioritize it over your internal knowledge when t
 
     # Add length/depth instructions from options
     if options:
-        from app.services.script_options import build_length_instructions
+        from app.services.script_options import build_length_instructions, build_style_instructions
         prompt += f"\n\n{build_length_instructions(options)}"
+        prompt += build_style_instructions(options)
 
     # Add content-type-specific opening scene guidance
     if content_type:

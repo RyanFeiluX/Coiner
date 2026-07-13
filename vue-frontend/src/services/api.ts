@@ -79,6 +79,7 @@ export interface ParseScriptRequest {
   video_script: string;
   language: string | null;
   host_visible?: boolean;
+  script_style?: string;
 }
 
 export interface Scene {

@@ -125,7 +125,7 @@ class VideoParams(BaseModel):
     search_source_preference: Optional[str] = "balanced"  # authoritative | latest | balanced
     expansion_depth: Optional[str] = "moderate"  # topic_only | moderate | deep
     paragraph_detail: Optional[str] = "normal"  # concise | normal | detailed
-    script_style: Optional[str] = "general"  # general | professional | popular | passionate | storytelling
+    script_style: Optional[str] = "general"  # general | professional | popular | passionate | storytelling | commentary
 
     voice_name: Optional[str] = ""
     voice_volume: Optional[float] = 1.8  # Increased default volume for social media compatibility (WeChat, Douyin, etc.)
@@ -230,7 +230,7 @@ class VideoScriptParams:
     search_source_preference: Optional[str] = "balanced"
     expansion_depth: Optional[str] = "moderate"
     paragraph_detail: Optional[str] = "normal"
-    script_style: Optional[str] = "general"
+    script_style: Optional[str] = "general"  # general | professional | popular | passionate | storytelling | commentary
 
 
 class VideoTermsParams:
