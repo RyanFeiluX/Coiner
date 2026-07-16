@@ -181,6 +181,7 @@ storage = _cfg.get("storage", {
     "storage_cleanup_interval_hours": 6,
     "cache_videos_ttl_days": 7,
     "cache_downscaled_ttl_days": 7,
+    "temp_ttl_hours": 1,
 })
 
 # Migrate audio keys that may still be in [ui] or [app] from older configs

@@ -96,9 +96,11 @@ def _periodic_storage_cleanup():
     while True:
         time.sleep(interval)
         for fn in (
+            utils.cleanup_stale_previews,
             utils.cleanup_stale_local_videos,
             utils.cleanup_stale_cache_videos,
             utils.cleanup_stale_cache_downscaled,
+            utils.cleanup_stale_temp,
         ):
             try:
                 fn()
@@ -118,5 +120,6 @@ def startup_event():
     utils.cleanup_stale_local_videos()
     utils.cleanup_stale_cache_videos()
     utils.cleanup_stale_cache_downscaled()
+    utils.cleanup_stale_temp()
     t = threading.Thread(target=_periodic_storage_cleanup, daemon=True)
     t.start()

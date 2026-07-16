@@ -196,6 +196,26 @@ def cleanup_stale_cache_downscaled():
     _cleanup_stale_by_ttl("cache_downscaled", "cache_downscaled_ttl_days", 7)
 
 
+def cleanup_stale_temp():
+    from app.config import config as app_config
+    max_age_hours = app_config.storage.get("temp_ttl_hours", 1)
+    if max_age_hours <= 0:
+        return
+    dir_path = storage_dir("temp")
+    if not os.path.exists(dir_path):
+        return
+    now = time.time()
+    cutoff = now - (max_age_hours * 3600)
+    removed = 0
+    for fname in os.listdir(dir_path):
+        fpath = os.path.join(dir_path, fname)
+        if os.path.isfile(fpath) and os.path.getmtime(fpath) < cutoff:
+            os.remove(fpath)
+            removed += 1
+    if removed:
+        logger.info(f"Cleaned {removed} stale files from temp/")
+
+
 def font_dir(sub_dir: str = ""):
     d = resource_dir("fonts")
     if sub_dir:
