@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.11.6"
+project_version = "2.11.7"
 
 [app]
 host_visible = false
@@ -72,7 +72,7 @@ speech_region = ""
 
 [audio]
 tts_server = "coze-tts"
-voice_name = "coze|7468512265151741979|擎苍-Male|https://lf3-appstore-sign.oceancloudapi.com/ocean-cloud-tos/VolcanoSystemVoice/zh_male_qingcang_mars_bigtts.mp3?lk3s=da27ec82&x-expires=1784022663&x-signature=x1DQ257nISneixrWgRJ6aKvyA4A%3D|无语，擎天之巨首，揽尽世间风云变幻，诸般阻碍，不过是无脉相巅峰之基石。今日之儒，来日必当十倍奉还。 无知威名，必将震慑四海八荒。|"
+voice_name = "coze|7524987545197805587|爽快思思（多情感）-Female|https://lf6-appstore-sign.oceancloudapi.com/ocean-cloud-tos/VolcanoSystemVoice/zh_female_shuangkuaisisi_emo_v2_mars_bigtts.mp3?lk3s=da27ec82&x-expires=1784254097&x-signature=g%2FVCtPVRTNKve2%2BhPQGFPlV1UPQ%3D|今天天气可好了，我打算和朋友一起去野餐，带上美食和饮料，找个舒适的草坪，什么烦恼都没了。你要不要和我们一起呀？|angry-生气,coldness-冷漠,excited-激动,happy-开心,neutral-中性,sad-悲伤,surprised-惊讶"
 voice_volume = 1.8
 voice_rate = 1.1
 bgm_type = ""
@@ -93,13 +93,13 @@ stroke_width = 0.9
 
 [title]
 title_enabled = true
-title_text = "npm前世今生"
+title_text = "“巴威”千里翻袭"
 title_duration = 5
-title_font_name = "STHeitiLight.ttc"
-title_font_size = 100
-title_text_color = "#FF0000"
-title_stroke_color = "#FFFF00"
-title_stroke_width = 3
+title_font_name = "MicrosoftYaHeiBold.ttc"
+title_font_size = 110
+title_text_color = "#FFFFFF"
+title_stroke_color = "#A52A2A"
+title_stroke_width = 5
 title_background_color = "transparent"
 title_position = "center"
 title_margin = 0.05
@@ -115,25 +115,6 @@ title_align = "center"
 [ui]
 hide_log = false
 language = "zh"
-title_enabled = true
-title_text = "循环工程\n不为人知的秘密"
-title_duration = 3
-title_font_name = "MicrosoftYaHeiBold.ttc"
-title_font_size = 66
-title_text_color = "#FF0000"
-title_stroke_color = "#FFFF00"
-title_stroke_width = 3
-title_background_color = "transparent"
-title_position = "center"
-title_margin = 0.05
-title_margin_left = 0.05
-title_margin_right = 0.05
-title_animation = "fade_out"
-title_animation_duration = 0.5
-title_background_overlay = false
-title_overlay_color = "rgba(0,0,0,0.5)"
-title_style = "classic"
-title_align = "center"
 
 [coze]
 

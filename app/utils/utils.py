@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import sys
 import threading
+import time
 from typing import Any
 from uuid import uuid4
 
@@ -118,6 +119,24 @@ def delete_task_dir(task_id: str):
             logger.warning(f"Failed to delete task directory {task_path}: {str(e)}")
             return False
     return False
+
+
+def cleanup_stale_previews(max_age_hours: float = 1.0):
+    """Delete preview images older than max_age_hours from title_previews/ and subtitle_previews/."""
+    for sub_dir in ("title_previews", "subtitle_previews"):
+        dir_path = storage_dir(sub_dir)
+        if not os.path.exists(dir_path):
+            continue
+        now = time.time()
+        cutoff = now - (max_age_hours * 3600)
+        removed = 0
+        for fname in os.listdir(dir_path):
+            fpath = os.path.join(dir_path, fname)
+            if os.path.isfile(fpath) and os.path.getmtime(fpath) < cutoff:
+                os.remove(fpath)
+                removed += 1
+        if removed:
+            logger.info(f"Cleaned {removed} stale files from {sub_dir}/")
 
 
 def font_dir(sub_dir: str = ""):

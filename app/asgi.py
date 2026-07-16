@@ -96,3 +96,4 @@ def shutdown_event():
 @app.on_event("startup")
 def startup_event():
     logger.info("startup event")
+    utils.cleanup_stale_previews()
