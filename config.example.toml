@@ -403,3 +403,9 @@ language = "zh"
 [imagemagick]
 # ImageMagick path (only needed on Windows)
 imagemagick_path = "D:\\ProgramData\\ImageMagick-7.1.12-Q16\\magick.exe"
+
+[storage]
+# Auto-delete files in storage/local_videos/ older than this many days (0 = disabled)
+local_videos_ttl_days = 30
+# How often to check for stale files (hours)
+local_videos_cleanup_interval_hours = 6

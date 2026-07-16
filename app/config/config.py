@@ -127,6 +127,7 @@ def save_config():
     _cfg["title"] = title
     _cfg["ui"] = ui
     _cfg["video"] = video
+    _cfg["storage"] = storage
 
     secrets_data = {}
     for section, keys in SECRET_KEYS.items():
@@ -174,6 +175,11 @@ ui = _cfg.get(
     },
 )
 video = _cfg.get("video", {})
+
+storage = _cfg.get("storage", {
+    "local_videos_ttl_days": 30,
+    "local_videos_cleanup_interval_hours": 6,
+})
 
 # Migrate audio keys that may still be in [ui] or [app] from older configs
 for key in list(ui.keys()):

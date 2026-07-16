@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.11.7"
+project_version = "2.11.8"
 
 [app]
 host_visible = false
@@ -124,3 +124,7 @@ language = "zh"
 imagemagick_path = "D:\\ProgramData\\ImageMagick-7.1.12-Q16\\magick.exe"
 
 [tavily]
+
+[storage]
+local_videos_ttl_days = 30
+local_videos_cleanup_interval_hours = 6

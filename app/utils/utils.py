@@ -139,6 +139,26 @@ def cleanup_stale_previews(max_age_hours: float = 1.0):
             logger.info(f"Cleaned {removed} stale files from {sub_dir}/")
 
 
+def cleanup_stale_local_videos():
+    from app.config import config as app_config
+    ttl_days = app_config.storage.get("local_videos_ttl_days", 30)
+    if ttl_days <= 0:
+        return
+    dir_path = storage_dir("local_videos")
+    if not os.path.exists(dir_path):
+        return
+    now = time.time()
+    cutoff = now - (ttl_days * 86400)
+    removed = 0
+    for fname in os.listdir(dir_path):
+        fpath = os.path.join(dir_path, fname)
+        if os.path.isfile(fpath) and os.path.getmtime(fpath) < cutoff:
+            os.remove(fpath)
+            removed += 1
+    if removed:
+        logger.info(f"Cleaned {removed} stale files from local_videos/")
+
+
 def font_dir(sub_dir: str = ""):
     d = resource_dir("fonts")
     if sub_dir:

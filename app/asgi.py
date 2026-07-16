@@ -1,6 +1,8 @@
 """Application implementation - ASGI."""
 
 import os
+import threading
+import time
 
 from fastapi import FastAPI, Request, APIRouter
 from fastapi.exceptions import RequestValidationError
@@ -88,6 +90,17 @@ public_dir = utils.public_dir()
 app.mount("/", StaticFiles(directory=public_dir, html=True), name="")
 
 
+def _periodic_local_videos_cleanup():
+    interval_hours = config.storage.get("local_videos_cleanup_interval_hours", 6)
+    interval = interval_hours * 3600
+    while True:
+        time.sleep(interval)
+        try:
+            utils.cleanup_stale_local_videos()
+        except Exception as e:
+            logger.warning(f"Periodic local_videos cleanup failed: {e}")
+
+
 @app.on_event("shutdown")
 def shutdown_event():
     logger.info("shutdown event")
@@ -97,3 +110,6 @@ def shutdown_event():
 def startup_event():
     logger.info("startup event")
     utils.cleanup_stale_previews()
+    utils.cleanup_stale_local_videos()
+    t = threading.Thread(target=_periodic_local_videos_cleanup, daemon=True)
+    t.start()
