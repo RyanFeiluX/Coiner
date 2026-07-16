@@ -407,8 +407,8 @@ imagemagick_path = "D:\\ProgramData\\ImageMagick-7.1.12-Q16\\magick.exe"
 [storage]
 # Auto-delete files in storage/local_videos/ older than this many days (0 = disabled)
 local_videos_ttl_days = 30
-# How often to check for stale files (hours)
-local_videos_cleanup_interval_hours = 6
+# How often to check for stale files across all storage directories (hours)
+storage_cleanup_interval_hours = 6
 # Auto-delete files in storage/cache_videos/ older than this many days (0 = disabled)
 cache_videos_ttl_days = 7
 # Auto-delete files in storage/cache_downscaled/ older than this many days (0 = disabled)

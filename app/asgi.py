@@ -91,7 +91,7 @@ app.mount("/", StaticFiles(directory=public_dir, html=True), name="")
 
 
 def _periodic_storage_cleanup():
-    interval_hours = config.storage.get("local_videos_cleanup_interval_hours", 6)
+    interval_hours = config.storage.get("storage_cleanup_interval_hours", 6)
     interval = interval_hours * 3600
     while True:
         time.sleep(interval)

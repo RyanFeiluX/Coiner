@@ -178,7 +178,7 @@ video = _cfg.get("video", {})
 
 storage = _cfg.get("storage", {
     "local_videos_ttl_days": 30,
-    "local_videos_cleanup_interval_hours": 6,
+    "storage_cleanup_interval_hours": 6,
     "cache_videos_ttl_days": 7,
     "cache_downscaled_ttl_days": 7,
 })
