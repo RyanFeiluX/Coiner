@@ -90,15 +90,20 @@ public_dir = utils.public_dir()
 app.mount("/", StaticFiles(directory=public_dir, html=True), name="")
 
 
-def _periodic_local_videos_cleanup():
+def _periodic_storage_cleanup():
     interval_hours = config.storage.get("local_videos_cleanup_interval_hours", 6)
     interval = interval_hours * 3600
     while True:
         time.sleep(interval)
-        try:
-            utils.cleanup_stale_local_videos()
-        except Exception as e:
-            logger.warning(f"Periodic local_videos cleanup failed: {e}")
+        for fn in (
+            utils.cleanup_stale_local_videos,
+            utils.cleanup_stale_cache_videos,
+            utils.cleanup_stale_cache_downscaled,
+        ):
+            try:
+                fn()
+            except Exception as e:
+                logger.warning(f"Periodic storage cleanup failed for {fn.__name__}: {e}")
 
 
 @app.on_event("shutdown")
@@ -111,5 +116,7 @@ def startup_event():
     logger.info("startup event")
     utils.cleanup_stale_previews()
     utils.cleanup_stale_local_videos()
-    t = threading.Thread(target=_periodic_local_videos_cleanup, daemon=True)
+    utils.cleanup_stale_cache_videos()
+    utils.cleanup_stale_cache_downscaled()
+    t = threading.Thread(target=_periodic_storage_cleanup, daemon=True)
     t.start()

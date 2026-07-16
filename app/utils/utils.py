@@ -99,7 +99,7 @@ def task_dir(sub_dir: str = ""):
 
 
 def delete_task_dir(task_id: str):
-    """Delete task directory and all its contents.
+    """Delete task directory, intro videos, and all contents.
     
     Args:
         task_id: Task ID to delete
@@ -114,11 +114,19 @@ def delete_task_dir(task_id: str):
         try:
             shutil.rmtree(task_path)
             logger.info(f"Deleted task directory: {task_path}")
-            return True
         except Exception as e:
             logger.warning(f"Failed to delete task directory {task_path}: {str(e)}")
             return False
-    return False
+    
+    intro_path = os.path.join(storage_dir("intro_videos"), task_id)
+    if os.path.exists(intro_path):
+        try:
+            shutil.rmtree(intro_path)
+            logger.info(f"Deleted intro videos directory: {intro_path}")
+        except Exception as e:
+            logger.warning(f"Failed to delete intro videos directory {intro_path}: {str(e)}")
+    
+    return True
 
 
 def cleanup_stale_previews(max_age_hours: float = 1.0):
@@ -157,6 +165,35 @@ def cleanup_stale_local_videos():
             removed += 1
     if removed:
         logger.info(f"Cleaned {removed} stale files from local_videos/")
+
+
+def _cleanup_stale_by_ttl(sub_dir: str, config_key: str, default_ttl_days: int):
+    """Generic: delete files in storage/<sub_dir> with mtime older than TTL."""
+    from app.config import config as app_config
+    ttl_days = app_config.storage.get(config_key, default_ttl_days)
+    if ttl_days <= 0:
+        return
+    dir_path = storage_dir(sub_dir)
+    if not os.path.exists(dir_path):
+        return
+    now = time.time()
+    cutoff = now - (ttl_days * 86400)
+    removed = 0
+    for fname in os.listdir(dir_path):
+        fpath = os.path.join(dir_path, fname)
+        if os.path.isfile(fpath) and os.path.getmtime(fpath) < cutoff:
+            os.remove(fpath)
+            removed += 1
+    if removed:
+        logger.info(f"Cleaned {removed} stale files from {sub_dir}/")
+
+
+def cleanup_stale_cache_videos():
+    _cleanup_stale_by_ttl("cache_videos", "cache_videos_ttl_days", 7)
+
+
+def cleanup_stale_cache_downscaled():
+    _cleanup_stale_by_ttl("cache_downscaled", "cache_downscaled_ttl_days", 7)
 
 
 def font_dir(sub_dir: str = ""):

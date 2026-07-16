@@ -236,6 +236,10 @@ def delete_video(request: Request, task_id: str = Path(..., description="Task ID
         if os.path.exists(current_task_dir):
             shutil.rmtree(current_task_dir)
 
+        intro_videos_dir = os.path.join(utils.storage_dir("intro_videos"), task_id)
+        if os.path.exists(intro_videos_dir):
+            shutil.rmtree(intro_videos_dir)
+
         # 删除任务的日志
         from app.services.log_service import log_service
         log_service.clear_task_logs(task_id)

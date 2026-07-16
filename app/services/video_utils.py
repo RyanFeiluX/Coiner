@@ -1663,6 +1663,10 @@ def pre_downscale_video(source_path: str, target_w: int, target_h: int) -> str:
 
     # Return existing cached file if valid
     if os.path.isfile(cached_path) and os.path.getsize(cached_path) > 0:
+        try:
+            os.utime(cached_path, None)
+        except Exception:
+            pass
         with _downscale_cache_lock:
             _downscale_cache[cache_key] = cached_path
         return cached_path

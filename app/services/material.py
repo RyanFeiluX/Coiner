@@ -333,6 +333,10 @@ def save_video(video_url: str, save_dir: str = "") -> str:
     # if video already exists, return the path
     if os.path.exists(video_path) and os.path.getsize(video_path) > 0:
         logger.info(f"video already exists: {video_path}")
+        try:
+            os.utime(video_path, None)
+        except Exception:
+            pass
         return video_path
 
     headers = {
@@ -539,6 +543,10 @@ def download_videos(
                     # Fall through to download queue
                 else:
                     logger.info(f"Video already exists and is valid: {save_path}")
+                    try:
+                        os.utime(save_path, None)
+                    except Exception:
+                        pass
                     downloaded_paths.append(save_path)
                     seconds = min(max_clip_duration, item.duration)
                     total_duration += seconds
