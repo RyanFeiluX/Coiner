@@ -53,8 +53,9 @@
 
 | 函数名 | 职责 | 输入参数 | 输出结果 |
 |--------|------|----------|----------|
-| `recover_video_synthesis` | 场景集成任务主函数，协调整个场景合成流程 | task_id_or_path, start_scene, end_scene, subtitle_params, bgm_params, title_params | 最终视频文件路径 |
+| `recover_video_synthesis` | 场景集成任务主函数，协调场景合成流程 | task_id_or_path, start_scene, end_scene, force_rebuild_scenes, voice_params, video_material_params, ... | 最终视频文件路径 |
 | `scan_task_files` | 扫描任务目录，检测场景文件完整性 | task_id_or_path | dict（场景视频/音频/字幕状态） |
+| `process_scene` | 单场景完整流水线（音频→字幕→素材→视频合成，含 intro video） | task_id, params, scene, scene_index, total_scenes, used_local_materials, check_cancelled | dict（scene_id, scene_index, audio_file, subtitle_path, combined_video_path） |
 
 ## 3. 函数调用关系
 
@@ -101,6 +102,16 @@ recover_video_synthesis (场景集成任务)
   ├── 合成级参数 ← API 请求体 (bgm_params / title_params)
   │   (bgm_type, bgm_file, bgm_volume, title_enabled, title_text ...)
   └── 兜底 ← config.toml (app_config / ui_config)
+    ↓
+扫描任务目录 → 检测场景文件完整性
+    ↓
+【循环 force_rebuild_scenes】更新 script.json 顶层参数 → process_scene → 用最新参数强制重建
+  │   （更新顶层 params：voice_name, video_source 等 → 复用原始流水线：音频合成 → 字幕生成 → 素材下载 → 视频合成，含 intro video）
+  │   【注】逐场景数据覆盖（script, intro_video, keywords）须在调用 recover 前通过 update-scenes API 单独写入 script.json
+    ↓
+【循环缺失场景】_rebuild_scene_video → 用原始参数补缺失
+    ↓
+字幕恢复 (subtitle recovery) → 从音频恢复缺失字幕
     ↓
 analyze_audio_params → 获取第一个场景音频参数
     ↓
@@ -210,7 +221,9 @@ process_final_video (skip_subtitles=True) → 最终处理
 
 ### 5.3 场景集成参数优先级
 
-场景集成任务中的参数按**场景级**和**合成级**两类区分，各有不同的优先级链：
+场景集成任务中的参数分三类，各有不同的优先级链：
+
+#### 5.3.1 常规恢复参数
 
 | 优先级 | 字幕参数（场景级） | BGM 参数（合成级） | 标题参数（合成级） |
 |--------|-------------------|-------------------|-------------------|
@@ -222,20 +235,26 @@ process_final_video (skip_subtitles=True) → 最终处理
 - **场景级参数**（字幕字体/颜色/描边/位置等）：优先使用原始生成时的参数（`script.json`），保证恢复场景与原场景渲染一致
 - **合成级参数**（BGM 类型/音量、标题开关/文字/样式等）：由用户当前设置决定，`script.json` 不参与，给予用户灵活调整最终视频的自由
 
-#### 字幕参数优先级（scene-level）
 ```
-original_params (script.json) > subtitle_params (API body) > app_config > ui_config
-```
-
-#### BGM 参数优先级（synthesis-level）
-```
-bgm_params (API body) > app_config > ui_config
+字幕: original_params (script.json) > subtitle_params (API body) > app_config > ui_config
+BGM:  bgm_params (API body) > app_config > ui_config
+标题: title_params (API body) > ui_config
 ```
 
-#### 标题参数优先级（synthesis-level）
+#### 5.3.2 强制重建参数
+
+当场景在 `force_rebuild_scenes` 列表中时，该场景的音频和视频素材使用**最新 UI 参数**重新生成，不再读取 `script.json` 中的原始值：
+
 ```
-title_params (API body) > ui_config
+语音: voice_params (API body) > script.json original_params > config.toml
+素材: video_material_params (API body) > script.json original_params > config.toml
+字幕: 由新生成的音频重新识别，subtitle_params 不参与此阶段
 ```
+
+**设计原则**：
+- 强制重建的目的是"用当前 UI 设置重新制作场景"，因此语音和素材参数优先使用 UI 当前值
+- `script.json` 中的场景脚本原文和搜索词仍作为重建的原始输入
+- 字幕文件由新音频重新生成（而非用原字幕），但渲染参数在后续合并阶段才应用
 
 ## 6. 实现细节
 

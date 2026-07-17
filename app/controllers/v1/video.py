@@ -804,6 +804,27 @@ def scan_scene_integration(request: Request, body: dict):
         
         scene_videos = [s for s in result["scene_videos"] if s["video"] is not None]
         
+        # Read script.json for per-scene data
+        task_dir = result["task_dir"]
+        script_path = os.path.join(task_dir, "script.json")
+        scenes_data = []
+        search_terms_list = []
+        if os.path.exists(script_path):
+            try:
+                import json as _json
+                with open(script_path, "r", encoding="utf-8") as f:
+                    sd = _json.loads(f.read())
+                params_scenes = sd.get("params", {}).get("scenes", [])
+                search_terms_list = sd.get("search_terms", [])
+                for i, s in enumerate(params_scenes):
+                    scenes_data.append({
+                        "sceneNum": i + 1,
+                        "sceneData": s,
+                        "searchTerms": search_terms_list[i] if i < len(search_terms_list) else [],
+                    })
+            except Exception as e:
+                logger.warning(f"Failed to read script.json for scenesData: {e}")
+        
         response = {
             "sceneVideos": len(scene_videos),
             "sceneAudio": len([s for s in result["scene_videos"] if s["audio"] is not None]),
@@ -811,13 +832,71 @@ def scan_scene_integration(request: Request, body: dict):
             "totalScenes": result["total_scenes"],
             "isValid": result["is_valid"],
             "taskDir": result["task_dir"],
-            "sceneNums": [s["scene_num"] for s in result["scene_videos"]]
+            "sceneNums": [s["scene_num"] for s in result["scene_videos"]],
+            "scenes": [
+                {
+                    "sceneNum": s["scene_num"],
+                    "video": s["video"] is not None,
+                    "audio": s["audio"] is not None,
+                    "subtitle": s["subtitle"] is not None,
+                }
+                for s in result["scene_videos"]
+            ],
+            "scenesData": scenes_data,
         }
         
         return utils.get_response(200, response)
     except Exception as e:
         logger.error(f"Error scanning scene integration: {e}")
         raise HttpException(task_id=task_id_or_path, status_code=500, message=f"Failed to scan task: {str(e)}")
+
+
+@router.post("/scene-integration/update-scenes", summary="Update per-scene data in script.json")
+def update_scenes(request: Request, body: dict):
+    """Update per-scene data (scene_data + search_terms) for selected scenes in an existing task's script.json"""
+    task_id = body.get("task_id")
+    scene_updates = body.get("scene_updates", [])
+
+    if not task_id:
+        raise HttpException(task_id="", status_code=400, message="task_id is required")
+    if not isinstance(scene_updates, list) or not scene_updates:
+        raise HttpException(task_id=task_id, status_code=400, message="scene_updates must be a non-empty array")
+
+    task_dir = utils.task_dir(task_id)
+    script_path = os.path.join(task_dir, "script.json")
+    if not os.path.exists(script_path):
+        raise HttpException(task_id=task_id, status_code=404, message="script.json not found for this task")
+
+    import json as _json
+    try:
+        with open(script_path, "r", encoding="utf-8") as f:
+            script_data = _json.loads(f.read())
+
+        scenes = script_data.get("params", {}).get("scenes", [])
+        terms = script_data.get("search_terms", [])
+
+        for update in scene_updates:
+            idx = update.get("scene_num", 0) - 1
+            if idx < 0 or idx >= len(scenes):
+                continue
+            if "scene_data" in update and isinstance(update["scene_data"], dict):
+                scenes[idx] = update["scene_data"]
+            if "search_terms" in update and isinstance(update["search_terms"], list):
+                while len(terms) <= idx:
+                    terms.append([])
+                terms[idx] = update["search_terms"]
+
+        script_data["params"]["scenes"] = scenes
+        script_data["search_terms"] = terms
+
+        with open(script_path, "w", encoding="utf-8") as f:
+            f.write(utils.to_json(script_data))
+
+        logger.success(f"Updated {len(scene_updates)} scene(s) in script.json for task {task_id}")
+        return utils.get_response(200, {"updated": len(scene_updates)})
+    except Exception as e:
+        logger.error(f"Failed to update scenes for task {task_id}: {e}")
+        raise HttpException(task_id=task_id, status_code=500, message=f"Failed to update scenes: {str(e)}")
 
 
 @router.post("/scene-integration/recover", summary="Recover video synthesis from existing scene files")
@@ -875,6 +954,27 @@ def recover_scene_integration(request: Request, body: dict):
         'silence_duration': body.get('silence_duration'),
     }.items() if v is not None}
     
+    # Extract force rebuild scenes list
+    force_rebuild_scenes = body.get('force_rebuild_scenes', [])
+    if not isinstance(force_rebuild_scenes, list):
+        force_rebuild_scenes = []
+    
+    # Extract voice params for force rebuild
+    voice_params = {k: v for k, v in {
+        'voice_name': body.get('voice_name'),
+        'voice_rate': body.get('voice_rate'),
+        'voice_volume': body.get('voice_volume'),
+        'voice_emotion': body.get('voice_emotion'),
+    }.items() if v is not None}
+    
+    # Extract video material params for force rebuild
+    video_material_params = {k: v for k, v in {
+        'video_source': body.get('video_source'),
+        'video_aspect': body.get('video_aspect'),
+        'video_concat_mode': body.get('video_concat_mode'),
+        'video_clip_duration': body.get('video_clip_duration'),
+    }.items() if v is not None}
+    
     if not task_id_or_path:
         raise HttpException(task_id="", status_code=400, message="Task ID or path is required")
     
@@ -907,6 +1007,9 @@ def recover_scene_integration(request: Request, body: dict):
         title_params=title_params,
         video_enhance_params=video_enhance_params,
         task_create_time=task_create_time,
+        force_rebuild_scenes=force_rebuild_scenes,
+        voice_params=voice_params,
+        video_material_params=video_material_params,
     )
     
     # Get the task with task_type from state

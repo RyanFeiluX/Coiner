@@ -242,7 +242,15 @@ export const apiService = {
     const response = await api.post('/scene-integration/recover', requestBody);
     return response.data;
   },
-  
+
+  updateSceneIntegrationScenes: async (taskId: string, sceneUpdates: any[]): Promise<ApiResponse> => {
+    const response = await api.post('/scene-integration/update-scenes', {
+      task_id: taskId,
+      scene_updates: sceneUpdates,
+    });
+    return response.data;
+  },
+
   // Title related
   getTitleStyles: async (): Promise<ApiResponse> => {
     const response = await api.get('/title-styles');

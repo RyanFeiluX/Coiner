@@ -278,7 +278,7 @@ def _rebuild_scene_video(scene_info: dict, task_dir: str) -> str:
     return None
 
 
-def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_scene=None, end_scene=None, task_id: str = None, subtitle_params: dict = None, bgm_params: dict = None, title_params: dict = None, video_enhance_params: dict = None, check_cancelled=None, task_create_time: float = None) -> str:
+def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_scene=None, end_scene=None, task_id: str = None, subtitle_params: dict = None, bgm_params: dict = None, title_params: dict = None, video_enhance_params: dict = None, check_cancelled=None, task_create_time: float = None, force_rebuild_scenes: list = None, voice_params: dict = None, video_material_params: dict = None) -> str:
     """
     Recover video synthesis from existing task files.
     
@@ -295,6 +295,9 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         bgm_params: Optional dictionary of BGM parameters (synthesis-level, from current settings)
         title_params: Optional dictionary of title parameters (synthesis-level, from current settings)
         task_create_time: Optional task creation timestamp (time.time())
+        force_rebuild_scenes: List of scene numbers to force rebuild with current params
+        voice_params: Current voice params for force rebuild (voice_name, voice_rate, voice_volume, voice_emotion)
+        video_material_params: Current video material params for force rebuild (video_source, video_aspect, video_concat_mode, video_clip_duration)
         
     Returns:
         Path to the final video file, or None if failed
@@ -382,6 +385,70 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
             logger.info(f"Task duration: {int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}")
             sm.state.update_task(task_id, state=const.TASK_STATE_FAILED, progress=0)
             return None
+
+        # Force rebuild scenes selected by user (regardless of current state)
+        if force_rebuild_scenes:
+            force_set = set(force_rebuild_scenes)
+            logger.info(f"Force rebuild requested for scenes: {force_rebuild_scenes}")
+
+            # Read script.json and update top-level params (voice, video material),
+            # then use process_scene pipeline (handles intro video, etc.)
+            script_path = os.path.join(task_dir, "script.json")
+            if os.path.exists(script_path):
+                try:
+                    with open(script_path, "r", encoding="utf-8") as f:
+                        script_data = json.loads(f.read())
+
+                    params_dict = script_data.get("params", {})
+                    if voice_params:
+                        params_dict.update(voice_params)
+                    if video_material_params:
+                        params_dict.update(video_material_params)
+                    script_data["params"] = params_dict
+
+                    with open(script_path, "w", encoding="utf-8") as f:
+                        f.write(utils.to_json(script_data))
+
+                    updated_params = VideoParams(**params_dict)
+                    scenes_list = params_dict.get("scenes", [])
+                    total_scenes = len(scenes_list)
+
+                    from app.services.task import process_scene
+
+                    original_task_id = os.path.basename(task_dir)
+
+                    for scene_info in scenes_in_range:
+                        if scene_info["scene_num"] not in force_set:
+                            continue
+                        scene_index = scene_info["scene_num"] - 1
+                        if scene_index >= len(scenes_list):
+                            logger.warning(f"Scene {scene_info['scene_num']}: no scene data in script.json, skipping")
+                            continue
+
+                        scene_dict = scenes_list[scene_index]
+                        logger.info(f"Scene {scene_info['scene_num']}: force rebuild via process_scene")
+                        try:
+                            result = process_scene(
+                                task_id=original_task_id,
+                                params=updated_params,
+                                scene=scene_dict,
+                                scene_index=scene_index,
+                                total_scenes=total_scenes,
+                                check_cancelled=check_cancelled,
+                            )
+                            if result:
+                                scene_info["video"] = result.get("combined_video_path")
+                                scene_info["audio"] = result.get("audio_file")
+                                scene_info["subtitle"] = result.get("subtitle_path") or scene_info.get("subtitle")
+                                logger.success(f"Scene {scene_info['scene_num']}: force rebuilt successfully")
+                            else:
+                                logger.warning(f"Scene {scene_info['scene_num']}: force rebuild failed (process_scene returned None)")
+                        except Exception as e:
+                            logger.warning(f"Scene {scene_info['scene_num']}: force rebuild exception: {e}")
+                except Exception as e:
+                    logger.warning(f"Failed to read/update script.json for force rebuild: {e}")
+            else:
+                logger.warning("script.json not found, cannot force rebuild scenes")
 
         # Attempt to rebuild scenes with missing combined.mp4
         rebuilt_count = 0
@@ -540,8 +607,6 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
                 else:
                     logger.warning(f"Failed to analyze scene {i+1} video")
         
-        # Create VideoParams object
-        from app.models.schema import VideoParams, VideoAspect, VideoConcatMode
         
         # Determine video aspect ratio
         if video_params:

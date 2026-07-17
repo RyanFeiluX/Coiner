@@ -89,6 +89,37 @@
             </div>
           </div>
           
+          <!-- Scene Details Collapse -->
+          <div v-if="taskFiles.sceneVideos > 0 && taskFiles.scenes" class="scene-details-section">
+            <el-divider />
+            <el-collapse>
+              <el-collapse-item :title="`${t('Scene Details')} (${taskFiles.scenes.length})`">
+                <div v-for="scene in taskFiles.scenes" :key="scene.sceneNum" class="scene-row">
+                  <div class="scene-row-header">
+                    <span class="scene-num">{{ t('Scene') }} {{ scene.sceneNum }}</span>
+                    <span class="status-badge" :class="scene.video ? 'status-ok' : 'status-missing'">
+                      {{ scene.video ? '✅' : '❌' }} {{ t('Video') }}
+                    </span>
+                    <span class="status-badge" :class="scene.audio ? 'status-ok' : 'status-missing'">
+                      {{ scene.audio ? '✅' : '❌' }} {{ t('Audio') }}
+                    </span>
+                    <span class="status-badge" :class="scene.subtitle ? 'status-ok' : 'status-missing'">
+                      {{ scene.subtitle ? '✅' : '❌' }} {{ t('Subtitle') }}
+                    </span>
+                    <el-switch
+                      v-model="forceRebuildScenes[scene.sceneNum]"
+                      :disabled="isRunning"
+                      size="small"
+                      active-text=""
+                      inactive-text=""
+                    />
+                    <span class="rebuild-label">{{ t('Rebuild') }}</span>
+                  </div>
+                </div>
+              </el-collapse-item>
+            </el-collapse>
+          </div>
+
           <!-- Improve Integration Toggle -->
           <div v-if="taskFiles.sceneVideos > 0" class="improve-section">
             <el-divider />
@@ -150,6 +181,7 @@ import { ref, watch, onUnmounted, onMounted } from 'vue';
 import { InfoFilled } from '@element-plus/icons-vue';
 import { useI18nStore } from '../stores/i18n';
 import { useSettingsStore } from '../stores/settings';
+import { useScriptStore } from '../stores/script';
 import { apiService } from '../services/api';
 
 const i18nStore = useI18nStore();
@@ -182,6 +214,8 @@ const progress = ref(0);
 const status = ref('');
 // Integration result
 const integrationResult = ref('');
+// Force rebuild toggle per scene (keyed by scene number)
+const forceRebuildScenes = ref<Record<number, boolean>>({});
 // Current task ID for polling
 const currentTaskId = ref('');
 // Polling interval ID
@@ -240,13 +274,17 @@ const scanTask = async () => {
   try {
     const response = await apiService.scanSceneIntegration(taskInput.value);
     if (response.status === 200 && response.data) {
+      const rawScenesData = response.data.scenesData || [];
       taskFiles.value = {
         sceneVideos: response.data.sceneVideos,
         sceneAudio: response.data.sceneAudio,
         subtitle: response.data.subtitle,
         totalScenes: response.data.totalScenes,
         isValid: response.data.isValid,
-        sceneNums: response.data.sceneNums
+        taskDir: response.data.taskDir,
+        sceneNums: response.data.sceneNums,
+        scenes: response.data.scenes || [],
+        scenesData: rawScenesData,
       };
 
       if (response.data.sceneNums && response.data.sceneNums.length > 0) {
@@ -330,9 +368,74 @@ const startIntegration = async () => {
     title_align: settingsStore.video.title.align,
   };
   
+  // Map UI aspect names to backend VideoAspect values
+  const aspectMap: Record<string, string> = {
+    'landscape': '16:9',
+    'portrait': '9:16',
+    'square': '1:1',
+    'portrait_3_4': '3:4',
+    'landscape_4_3': '4:3'
+  };
+  const uiAspect = settingsStore.video.aspect;
+  const mappedAspect = aspectMap[uiAspect] || uiAspect || '9:16';
+
+  // Collect scenes with force rebuild toggle enabled
+  const forceScenes = Object.entries(forceRebuildScenes.value)
+    .filter(([_, on]) => on)
+    .map(([num]) => parseInt(num));
+
+  const scriptStore = useScriptStore();
+
+  // If force-rebuild scenes are selected, persist latest scene data to script.json first
+  if (forceScenes.length > 0) {
+    const sceneUpdates: any[] = [];
+    const scenesDataFallback = taskFiles.value.scenesData || [];
+
+    for (const num of forceScenes) {
+      const idx = num - 1;
+      // Prefer scriptStore.scenes (camelCase, latest from ScriptSettings)
+      const storeScene = scriptStore.scenes[idx];
+      const fallback = scenesDataFallback.find((s: any) => s.sceneNum === num);
+
+      if (storeScene) {
+        // Map camelCase → snake_case (same pattern as App.vue)
+        sceneUpdates.push({
+          scene_num: num,
+          scene_data: {
+            id: storeScene.id,
+            title: storeScene.title,
+            duration: storeScene.duration,
+            visual_requirement: storeScene.visual_requirement,
+            keywords: storeScene.keywords,
+            script: storeScene.script,
+            intro_video: storeScene.introVideo || '',
+            intro_video_original_path: storeScene.introVideoOriginalPath || '',
+            intro_duration: storeScene.introVideoDuration || 10,
+            intro_video_cover_full: storeScene.introVideoCoverFull || false,
+          },
+          search_terms: (storeScene.keywords || '')
+            .split(',')
+            .map((k: string) => k.trim())
+            .filter((k: string) => k),
+        });
+      } else if (fallback) {
+        // Fallback to scan data (already snake_case from backend)
+        sceneUpdates.push({
+          scene_num: num,
+          scene_data: { ...fallback.sceneData },
+          search_terms: [...(fallback.searchTerms || [])],
+        });
+      }
+    }
+
+    if (sceneUpdates.length > 0) {
+      await apiService.updateSceneIntegrationScenes(taskInput.value, sceneUpdates);
+    }
+  }
+
   try {
     // Build request params: only include param groups selected in improve mode
-    const requestParams = {};
+    const requestParams: Record<string, any> = {};
     if (improveIntegration.value) {
       if (improveSubtitle.value) Object.assign(requestParams, subtitleParams);
       if (improveBgm.value) Object.assign(requestParams, bgmParams);
@@ -340,7 +443,20 @@ const startIntegration = async () => {
       if (improveVideoEnhancement.value) Object.assign(requestParams, videoEnhanceParams);
     }
     // When toggle is OFF, requestParams is empty → backend uses original_task config / defaults
-    
+
+    // Always include force rebuild params when scenes are selected
+    if (forceScenes.length > 0) {
+      requestParams.force_rebuild_scenes = forceScenes;
+      requestParams.voice_name = settingsStore.audio.speechSynthesis;
+      requestParams.voice_rate = parseFloat(settingsStore.audio.speechRate) || 1.0;
+      requestParams.voice_volume = parseFloat(settingsStore.audio.speechVolume) || 1.0;
+      requestParams.voice_emotion = settingsStore.audio.voiceEmotion || '';
+      requestParams.video_source = settingsStore.video.source || 'pexels';
+      requestParams.video_aspect = mappedAspect;
+      requestParams.video_concat_mode = settingsStore.video.concatMode || 'random';
+      requestParams.video_clip_duration = settingsStore.video.clipDuration || 5;
+    }
+
     const response = await apiService.recoverSceneIntegration(
       taskInput.value, 
       startScene.value, 
@@ -581,6 +697,47 @@ defineExpose({
   margin-top: 5px;
   font-size: 14px;
   color: #606266;
+}
+
+.scene-details-section {
+  margin: 8px 0;
+}
+
+.scene-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.scene-row:last-child {
+  border-bottom: none;
+}
+
+.scene-num {
+  font-weight: 600;
+  min-width: 70px;
+  font-size: 14px;
+}
+
+.status-badge {
+  font-size: 13px;
+  min-width: 80px;
+}
+
+.status-ok {
+  color: #67c23a;
+}
+
+.status-missing {
+  color: #f56c6c;
+}
+
+.rebuild-label {
+  font-size: 13px;
+  color: #909399;
+  margin-left: 2px;
 }
 
 .integration-result {

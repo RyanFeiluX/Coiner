@@ -645,9 +645,10 @@ Two task manager implementations:
 
 #### 5.4.2 场景集成任务 (Scene Integration Task)
 - **Initiation**: Scene integration panel
-- **Flow**: Combines existing scene videos into target video
-- **Key Steps**: Load scene videos → Combine scenes → Add BGM and subtitles
+- **Flow**: Optionally force rebuild selected scenes → Combine existing scene videos into target video
+- **Key Steps**: (Optional) Force rebuild scenes with current params → Load scene videos → Combine scenes → Add BGM and subtitles
 - **Output**: Integrated target video
+- **Force Rebuild**: Before force rebuild, the frontend calls `POST /scene-integration/update-scenes` to persist latest scene data + search terms to `script.json`. Then the recover endpoint merges top-level params (voice_name, video_source, etc.) into `script.json` and calls `process_scene()` for each marked scene, reusing the original generation pipeline (intro video, audio, materials, subtitles). Per-scene data overrides (script, intro_video, keywords) are handled by the separate `update-scenes` API before recovery begins.
 
 **Progress Definition:**
 

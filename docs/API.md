@@ -744,12 +744,59 @@ Coiner 提供了一套完整的 RESTful API 接口，用于视频生成、配置
     "subtitle": true,
     "totalScenes": 5,
     "isValid": true,
-    "taskDir": "/Coiner/storage/tasks/abc123"
+    "taskDir": "/Coiner/storage/tasks/abc123",
+    "sceneNums": [1, 2, 3, 4, 5],
+    "scenes": [
+      {"sceneNum": 1, "video": true, "audio": true, "subtitle": true},
+      {"sceneNum": 2, "video": true, "audio": true, "subtitle": false},
+      {"sceneNum": 3, "video": true, "audio": true, "subtitle": true},
+      {"sceneNum": 4, "video": true, "audio": true, "subtitle": true},
+      {"sceneNum": 5, "video": true, "audio": true, "subtitle": true}
+    ]
   }
 }
 ```
 
-### 8. 场景集成 — 恢复合成
+**新增字段**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| sceneNums | int[] | 所有场景编号数组 |
+| scenes | object[] | 每个场景的详细信息 |
+| scenes[].sceneNum | int | 场景编号 |
+| scenes[].video | bool | 场景视频文件是否存在 |
+| scenes[].audio | bool | 场景音频文件是否存在 |
+| scenes[].subtitle | bool | 场景字幕文件是否存在 |
+| scenesData | object[] | 每个场景的完整数据（来自 script.json），用于前端编辑后提交强制重建 |
+| scenesData[].sceneNum | int | 场景编号 |
+| scenesData[].sceneData | object | 场景参数字典（script, audio, intro_video, intro_duration, intro_video_cover_full 等） |
+| scenesData[].searchTerms | string[] | 场景搜索关键词列表 |
+
+### 8. 场景集成 — 更新场景数据
+
+在强制重建前，将最新逐场景数据写入目标任务的 `script.json`。
+
+**端点**: `POST /api/v1/scene-integration/update-scenes`
+
+**请求体**:
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| task_id | string | 是 | 任务 ID |
+| scene_updates | object[] | 是 | 场景更新列表 |
+| scene_updates[].scene_num | integer | 是 | 场景编号（1-based） |
+| scene_updates[].scene_data | object | 是 | 场景数据字典，**整体覆盖** `params.scenes[i]` |
+| scene_updates[].search_terms | string[] | 否 | 搜索关键词列表，**整体覆盖** `search_terms[i]` |
+
+**响应示例**:
+```json
+{
+  "status": 200,
+  "data": { "updated": 3 }
+}
+```
+
+### 9. 场景集成 — 恢复合成
 
 从已有场景文件恢复视频合成，支持选择性合并场景范围，并覆盖字幕/BGM/标题参数。
 
@@ -765,7 +812,15 @@ Coiner 提供了一套完整的 RESTful API 接口，用于视频生成、配置
 | task_path | string | 否 | 任务目录路径（与 task_id 二选一） |
 | start_scene | integer | 否 | 起始场景编号，默认 1 |
 | end_scene | integer | 否 | 结束场景编号，默认最后一个场景 |
-
+| force_rebuild_scenes | int[] | 否 | 强制重建场景列表（用当前 UI 参数重新生成音频、素材、字幕后再合并） |
+| voice_name | string | 否 | 强制重建时使用的语音名称 |
+| voice_rate | float | 否 | 强制重建时使用的语速 |
+| voice_volume | float | 否 | 强制重建时使用的音量 |
+| voice_emotion | string | 否 | 强制重建时使用的语音情感 |
+| video_source | string | 否 | 强制重建时使用的视频素材来源 (pexels, pixabay) |
+| video_aspect | string | 否 | 强制重建时使用的视频比例 (9:16, 16:9, 1:1, 3:4, 4:3) |
+| video_concat_mode | string | 否 | 强制重建时使用的拼接模式 (random, sequential) |
+| video_clip_duration | integer | 否 | 强制重建时使用的片段最大时长（秒） |
 **字幕参数（场景级，优先使用原始 script.json 中的值）**：
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -811,7 +866,10 @@ Coiner 提供了一套完整的 RESTful API 接口，用于视频生成、配置
 | title_overlay_color | string | 否 | 背景叠加颜色 |
 | title_align | string | 否 | 标题对齐方式 (center, left, right) |
 
-**参数优先级说明**：字幕参数优先使用 `script.json` 中的原始值（保证恢复场景与原场景一致），BGM 和标题参数仅使用请求体传入值（给予用户调整自由度），最终兜底为 `config.toml` 配置。
+**参数优先级说明**：
+
+- **常规恢复**：字幕参数优先使用 `script.json` 中的原始值（保证恢复场景与原场景一致），BGM 和标题参数仅使用请求体传入值（给予用户调整自由度），最终兜底为 `config.toml` 配置。
+- **强制重建**：使用前先调用 `POST /scene-integration/update-scenes` 接口将最新逐场景数据写入 `script.json`。重建时系统将请求体中的 `voice_name/voice_rate/video_source/video_aspect` 等顶层参数更新到 `script.json` 的顶层 params，然后复用原 `process_scene` 流水线重新处理该场景（音频合成 → 字幕生成 → 素材下载 → 视频合成，含 intro video 处理）。任一子步骤失败则整个场景重建失败（不中断其他场景的处理）。
 
 **响应示例**:
 ```json
@@ -826,7 +884,7 @@ Coiner 提供了一套完整的 RESTful API 接口，用于视频生成、配置
 
 任务创建后，通过 `GET /api/v1/tasks/{task_id}` 轮询进度。
 
-### 9. 下载视频
+### 10. 下载视频
 
 下载视频文件。
 
