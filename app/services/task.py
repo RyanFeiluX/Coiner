@@ -586,18 +586,28 @@ def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_
                 has_local_materials = True
                 # Note: Marking as used will be done AFTER build_scene_video succeeds
     
+    # Check if intro video can cover audio, before deciding online downloads
+    intro_video_path = scene.get("intro_video")
+    intro_dur = scene.get("intro_duration", 10)
+    intro_cover_full = scene.get("intro_video_cover_full", False)
+    intro_exists = bool(intro_video_path and os.path.exists(intro_video_path))
+    intro_sufficient = intro_exists and (intro_cover_full or intro_dur >= audio_duration)
+
     # Add online videos as supplement if needed
     should_download_online = False
     online_source = "pexels"
     target_online_clips = 0
-    
-    if params.video_source == "local":
+
+    if intro_sufficient:
+        logger.info(f"scene {scene_num}: intro video sufficient for audio ({audio_duration:.2f}s), skipping online download")
+    elif params.video_source == "local":
         # If local source but no local materials, download online videos
         if len(local_materials) == 0:
             logger.warning(f"scene {scene_num}: no local materials available, downloading online videos from {online_source}")
             should_download_online = True
             # Calculate how many online clips are needed
-            target_online_clips = max(1, int(math.ceil(audio_duration / params.video_clip_duration)))
+            effective_duration = audio_duration - (intro_dur if intro_exists and not intro_cover_full and intro_dur < audio_duration else 0)
+            target_online_clips = max(1, int(math.ceil(effective_duration / params.video_clip_duration)))
         elif len(local_materials) < len(scene_keywords):
             logger.info(f"scene {scene_num}: local materials ({len(local_materials)}) less than keywords ({len(scene_keywords)}), downloading supplement videos from {online_source}")
             should_download_online = True
@@ -611,7 +621,8 @@ def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_
         logger.info(f"scene {scene_num}: using {online_source} as video source, downloading videos")
         should_download_online = True
         # Calculate how many online clips are needed
-        target_online_clips = max(1, int(math.ceil(audio_duration / params.video_clip_duration)))
+        effective_duration = audio_duration - (intro_dur if intro_exists and not intro_cover_full and intro_dur < audio_duration else 0)
+        target_online_clips = max(1, int(math.ceil(effective_duration / params.video_clip_duration)))
     
     supplement_videos = []
     if should_download_online:
@@ -637,9 +648,11 @@ def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_
     if 'supplement_videos' in locals() and supplement_videos:
         downloaded_videos.extend(supplement_videos)
     
-    if not downloaded_videos:
+    if not downloaded_videos and not intro_sufficient:
         logger.error(f"scene {scene_num}: failed to get video materials")
         return None
+    elif not downloaded_videos and intro_sufficient:
+        logger.info(f"scene {scene_num}: no materials yet, but intro video will cover audio")
     
     # Check for intro video and insert at the beginning
     intro_video = scene.get("intro_video")

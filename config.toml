@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.12.0"
+project_version = "2.12.1"
 
 [app]
 host_visible = false
@@ -44,7 +44,7 @@ video_contrast = 1.05
 video_concat_mode = "random"
 video_transition_mode = "none"
 min_scene_success_ratio = 0.9
-video_aspect = "landscape_4_3"
+video_aspect = "square"
 video_clip_duration = 5
 video_count = 1
 silence_duration = 1
@@ -72,7 +72,7 @@ speech_region = ""
 
 [audio]
 tts_server = "coze-tts"
-voice_name = "coze|7524987545197805587|爽快思思（多情感）-Female|https://lf6-appstore-sign.oceancloudapi.com/ocean-cloud-tos/VolcanoSystemVoice/zh_female_shuangkuaisisi_emo_v2_mars_bigtts.mp3?lk3s=da27ec82&x-expires=1784269131&x-signature=s5xDWpT%2BkQTpzzfhOYtxMN8%2BRmM%3D|今天天气可好了，我打算和朋友一起去野餐，带上美食和饮料，找个舒适的草坪，什么烦恼都没了。你要不要和我们一起呀？|angry-生气,coldness-冷漠,excited-激动,happy-开心,neutral-中性,sad-悲伤,surprised-惊讶"
+voice_name = "coze|7524987545197805587|爽快思思（多情感）-Female|https://lf6-appstore-sign.oceancloudapi.com/ocean-cloud-tos/VolcanoSystemVoice/zh_female_shuangkuaisisi_emo_v2_mars_bigtts.mp3?lk3s=da27ec82&x-expires=1784340577&x-signature=vWVCAAR3sqbFYoNUZIngISmonmM%3D|今天天气可好了，我打算和朋友一起去野餐，带上美食和饮料，找个舒适的草坪，什么烦恼都没了。你要不要和我们一起呀？|angry-生气,coldness-冷漠,excited-激动,happy-开心,neutral-中性,sad-悲伤,surprised-惊讶"
 voice_volume = 1.8
 voice_rate = 1
 bgm_type = ""
@@ -87,16 +87,16 @@ subtitle_auto_fit = true
 font_name = "MicrosoftYaHeiBold.ttc"
 text_fore_color = "rgb(255, 208, 0)"
 text_background_color = true
-font_size = 56
+font_size = 48
 stroke_color = "rgb(0, 0, 0)"
 stroke_width = 1
 
 [title]
 title_enabled = true
-title_text = "共享单车涨价了"
+title_text = "LV频繁诉讼背后的\n扎心真相"
 title_duration = 5
 title_font_name = "MicrosoftYaHeiBold.ttc"
-title_font_size = 110
+title_font_size = 90
 title_text_color = "#FFFFFF"
 title_stroke_color = "#0000FF"
 title_stroke_width = 5

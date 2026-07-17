@@ -108,6 +108,8 @@ recover_video_synthesis (场景集成任务)
 【循环 force_rebuild_scenes】更新 script.json 顶层参数 → process_scene → 用最新参数强制重建
   │   （更新顶层 params：voice_name, video_source 等 → 复用原始流水线：音频合成 → 字幕生成 → 素材下载 → 视频合成，含 intro video）
   │   【注】逐场景数据覆盖（script, intro_video, keywords）须在调用 recover 前通过 update-scenes API 单独写入 script.json
+  │   【优化】process_scene 中，若 intro_video 时长 ≥ 音频时长或 intro_video_cover_full=True，则跳过线上素材下载；
+  │        若 intro_video 时长 < 音频时长，则仅下载 (音频时长 - intro 时长) 对应的片段数，避免浪费带宽
     ↓
 【循环缺失场景】_rebuild_scene_video → 用原始参数补缺失
     ↓

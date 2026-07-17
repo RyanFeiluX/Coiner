@@ -169,9 +169,12 @@ downloaded_videos = [m.url for m in materials]
 - **流程**：
   1. 预处理本地素材
   2. 语义匹配本地素材
-  3. 下载线上素材作为补充
-  4. 组合本地和线上素材
-  5. 生成场景视频
+  3. 判断 intro video 覆盖情况（在下载决策之前）：
+     - 若 `intro_video_cover_full=True` 或 `intro_duration >= audio_duration` → 跳过线上素材下载
+     - 若 `intro_duration < audio_duration` → 按剩余时长（audio - intro）计算所需片段数
+  4. 下载线上素材作为补充（下载量已按 intro 时长缩减）
+  5. 组合本地和线上素材
+  6. 生成场景视频（intro 插入到视频列表头部，由 build_scene_video 决策是否仅用 intro）
 
 #### `get_video_materials` 函数
 - **功能**：获取视频素材（本地优先，线上补充）
