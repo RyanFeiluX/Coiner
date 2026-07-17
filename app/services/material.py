@@ -456,6 +456,7 @@ def download_videos(
     download_count = 0
     download_failures = 0
     total_download_attempts = 0
+    cached_count = 0
 
     material_directory = config.video.get("material_directory", "").strip()
     if material_directory == "task":
@@ -548,6 +549,7 @@ def download_videos(
                     except Exception:
                         pass
                     downloaded_paths.append(save_path)
+                    cached_count += 1
                     seconds = min(max_clip_duration, item.duration)
                     total_duration += seconds
                     download_count += 1
@@ -616,6 +618,7 @@ def download_videos(
                 if os.path.exists(save_path) and os.path.getsize(save_path) > 0:
                     logger.info(f"Video already exists: {save_path}")
                     downloaded_paths.append(save_path)
+                    cached_count += 1
                     seconds = min(max_clip_duration, item.duration)
                     total_duration += seconds
                 else:
@@ -634,7 +637,7 @@ def download_videos(
                 break
             time.sleep(5)
     
-    logger.success(f"Downloaded {len(downloaded_paths)} videos (failures: {download_failures}/{total_download_attempts})")
+    logger.success(f"Downloaded {len(downloaded_paths)} videos ({len(downloaded_paths) - cached_count} new + {cached_count} cached, failures: {download_failures}/{total_download_attempts})")
     return downloaded_paths
 
 
