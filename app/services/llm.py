@@ -847,6 +847,29 @@ def _is_lazy_script(script: str, language: str = None) -> bool:
     return False
 
 
+def _is_valid_scenes_json(text: str) -> bool:
+    """Check if text is valid JSON containing a scenes array."""
+    import json
+    try:
+        text = text.strip()
+        if text.startswith('```') and text.endswith('```'):
+            if text.startswith('```json'):
+                text = text[7:-3].strip()
+            else:
+                text = text[3:-3].strip()
+        start = text.find('{')
+        end = text.rfind('}')
+        if start != -1 and end != -1 and end > start:
+            text = text[start:end+1]
+        data = json.loads(text)
+        scenes = data.get("scenes") or data.get("scenes_list") or data.get("scene_list")
+        if isinstance(scenes, list) and len(scenes) > 0:
+            return True
+        return False
+    except (json.JSONDecodeError, Exception):
+        return False
+
+
 def generate_multi_scene_script(
     video_content: str,
     language: str = "",
@@ -1045,37 +1068,48 @@ Use this as factual reference, prioritize it over your internal knowledge when t
 
             if not response or response.strip() == "":
                 logger.warning(f"LLM API returned empty response, attempt {i + 1}/{_max_retries}")
+                if i < _max_retries - 1:
+                    logger.warning(f"retrying... {i + 1}/{_max_retries}")
                 continue
 
-            final_script = response
-            break
+            # If the API returned an error, fall back immediately
+            if "Error: " in response:
+                logger.warning(f"LLM API returned error: {response[:200]}")
+                final_script = response
+                break
+
+            # Early validation: check if response contains valid JSON with scenes
+            if _is_valid_scenes_json(response):
+                final_script = response
+                logger.success(f"completed multi-scene script generation: \n{final_script}")
+                break
+            else:
+                logger.warning(f"Response is not valid JSON with scenes, attempt {i + 1}/{_max_retries}")
+                if i < _max_retries - 1:
+                    logger.warning(f"retrying... {i + 1}/{_max_retries}")
+                continue
         except Exception as e:
             logger.error(f"failed to generate multi-scene script: {e}")
 
         if i < _max_retries - 1:
             logger.warning(f"failed to generate multi-scene script, trying again... {i + 1}")
 
+    # All retries exhausted without a valid response
     if not final_script or "Error: " in final_script:
-        # Fallback: generate a simple multi-scene structure using actual content from the original text
-        logger.warning("using fallback multi-scene script generation with actual content from original text")
+        logger.warning(f"All {_max_retries} attempts failed to generate valid JSON with scenes, using fallback")
         
-        # Extract actual content from video_content for the fallback (avoid lazy placeholders)
         import re as _re
         content_clean = video_content.strip()
-        # Split into sentences or paragraphs to extract real content
         sentences = [s.strip() for s in _re.split(r'[。！？.!?\n]+', content_clean) if len(s.strip()) >= 10]
         
-        # Build actual script content from original text
         if len(sentences) >= 2:
             middle_script = "。".join(sentences[1:len(sentences)-1]) if len(sentences) > 2 else sentences[1]
             middle_script = middle_script[:200] + "。" if len(middle_script) > 200 else middle_script + "。"
         elif sentences:
             middle_script = sentences[0][:200] + "。"
         else:
-            # No extractable sentences, use raw content
             middle_script = content_clean[:200] + "。" if len(content_clean) > 200 else content_clean + "。"
         
-        # Escape quotes for JSON
         middle_script = middle_script.replace('"', '\\"').replace('\n', ' ')
         
         if host_visible:
@@ -1083,13 +1117,120 @@ Use this as factual reference, prioritize it over your internal knowledge when t
         else:
             fallback_json = f'{{"scenes":[{{"title":"震撼开场","keywords":"hook,impact,surprise","visual":"大屏幕显示醒目的数据或画面，聚光灯聚焦到主题文字。运镜：快速推进到屏幕特写。","script":"就在你看到这段话的这一刻，世界上正在发生一件你可能完全不知道的事。","emotion":"紧迫,震撼"}},{{"title":"核心内容","keywords":"core content,explanation,details","visual":"特写屏幕上的相关内容，配合动态图形展示关键信息。运镜：平移镜头，展示不同的视觉元素。","script":"{middle_script}","emotion":"专业,清晰"}},{{"title":"总结收尾","keywords":"conclusion,summary,closing","visual":"屏幕显示总结要点，背景是现代化的办公环境。运镜：拉远镜头，展示完整场景。","script":"希望今天的分享对大家有所帮助，谢谢大家的观看！","emotion":"自信,鼓舞"}}]}}'
         return fallback_json
-    else:
-        logger.success(f"completed multi-scene script generation: \n{final_script}")
-
-    return final_script.strip()
+    
+    return final_script
 
 
-def parse_multi_scene_script(script_text: str) -> List[Dict]:
+def _repair_json(text: str) -> str:
+    """Repair common JSON formatting issues from LLM output."""
+    text = text.strip()
+
+    if not text:
+        return text
+
+    # Try to extract JSON object from surrounding text
+    start = text.find('{')
+    end = text.rfind('}')
+    if start != -1 and end != -1 and end > start:
+        text = text[start:end+1]
+
+    # Remove trailing commas before } or ]
+    text = re.sub(r',\s*([}\]])', r'\1', text)
+
+    # Replace Python-style True/False/None
+    text = re.sub(r'\bTrue\b', 'true', text)
+    text = re.sub(r'\bFalse\b', 'false', text)
+    text = re.sub(r'\bNone\b', 'null', text)
+
+    # Replace single quotes with double quotes (only outside double-quoted strings)
+    in_double = False
+    result = []
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == '"' and (i == 0 or text[i-1] != '\\'):
+            in_double = not in_double
+            result.append(ch)
+        elif ch == "'" and not in_double:
+            result.append('"')
+        else:
+            result.append(ch)
+        i += 1
+
+    return ''.join(result)
+
+
+def _is_json_content(text: str) -> bool:
+    """Check if text looks like JSON content (contains JSON structure)."""
+    t = text.strip()
+    if not t:
+        return False
+    # Starts with { or [ and has matching structure indicators
+    if (t.startswith('{') or t.startswith('[')) and (t.endswith('}') or t.endswith(']')):
+        return True
+    # Contains JSON-like key patterns
+    if '"scenes"' in t or "'scenes'" in t:
+        return True
+    if re.search(r'["\']scenes["\']\s*:', t):
+        return True
+    return False
+
+
+def _extract_scene_fields(scene_data: Dict) -> Dict:
+    """Extract scene fields with alias fallbacks for different field naming conventions."""
+    # Script/narration text (field aliases)
+    script = (
+        scene_data.get("script")
+        or scene_data.get("audio")
+        or scene_data.get("narration")
+        or scene_data.get("dialogue")
+        or scene_data.get("content")
+        or scene_data.get("text")
+        or ""
+    )
+    # Visual description
+    visual = (
+        scene_data.get("visual")
+        or scene_data.get("camera")
+        or scene_data.get("visual_requirement")
+        or scene_data.get("visual_description")
+        or scene_data.get("image")
+        or ""
+    )
+    # Keywords
+    keywords = (
+        scene_data.get("keywords")
+        or scene_data.get("tags")
+        or scene_data.get("terms")
+        or scene_data.get("key_words")
+        or ""
+    )
+    # Emotion
+    emotion = (
+        scene_data.get("emotion")
+        or scene_data.get("tone")
+        or scene_data.get("mood")
+        or scene_data.get("sentiment")
+        or ""
+    )
+    # Title
+    title = (
+        scene_data.get("title")
+        or scene_data.get("name")
+        or scene_data.get("heading")
+        or scene_data.get("scene_title")
+        or ""
+    )
+    return {
+        "script": script,
+        "visual": visual,
+        "keywords": keywords,
+        "emotion": emotion,
+        "title": title,
+    }
+
+
+def parse_multi_scene_script(script_text: str, original_content: str = "") -> List[Dict]:
     """
     Parse multi-scene script text into structured data.
     
@@ -1099,6 +1240,7 @@ def parse_multi_scene_script(script_text: str) -> List[Dict]:
     
     Args:
         script_text: Multi-scene script text (JSON or text format)
+        original_content: Original video content for fallback script generation
     
     Returns:
         List of scene dictionaries with structure:
@@ -1143,44 +1285,128 @@ def parse_multi_scene_script(script_text: str) -> List[Dict]:
             if start_idx != -1 and end_idx != -1:
                 cleaned_script = cleaned_script[start_idx:end_idx+1]
         
-        data = json.loads(cleaned_script)
-        if "scenes" in data and isinstance(data["scenes"], list):
-            for i, scene_data in enumerate(data["scenes"]):
-                visual_content = scene_data.get("visual", "")
+        # Try direct parsing first, then attempt repair on failure
+        try:
+            data = json.loads(cleaned_script)
+        except json.JSONDecodeError:
+            logger.warning("Direct JSON parsing failed, attempting repair")
+            repaired = _repair_json(cleaned_script)
+            data = json.loads(repaired)
+            logger.info("JSON repair successful, proceeding with parsed data")
+        
+        scenes_data = data.get("scenes") or data.get("scenes_list") or data.get("scene_list")
+        if scenes_data and isinstance(scenes_data, list):
+            for i, scene_data in enumerate(scenes_data):
+                # Validate scene_data is a dict
+                if not isinstance(scene_data, dict):
+                    logger.warning(f"Scene {scene_id}: item is {type(scene_data).__name__}, not a dict, skipping")
+                    continue
+                
+                fields = _extract_scene_fields(scene_data)
+                script = fields["script"]
+                visual_content = fields["visual"]
+                keywords = fields["keywords"]
+                emotion = fields["emotion"]
+                title = fields["title"] or f"Scene {scene_id}"
+                
                 if not visual_content or visual_content.strip() == "":
                     logger.warning(f"Scene {scene_id} parsed with empty visual requirements from LLM response")
                 
                 scene = {
                     "id": f"scene_{scene_id}",
-                    "title": scene_data.get("title", f"Scene {scene_id}"),
+                    "title": title,
                     "visual": visual_content,
-                    "audio": scene_data.get("script", ""),
-                    "emotion": scene_data.get("emotion", ""),
-                    "script": scene_data.get("script", ""),  # 保持与原有结构兼容
-                    "camera": visual_content,  # 保持与原有结构兼容
-                    "keywords": scene_data.get("keywords", ""),  # 新增关键词字段
-                    "start_time": scene_id * 10,  # 保持与原有结构兼容
-                    "end_time": (scene_id + 1) * 10,  # 保持与原有结构兼容
-                    "full_script": f"###  Scene {scene_id}: {scene_data.get('title', f'Scene {scene_id}')}\n- **Core Keywords**：{scene_data.get('keywords', '')}\n- **Visual (Visual Elements)**：\n{visual_content}\n- **Audio (Dialogue Script)**：\n[{scene_data.get('emotion', '')}] {scene_data.get('script', '')}"
+                    "audio": script,
+                    "emotion": emotion,
+                    "script": script,
+                    "camera": visual_content,
+                    "keywords": keywords,
+                    "start_time": scene_id * 10,
+                    "end_time": (scene_id + 1) * 10,
+                    "full_script": f"###  Scene {scene_id}: {title}\n- **Core Keywords**：{keywords}\n- **Visual (Visual Elements)**：\n{visual_content}\n- **Audio (Dialogue Script)**：\n[{emotion}] {script}"
                 }
                 scenes.append(scene)
                 scene_id += 1
-            logger.info(f"Successfully parsed {len(scenes)} scenes from JSON format")
             
-            # 限制场景数量在合理范围内 (3-16)
-            max_scenes = 16
-            min_scenes = 3
-            if len(scenes) > max_scenes:
-                logger.warning(f"Found {len(scenes)} scenes, limiting to {max_scenes} scenes")
-                scenes = scenes[:max_scenes]
-            elif len(scenes) < min_scenes:
-                logger.warning(f"Found {len(scenes)} scenes, which is less than the recommended minimum of {min_scenes} scenes")
+            if scenes:
+                logger.info(f"Successfully parsed {len(scenes)} scenes from JSON format")
+                
+                # 限制场景数量在合理范围内 (3-16)
+                max_scenes = 16
+                min_scenes = 3
+                if len(scenes) > max_scenes:
+                    logger.warning(f"Found {len(scenes)} scenes, limiting to {max_scenes} scenes")
+                    scenes = scenes[:max_scenes]
+                elif len(scenes) < min_scenes:
+                    logger.warning(f"Found {len(scenes)} scenes, which is less than the recommended minimum of {min_scenes} scenes")
+                
+                return scenes
+            else:
+                logger.warning("JSON had scenes array but all items were invalid, treating as parse failure")
+        elif scenes_data is not None:
+            logger.warning(f"JSON 'scenes' field is {type(scenes_data).__name__}, not a list, falling through")
+        else:
+            logger.warning("JSON parsed but no 'scenes' field found, checking for other structures")
             
-            return scenes
+            # Try alternative structures: single scene object, or scenes nested in another key
+            for alt_key in ["scene", "script", "storyboard", "video"]:
+                alt_data = data.get(alt_key)
+                if isinstance(alt_data, dict):
+                    # Single scene found
+                    fields = _extract_scene_fields(alt_data)
+                    script = fields["script"]
+                    visual_content = fields["visual"]
+                    if script or visual_content:
+                        scene = {
+                            "id": "scene_1",
+                            "title": fields["title"] or "Scene 1",
+                            "visual": visual_content,
+                            "audio": script,
+                            "emotion": fields["emotion"],
+                            "script": script,
+                            "camera": visual_content,
+                            "keywords": fields["keywords"],
+                            "start_time": 0,
+                            "end_time": 10,
+                            "full_script": script
+                        }
+                        scenes.append(scene)
+                        logger.info(f"Found single scene in field '{alt_key}', returning 1 scene")
+                        return scenes
+                elif isinstance(alt_data, list):
+                    # Alternative scenes list found
+                    for j, item in enumerate(alt_data):
+                        if isinstance(item, dict):
+                            fields = _extract_scene_fields(item)
+                            script = fields["script"]
+                            visual_content = fields["visual"]
+                            scene = {
+                                "id": f"scene_{j+1}",
+                                "title": fields["title"] or f"Scene {j+1}",
+                                "visual": visual_content,
+                                "audio": script,
+                                "emotion": fields["emotion"],
+                                "script": script,
+                                "camera": visual_content,
+                                "keywords": fields["keywords"],
+                                "start_time": (j+1) * 10,
+                                "end_time": (j+2) * 10,
+                                "full_script": script
+                            }
+                            scenes.append(scene)
+                    if scenes:
+                        logger.info(f"Found {len(scenes)} scenes in alternative field '{alt_key}', returning")
+                        return scenes
     except json.JSONDecodeError as e:
-        logger.warning(f"JSON parsing failed: {e}, falling back to text parsing")
+        logger.warning(f"JSON parsing failed after repair: {e}")
     except Exception as e:
-        logger.warning(f"Error parsing JSON: {e}, falling back to text parsing")
+        logger.warning(f"Error parsing JSON: {e}")
+    
+    # 如果内容明显是JSON（但解析失败），不再尝试文本解析，直接构建结构化fallback
+    if _is_json_content(script_text):
+        logger.warning("Content is JSON-like but parsing failed, using structured fallback instead of text parsing")
+        # 尝试从原始内容构建场景，而不是把JSON当作文本
+        return _build_fallback_scenes(original_content, script_text)
     
     # JSON解析失败，尝试使用原来的文本解析
     logger.info("Falling back to text format parsing")
@@ -1212,11 +1438,11 @@ def parse_multi_scene_script(script_text: str) -> List[Dict]:
                 "visual": clean_visual,
                 "audio": clean_audio,
                 "emotion": emotion,
-                "script": clean_audio,  # 保持与原有结构兼容
-                "camera": clean_visual,  # 保持与原有结构兼容
-                "keywords": clean_keywords,  # 新增关键词字段
-                "start_time": scene_id * 10,  # 保持与原有结构兼容
-                "end_time": (scene_id + 1) * 10,  # 保持与原有结构兼容
+                "script": clean_audio,
+                "camera": clean_visual,
+                "keywords": clean_keywords,
+                "start_time": scene_id * 10,
+                "end_time": (scene_id + 1) * 10,
                 "full_script": f"###  Scene {scene_num}: {title}\n- **Core Keywords**：{keywords}\n- **Visual (Visual Elements)**：\n{visual}\n- **Audio (Dialogue Script)**：\n{audio}"
             }
             scenes.append(scene)
@@ -1246,11 +1472,11 @@ def parse_multi_scene_script(script_text: str) -> List[Dict]:
                     "visual": clean_visual,
                     "audio": clean_audio,
                     "emotion": emotion,
-                    "script": clean_audio,  # 保持与原有结构兼容
-                    "camera": clean_visual,  # 保持与原有结构兼容
-                    "keywords": "",  # 旧格式没有关键词
-                    "start_time": scene_id * 10,  # 保持与原有结构兼容
-                    "end_time": (scene_id + 1) * 10,  # 保持与原有结构兼容
+                    "script": clean_audio,
+                    "camera": clean_visual,
+                    "keywords": "",
+                    "start_time": scene_id * 10,
+                    "end_time": (scene_id + 1) * 10,
                     "full_script": f"###  Scene {scene_num}: {title}\n- **Visual (Visual Elements)**：\n{visual}\n- **Audio (Dialogue Script)**：\n{audio}"
                 }
                 scenes.append(scene)
@@ -1299,20 +1525,23 @@ def parse_multi_scene_script(script_text: str) -> List[Dict]:
                     "visual": clean_visual,
                     "audio": clean_audio,
                     "emotion": emotion,
-                    "script": clean_audio,  # 保持与原有结构兼容
-                    "camera": clean_visual,  # 保持与原有结构兼容
-                    "keywords": keywords,  # 关键词字段
-                    "start_time": scene_id * 10,  # 保持与原有结构兼容
-                    "end_time": (scene_id + 1) * 10,  # 保持与原有结构兼容
+                    "script": clean_audio,
+                    "camera": clean_visual,
+                    "keywords": keywords,
+                    "start_time": scene_id * 10,
+                    "end_time": (scene_id + 1) * 10,
                     "full_script": f"###  Scene {scene_num}: {title}\n- **Visual (Visual Elements)**：\n{visual}\n- **Audio (Dialogue Script)**：\n{audio}"
                 }
                 scenes.append(scene)
                 scene_id += 1
     
-    # 如果仍然没有匹配到场景，创建一个默认场景
+    # 如果仍然没有匹配到场景，创建一个默认场景（但避免将原始JSON文本作为脚本内容）
     if not scenes:
-        # 清理脚本内容
         cleaned_content = script_text.replace('*', '').replace('#', '').strip()
+        
+        # 检测清理后的内容是否仍然是JSON结构，如果是则使用原始内容构建
+        if _is_json_content(cleaned_content):
+            return _build_fallback_scenes(original_content, script_text)
         
         # 创建默认场景
         scene = {
@@ -1340,6 +1569,106 @@ def parse_multi_scene_script(script_text: str) -> List[Dict]:
         logger.warning(f"Found {len(scenes)} scenes, which is less than the recommended minimum of {min_scenes} scenes")
     
     logger.info(f"parsed {len(scenes)} scenes from multi-scene script")
+    return scenes
+
+
+def _build_fallback_scenes(original_content: str, raw_response: str = "") -> List[Dict]:
+    """
+    Build fallback scene structure when JSON parsing fails.
+    Uses the original video content instead of the raw JSON text for scripts.
+    """
+    import re as _re
+    scenes = []
+    
+    if not original_content or original_content.strip() == "":
+        logger.warning("No original content available for fallback scenes, creating single placeholder scene")
+        scene = {
+            "id": "scene_1",
+            "title": "Scene 1",
+            "visual": "Visual content based on the video subject",
+            "audio": "Content is being processed",
+            "emotion": "",
+            "script": "Content is being processed",
+            "camera": "Visual content based on the video subject",
+            "keywords": "",
+            "start_time": 0,
+            "end_time": 10,
+            "full_script": "Content is being processed"
+        }
+        scenes.append(scene)
+        return scenes
+    
+    # Try to split original content into meaningful segments
+    content = original_content.strip()
+    
+    # Split by sentences for Chinese (。！？) or English (.!?) or paragraphs
+    sentences = [s.strip() for s in _re.split(r'[。！？.!?\n]+', content) if len(s.strip()) >= 15]
+    
+    if len(sentences) >= 3:
+        # Create opening, body, closing structure
+        scenes_data = [
+            (sentences[0], "hook,opening", "Opening scene based on the video content"),
+            (sentences[len(sentences)//2], "core,content", "Main content scene based on the video topic"),
+            (sentences[-1], "conclusion,summary", "Closing scene wrapping up the video"),
+        ]
+        # Add any remaining substantial sentences as additional scenes
+        for j, sent in enumerate(sentences[1:-1]):
+            if len(scenes_data) >= 8:
+                break
+            if sent not in (sentences[0], sentences[-1]):
+                scenes_data.insert(-1, (sent, "content,detail", "Supporting content scene"))
+        
+        for j, (script_text, kw, vis) in enumerate(scenes_data):
+            scene = {
+                "id": f"scene_{j+1}",
+                "title": f"Scene {j+1}",
+                "visual": vis,
+                "audio": script_text,
+                "emotion": "",
+                "script": script_text,
+                "camera": vis,
+                "keywords": kw,
+                "start_time": (j+1) * 10,
+                "end_time": (j+2) * 10,
+                "full_script": script_text
+            }
+            scenes.append(scene)
+    else:
+        # Build from available content
+        parts = [p for p in _re.split(r'[，,;；]+', content) if len(p.strip()) >= 10]
+        for j, part in enumerate(parts[:8]):
+            scene = {
+                "id": f"scene_{j+1}",
+                "title": f"Scene {j+1}",
+                "visual": f"Visual for scene {j+1} based on the video content",
+                "audio": part.strip(),
+                "emotion": "",
+                "script": part.strip(),
+                "camera": f"Visual for scene {j+1} based on the video content",
+                "keywords": "",
+                "start_time": (j+1) * 10,
+                "end_time": (j+2) * 10,
+                "full_script": part.strip()
+            }
+            scenes.append(scene)
+    
+    if not scenes:
+        scene = {
+            "id": "scene_1",
+            "title": "Scene 1",
+            "visual": "Visual content based on the video subject",
+            "audio": content[:200] if len(content) > 200 else content,
+            "emotion": "",
+            "script": content[:200] if len(content) > 200 else content,
+            "camera": "Visual content based on the video subject",
+            "keywords": "",
+            "start_time": 0,
+            "end_time": 10,
+            "full_script": content[:200] if len(content) > 200 else content
+        }
+        scenes.append(scene)
+    
+    logger.info(f"Built {len(scenes)} fallback scenes from original content")
     return scenes
 
 
@@ -1578,13 +1907,16 @@ Update the visual descriptions (camera/visual field) of provided scenes based on
 Please update the visual/camera descriptions according to the host visibility requirement and return the scenes JSON in the same structure.
 """.strip()
 
+    # Build original content from scenes for fallback
+    original_content = " ".join(s.get("script", s.get("audio", "")) for s in scenes if isinstance(s, dict))
+    
     updated_scenes = None
     for i in range(_max_retries):
         try:
             response = _generate_response(prompt=prompt)
             if response:
                 # Try to parse the response
-                updated_scenes = parse_multi_scene_script(response)
+                updated_scenes = parse_multi_scene_script(response, original_content=original_content)
                 if updated_scenes and len(updated_scenes) > 0:
                     logger.success(f"Successfully updated {len(updated_scenes)} scenes visuals")
                     break

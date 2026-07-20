@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.12.3"
+project_version = "2.12.4"
 
 [app]
 host_visible = false
@@ -44,7 +44,7 @@ video_contrast = 1.05
 video_concat_mode = "random"
 video_transition_mode = "none"
 min_scene_success_ratio = 0.9
-video_aspect = "square"
+video_aspect = "landscape_4_3"
 video_clip_duration = 5
 video_count = 1
 silence_duration = 1
@@ -72,7 +72,7 @@ speech_region = ""
 
 [audio]
 tts_server = "coze-tts"
-voice_name = "coze|7524987545197805587|爽快思思（多情感）-Female|https://lf6-appstore-sign.oceancloudapi.com/ocean-cloud-tos/VolcanoSystemVoice/zh_female_shuangkuaisisi_emo_v2_mars_bigtts.mp3?lk3s=da27ec82&x-expires=1784340577&x-signature=vWVCAAR3sqbFYoNUZIngISmonmM%3D|今天天气可好了，我打算和朋友一起去野餐，带上美食和饮料，找个舒适的草坪，什么烦恼都没了。你要不要和我们一起呀？|angry-生气,coldness-冷漠,excited-激动,happy-开心,neutral-中性,sad-悲伤,surprised-惊讶"
+voice_name = "coze|7524987545197805587|爽快思思（多情感）-Female|https://lf9-appstore-sign.oceancloudapi.com/ocean-cloud-tos/VolcanoSystemVoice/zh_female_shuangkuaisisi_emo_v2_mars_bigtts.mp3?lk3s=da27ec82&x-expires=1784372379&x-signature=sqq0ArOVonkmDQgANo2o8vJJv3s%3D|今天天气可好了，我打算和朋友一起去野餐，带上美食和饮料，找个舒适的草坪，什么烦恼都没了。你要不要和我们一起呀？|angry-生气,coldness-冷漠,excited-激动,happy-开心,neutral-中性,sad-悲伤,surprised-惊讶"
 voice_volume = 1.8
 voice_rate = 1
 bgm_type = ""
@@ -83,9 +83,9 @@ subtitle_enabled = true
 subtitle_position = "custom"
 subtitle_custom_position = 95
 subtitle_margin = 0.05
-subtitle_auto_fit = true
+subtitle_auto_fit = false
 font_name = "MicrosoftYaHeiBold.ttc"
-text_fore_color = "rgb(255, 208, 0)"
+text_fore_color = "rgb(246, 246, 244)"
 text_background_color = true
 font_size = 48
 stroke_color = "rgb(0, 0, 0)"
@@ -93,7 +93,7 @@ stroke_width = 1
 
 [title]
 title_enabled = true
-title_text = "LV频繁诉讼背后的\n扎心真相"
+title_text = "北大学硕震怒停招？"
 title_duration = 5
 title_font_name = "MicrosoftYaHeiBold.ttc"
 title_font_size = 90
@@ -125,9 +125,9 @@ language = "zh"
 [storage]
 storage_cleanup_interval_hours = 1
 local_videos_ttl_days = 3
-cache_videos_ttl_days = 3
-cache_downscaled_ttl_days = 3
-temp_ttl_hours = 2
+cache_videos_ttl_days = 7
+cache_downscaled_ttl_days = 7
+temp_ttl_hours = 1
 
 [imagemagick]
 imagemagick_path = "D:\\ProgramData\\ImageMagick-7.1.12-Q16\\magick.exe"

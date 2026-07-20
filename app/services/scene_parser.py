@@ -931,8 +931,8 @@ def parse_script_with_llm(script: str, language: str = None, host_visible: bool 
     multi_scene_script = llm_service.generate_multi_scene_script(video_content=script, language=language, host_visible=host_visible, options=options)
     logger.info(f"Generated multi-scene script: {multi_scene_script[:500]}...")
     
-    # Parse the generated multi-scene script
-    scenes_data = llm_service.parse_multi_scene_script(multi_scene_script)
+    # Parse the generated multi-scene script (pass original script for fallback)
+    scenes_data = llm_service.parse_multi_scene_script(multi_scene_script, original_content=script)
     logger.info(f"Parsed {len(scenes_data)} scenes from multi-scene script")
     
     # Check for lazy/placeholder scripts in parsed scenes

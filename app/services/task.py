@@ -181,8 +181,9 @@ def generate_multi_scene_script(task_id, params):
         logger.error("failed to generate multi-scene script.")
         return None, None, None, None
     
-    # Parse the multi-scene script into structured data
-    scenes_data = llm.parse_multi_scene_script(video_script)
+    # Parse the multi-scene script into structured data (pass original content for fallback)
+    original_content = params.video_script if params.video_script else params.video_subject
+    scenes_data = llm.parse_multi_scene_script(video_script, original_content=original_content)
     
     if not scenes_data:
         sm.state.update_task(task_id, state=const.TASK_STATE_FAILED)
