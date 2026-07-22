@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.12.5"
+project_version = "2.12.6"
 
 [app]
 host_visible = false
@@ -45,7 +45,7 @@ video_concat_mode = "random"
 video_transition_mode = "none"
 min_scene_success_ratio = 0.9
 video_aspect = "landscape_4_3"
-video_clip_duration = 5
+video_clip_duration = 4
 video_count = 1
 silence_duration = 1
 video_style = "none"
@@ -56,7 +56,7 @@ intro_image_animation_enabled = true
 intro_image_zoom_amount = 0.03
 material_directory = ""
 max_parallel_scenes = 2
-output_bg_color = "blue"
+output_bg_color = "black"
 
 [whisper]
 model_size = "large-v3"
@@ -72,9 +72,9 @@ speech_region = ""
 
 [audio]
 tts_server = "coze-tts"
-voice_name = "coze|7524987545197805587|爽快思思（多情感）-Female|https://lf9-appstore-sign.oceancloudapi.com/ocean-cloud-tos/VolcanoSystemVoice/zh_female_shuangkuaisisi_emo_v2_mars_bigtts.mp3?lk3s=da27ec82&x-expires=1784372379&x-signature=sqq0ArOVonkmDQgANo2o8vJJv3s%3D|今天天气可好了，我打算和朋友一起去野餐，带上美食和饮料，找个舒适的草坪，什么烦恼都没了。你要不要和我们一起呀？|angry-生气,coldness-冷漠,excited-激动,happy-开心,neutral-中性,sad-悲伤,surprised-惊讶"
+voice_name = "coze|7524987545197805587|爽快思思（多情感）-Female|https://lf9-appstore-sign.oceancloudapi.com/ocean-cloud-tos/VolcanoSystemVoice/zh_female_shuangkuaisisi_emo_v2_mars_bigtts.mp3?lk3s=da27ec82&x-expires=1784825067&x-signature=nH1L8BZnEeg6MDA6nKLb%2FoA2eL8%3D|今天天气可好了，我打算和朋友一起去野餐，带上美食和饮料，找个舒适的草坪，什么烦恼都没了。你要不要和我们一起呀？|angry-生气,coldness-冷漠,excited-激动,happy-开心,neutral-中性,sad-悲伤,surprised-惊讶"
 voice_volume = 1.8
-voice_rate = 1
+voice_rate = 1.1
 bgm_type = ""
 bgm_volume = 0.1
 
@@ -87,27 +87,27 @@ subtitle_auto_fit = false
 font_name = "MicrosoftYaHeiBold.ttc"
 text_fore_color = "rgb(246, 246, 244)"
 text_background_color = true
-font_size = 48
-stroke_color = "rgb(0, 0, 0)"
-stroke_width = 1
+font_size = 54
+stroke_color = "rgb(241, 246, 106)"
+stroke_width = 1.2
 
 [title]
 title_enabled = true
-title_text = "北大学硕震怒停招？"
-title_duration = 5
+title_text = "悬命绳被割 命悬一线"
+title_duration = 1
 title_font_name = "MicrosoftYaHeiBold.ttc"
-title_font_size = 90
+title_font_size = 100
 title_text_color = "#FFFFFF"
-title_stroke_color = "#0000FF"
+title_stroke_color = "#A52A2A"
 title_stroke_width = 5
 title_background_color = "transparent"
 title_position = "center"
-title_margin = 0.05
-title_margin_left = 0.05
-title_margin_right = 0.05
+title_margin = 0.06
+title_margin_left = 0.02
+title_margin_right = 0.02
 title_animation = "none"
 title_animation_duration = 0.5
-title_background_overlay = false
+title_background_overlay = true
 title_overlay_color = "rgba(0,0,0,0.5)"
 title_style = "classic"
 title_align = "center"
