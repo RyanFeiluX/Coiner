@@ -60,12 +60,19 @@ if exist "%ROOT%\vue-frontend\dist" (
 )
 
 REM ============================================================
-REM Step 3: Install Python dependencies
+REM Step 3: Install Python dependencies in condaenv-coiner
 REM ============================================================
 echo.
 echo === Install Python dependencies ===
-pip install -r "%ROOT%\requirements.txt" pyinstaller >nul 2>&1
-echo Python dependencies installed
+set "CONDA_ENV_PY=D:\ProgramData\anaconda3\envs\condaenv-coiner\python.exe"
+if not exist "%CONDA_ENV_PY%" (
+    echo Error: condaenv-coiner not found at %CONDA_ENV_PY%
+    echo Please create it first using: conda create -n condaenv-coiner python=3.11
+    exit /b 1
+)
+"%CONDA_ENV_PY%" -m pip install -r "%ROOT%\requirements.txt" >nul 2>&1
+"%CONDA_ENV_PY%" -m pip install pyinstaller >nul 2>&1
+echo Python dependencies installed (condaenv-coiner)
 
 REM ============================================================
 REM Step 4: Build with PyInstaller
@@ -77,7 +84,7 @@ if not defined SKIP_PYINSTALLER (
     rmdir /s /q "%ROOT%\build" 2>nul
     del "%ROOT%\*.spec" 2>nul
 
-    pyinstaller --onedir --name coiner "%ROOT%\main.py" ^
+    "%CONDA_ENV_PY%" -m PyInstaller --onedir --name coiner "%ROOT%\main.py" ^
         --hidden-import uvicorn.logging ^
         --hidden-import uvicorn.loops.auto ^
         --hidden-import uvicorn.loops.asyncio ^

@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.12.6"
+project_version = "2.12.7"
 
 [app]
 host_visible = false
@@ -93,7 +93,7 @@ stroke_width = 1.2
 
 [title]
 title_enabled = true
-title_text = "悬命绳被割 命悬一线"
+title_text = "\"北方之狼\"的惊人崛起"
 title_duration = 1
 title_font_name = "MicrosoftYaHeiBold.ttc"
 title_font_size = 100
