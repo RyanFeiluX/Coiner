@@ -60,19 +60,34 @@ if exist "%ROOT%\vue-frontend\dist" (
 )
 
 REM ============================================================
-REM Step 3: Install Python dependencies in condaenv-coiner
+REM Step 3: Install Python dependencies
 REM ============================================================
 echo.
 echo === Install Python dependencies ===
-set "CONDA_ENV_PY=D:\ProgramData\anaconda3\envs\condaenv-coiner\python.exe"
-if not exist "%CONDA_ENV_PY%" (
-    echo Error: condaenv-coiner not found at %CONDA_ENV_PY%
-    echo Please create it first using: conda create -n condaenv-coiner python=3.11
-    exit /b 1
+
+REM Check if running in CI environment
+set "PYTHON_EXE=python.exe"
+if defined GITHUB_ACTIONS (
+    echo Running in CI environment, using system Python
+) else (
+    REM Local development: try condaenv-coiner first
+    set "CONDA_ENV_PY=D:\ProgramData\anaconda3\envs\condaenv-coiner\python.exe"
+    if exist "!CONDA_ENV_PY!" (
+        set "PYTHON_EXE=!CONDA_ENV_PY!"
+        echo Using condaenv-coiner environment
+    ) else (
+        echo Warning: condaenv-coiner not found
+        echo Please create it first using: conda create -n condaenv-coiner python=3.11
+        echo Falling back to system Python
+    )
 )
-"%CONDA_ENV_PY%" -m pip install -r "%ROOT%\requirements.txt" >nul 2>&1
-"%CONDA_ENV_PY%" -m pip install pyinstaller >nul 2>&1
-echo Python dependencies installed (condaenv-coiner)
+
+"%PYTHON_EXE%" -m pip install -r "%ROOT%\requirements.txt" >nul 2>&1
+"%PYTHON_EXE%" -m pip install pyinstaller >nul 2>&1
+echo Python dependencies installed
+
+REM Set CONDA_ENV_PY for Step 4 to use
+set "CONDA_ENV_PY=%PYTHON_EXE%"
 
 REM ============================================================
 REM Step 4: Build with PyInstaller
