@@ -22,6 +22,9 @@ from app.services import log_service  # noqa: F401
 from app.config import config
 
 if __name__ == "__main__":
+    logger.info(f"{'='*40}")
+    logger.info(f"{config.project_name} v{config.project_version}")
+    logger.info(f"{'='*40}")
     logger.info(
         "start server, docs: http://127.0.0.1:" + str(config.listen_port) + "/docs"
     )

@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.12.10"
+project_version = "2.12.11"
 
 [app]
 host_visible = false
@@ -93,7 +93,7 @@ stroke_width = 1.2
 
 [title]
 title_enabled = true
-title_text = "中国数学双星\n霸榜2026菲尔兹奖"
+title_text = "644分错进分校\n一年白读"
 title_duration = 1
 title_font_name = "MicrosoftYaHeiBold.ttc"
 title_font_size = 100
