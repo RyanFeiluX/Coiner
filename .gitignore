@@ -53,3 +53,4 @@ resource/public/
 
 build-installer/
 coiner.spec
+config.toml
