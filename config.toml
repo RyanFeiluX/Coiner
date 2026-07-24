@@ -1,5 +1,5 @@
 project_name = "Coiner"
-project_version = "2.12.9"
+project_version = "2.12.10"
 
 [app]
 host_visible = false
@@ -72,9 +72,9 @@ speech_region = ""
 
 [audio]
 tts_server = "coze-tts"
-voice_name = "coze|7468512265151741979|擎苍-Male|https://lf6-appstore-sign.oceancloudapi.com/ocean-cloud-tos/VolcanoSystemVoice/zh_male_qingcang_mars_bigtts.mp3?lk3s=da27ec82&x-expires=1784861174&x-signature=C%2B2Y058fTEfDHjF5BwR0v3sE8N8%3D|无语，擎天之巨首，揽尽世间风云变幻，诸般阻碍，不过是无脉相巅峰之基石。今日之儒，来日必当十倍奉还。 无知威名，必将震慑四海八荒。|"
+voice_name = "coze|7524987545197805587|爽快思思（多情感）-Female|https://lf3-appstore-sign.oceancloudapi.com/ocean-cloud-tos/VolcanoSystemVoice/zh_female_shuangkuaisisi_emo_v2_mars_bigtts.mp3?lk3s=da27ec82&x-expires=1784908851&x-signature=jHd7K2qGx70iW%2BP6XSAumZOVuIo%3D|今天天气可好了，我打算和朋友一起去野餐，带上美食和饮料，找个舒适的草坪，什么烦恼都没了。你要不要和我们一起呀？|angry-生气,coldness-冷漠,excited-激动,happy-开心,neutral-中性,sad-悲伤,surprised-惊讶"
 voice_volume = 1.8
-voice_rate = 1
+voice_rate = 1.1
 bgm_type = ""
 bgm_volume = 0.1
 
@@ -93,7 +93,7 @@ stroke_width = 1.2
 
 [title]
 title_enabled = true
-title_text = "Kimi K3刚刚霸榜\nDeepSeek V4前来挑战"
+title_text = "中国数学双星\n霸榜2026菲尔兹奖"
 title_duration = 1
 title_font_name = "MicrosoftYaHeiBold.ttc"
 title_font_size = 100

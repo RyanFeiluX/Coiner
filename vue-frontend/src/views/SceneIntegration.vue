@@ -144,14 +144,14 @@
               type="primary"
               class="form-button"
               @click="startIntegration"
-              :disabled="isRunning"
+              :disabled="isRunning || isCompleted"
             >
-              {{ isRunning ? t('Integrating...') : t('Start Integration') }}
+              {{ isCompleted ? t('Integration Completed') : (isRunning ? t('Integrating...') : t('Start Integration')) }}
             </el-button>
           </div>
           
           <!-- Progress Bar -->
-          <div v-if="isRunning" class="progress-container">
+          <div v-if="isRunning || isCompleted" class="progress-container">
             <el-progress
               :percentage="progress"
               :status="progress === 100 ? 'success' : ''"
@@ -214,6 +214,8 @@ const progress = ref(0);
 const status = ref('');
 // Integration result
 const integrationResult = ref('');
+// Integration completed flag
+const isCompleted = ref(false);
 // Force rebuild toggle per scene (keyed by scene number)
 const forceRebuildScenes = ref<Record<number, boolean>>({});
 // Current task ID for polling
@@ -270,6 +272,7 @@ const scanTask = async () => {
   
   status.value = t('Scanning task directory...');
   isRunning.value = true;
+  isCompleted.value = false;
   
   try {
     const response = await apiService.scanSceneIntegration(taskInput.value);
@@ -316,6 +319,7 @@ const startIntegration = async () => {
   }
   
   isRunning.value = true;
+  isCompleted.value = false;
   progress.value = 0;
   status.value = t('Starting...');
   integrationResult.value = '';
@@ -498,6 +502,7 @@ const startPolling = () => {
         } else if (task.state === 'complete' || task.state === 2) {
           progress.value = 100;
           status.value = t('Scene integration completed');
+          isCompleted.value = true;
           if (task.videos && task.videos.length > 0) {
             integrationResult.value = task.videos[0];
           }
@@ -505,6 +510,7 @@ const startPolling = () => {
           isRunning.value = false;
         } else if (task.state === 'failed' || task.state === 3) {
           status.value = t('Video integration failed');
+          isCompleted.value = false;
           stopPolling();
           isRunning.value = false;
         }
@@ -546,6 +552,7 @@ defineExpose({
   startScene,
   endScene,
   isRunning,
+  isCompleted,
   progress,
   status,
   integrationResult
