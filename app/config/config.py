@@ -223,12 +223,13 @@ hostname = socket.gethostname()
 log_level = _cfg.get("log_level", "DEBUG")
 listen_host = os.getenv("LISTEN_HOST", _cfg.get("listen_host", "0.0.0.0"))
 listen_port = int(os.getenv("LISTEN_PORT", _cfg.get("listen_port", 8000)))
-project_name = _cfg.get("project_name", "Coiner")
+
+from app.version import project_name, project_version
+
 project_description = _cfg.get(
     "project_description",
     "<a href='https://github.com/RyanFeiluX/Coiner'>https://github.com/RyanFeiluX/Coiner</a>",
 )
-project_version = _cfg.get("project_version", "1.2.6")
 reload_debug = False
 
 # Silence Prefix duration — still frame at the very beginning of the final video

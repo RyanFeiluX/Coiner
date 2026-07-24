@@ -20,12 +20,12 @@ echo Unknown option: %~1 & exit /b 1
 set "ROOT=%~dp0"
 set "ROOT=%ROOT:~0,-1%"
 
-REM --- Read version from config.toml ---
-for /f "tokens=2 delims==" %%a in ('findstr /b "project_version" "%ROOT%\config.toml" 2^>nul') do set "VERSION=%%a"
+REM --- Read version from app/version.py ---
+for /f "tokens=2 delims==" %%a in ('findstr /b "project_version" "%ROOT%\app\version.py" 2^>nul') do set "VERSION=%%a"
 set "VERSION=!VERSION: =!"
-set "VERSION=!VERSION:"=!
+set "VERSION=!VERSION:"=!"
 if "!VERSION!"=="" (
-    echo Error: project_version not found in config.toml
+    echo Error: project_version not found in app/version.py
     exit /b 1
 )
 echo Target version: !VERSION!
@@ -138,7 +138,6 @@ if not defined SKIP_STAGE (
         xcopy /e /i /q "%ROOT%\resource\*" "!STAGE!\resource\" >nul
     )
     copy /y "%ROOT%\config.example.toml" "!STAGE!\config.toml" >nul
-    powershell -NoProfile -Command "$f='!STAGE!\config.toml'; $v='!VERSION!'; $c=Get-Content $f -Raw; if($c -match '(?m)^project_version\s*=.*$'){$c=[regex]::Replace($c,'(?m)^project_version\s*=.*$','project_version = \"'+$v+'\"')}else{$c='project_version = \"'+$v+'\"'+[Environment]::NewLine+$c}; Set-Content $f -Value $c -NoNewLine"
     copy /y "%ROOT%\installer\start.bat" "!STAGE!\start.bat" >nul
     if exist "%ROOT%\LICENSE" copy /y "%ROOT%\LICENSE" "!STAGE!\LICENSE" >nul
 

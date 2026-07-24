@@ -1,6 +1,3 @@
-project_name = "Coiner"
-project_version = ""
-
 [app]
 # 主播是否露脸
 host_visible = false
