@@ -495,6 +495,18 @@ const startPolling = () => {
         
         if (task.progress !== undefined) {
           progress.value = task.progress;
+          
+          if (progress.value >= 100 && !isCompleted.value) {
+            progress.value = 100;
+            status.value = t('Scene integration completed');
+            isCompleted.value = true;
+            if (task.videos && task.videos.length > 0) {
+              integrationResult.value = task.videos[0];
+            }
+            stopPolling();
+            isRunning.value = false;
+            return;
+          }
         }
         
         if (task.state === 'processing' || task.state === 1) {
