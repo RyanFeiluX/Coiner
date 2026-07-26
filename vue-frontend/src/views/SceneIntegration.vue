@@ -553,8 +553,9 @@ onUnmounted(() => {
 
 // Download video
 const downloadVideo = () => {
-  // Simulate download
-  console.log('Downloading video:', integrationResult.value);
+  if (integrationResult.value) {
+    window.open(integrationResult.value, '_blank');
+  }
 };
 
 defineExpose({
