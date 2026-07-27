@@ -184,6 +184,7 @@
     "Video integration failed": "Szenenintegration fehlgeschlagen",
     "Improve Integration": "Integration verbessern",
     "Apply current config instead of original task config": "Aktuelle Konfiguration anstelle der ursprünglichen verwenden",
+    "Rebuild scene using current script, keeping original audio/video specs": "Szene mit aktuellem Skript neu erstellen, ursprüngliche Audio/Video-Specs beibehalten",
     "Task Management": "Aufgabenverwaltung",
     "Task Statistics": "Aufgabenstatistik",
     "Total Tasks": "Gesamtaufgaben",

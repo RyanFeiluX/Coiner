@@ -120,6 +120,16 @@
             </el-collapse>
           </div>
 
+          <!-- Scene Rebuild Hint -->
+          <div v-if="taskFiles.sceneVideos > 0" class="rebuild-hint">
+            <el-alert
+              :title="t('Rebuild scene using current script, keeping original audio/video specs')"
+              type="info"
+              :closable="false"
+              :show-icon="true"
+            />
+          </div>
+
           <!-- Improve Integration Toggle -->
           <div v-if="taskFiles.sceneVideos > 0" class="improve-section">
             <el-divider />
@@ -372,17 +382,6 @@ const startIntegration = async () => {
     title_align: settingsStore.video.title.align,
   };
   
-  // Map UI aspect names to backend VideoAspect values
-  const aspectMap: Record<string, string> = {
-    'landscape': '16:9',
-    'portrait': '9:16',
-    'square': '1:1',
-    'portrait_3_4': '3:4',
-    'landscape_4_3': '4:3'
-  };
-  const uiAspect = settingsStore.video.aspect;
-  const mappedAspect = aspectMap[uiAspect] || uiAspect || '9:16';
-
   // Collect scenes with force rebuild toggle enabled
   const forceScenes = Object.entries(forceRebuildScenes.value)
     .filter(([_, on]) => on)
@@ -448,17 +447,10 @@ const startIntegration = async () => {
     }
     // When toggle is OFF, requestParams is empty → backend uses original_task config / defaults
 
-    // Always include force rebuild params when scenes are selected
+    // Only send force rebuild scene list; public audio/video settings are kept
+    // from the original task on the backend, not overridden by current UI settings.
     if (forceScenes.length > 0) {
       requestParams.force_rebuild_scenes = forceScenes;
-      requestParams.voice_name = settingsStore.audio.speechSynthesis;
-      requestParams.voice_rate = parseFloat(settingsStore.audio.speechRate) || 1.0;
-      requestParams.voice_volume = parseFloat(settingsStore.audio.speechVolume) || 1.0;
-      requestParams.voice_emotion = settingsStore.audio.voiceEmotion || '';
-      requestParams.video_source = settingsStore.video.source || 'pexels';
-      requestParams.video_aspect = mappedAspect;
-      requestParams.video_concat_mode = settingsStore.video.concatMode || 'random';
-      requestParams.video_clip_duration = settingsStore.video.clipDuration || 5;
     }
 
     const response = await apiService.recoverSceneIntegration(
@@ -758,6 +750,10 @@ defineExpose({
   font-size: 13px;
   color: #909399;
   margin-left: 2px;
+}
+
+.rebuild-hint {
+  margin: 8px 0;
 }
 
 .integration-result {

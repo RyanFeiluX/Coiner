@@ -401,9 +401,19 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
 
                     params_dict = script_data.get("params", {})
                     if voice_params:
+                        logger.info(
+                            f"Overriding original task voice params for rebuild: {list(voice_params.keys())}"
+                        )
                         params_dict.update(voice_params)
+                    else:
+                        logger.info("Keeping original task voice params for rebuild")
                     if video_material_params:
+                        logger.info(
+                            f"Overriding original task video material params for rebuild: {list(video_material_params.keys())}"
+                        )
                         params_dict.update(video_material_params)
+                    else:
+                        logger.info("Keeping original task video material params for rebuild")
                     script_data["params"] = params_dict
 
                     with open(script_path, "w", encoding="utf-8") as f:

@@ -264,6 +264,7 @@
     "Video integration failed": "场景集成失败",
     "Scene Details": "场景详情",
     "Rebuild": "重建",
+    "Rebuild scene using current script, keeping original audio/video specs": "使用当前文案重建该场景，音频/视频规格沿用原任务",
     "Rebuilding...": "重建中...",
     "Scene rebuilt successfully": "重建成功",
     "Scene rebuild failed": "重建失败",

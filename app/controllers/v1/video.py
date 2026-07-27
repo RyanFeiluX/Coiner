@@ -974,6 +974,12 @@ def recover_scene_integration(request: Request, body: dict):
         'video_concat_mode': body.get('video_concat_mode'),
         'video_clip_duration': body.get('video_clip_duration'),
     }.items() if v is not None}
+
+    if force_rebuild_scenes and not voice_params and not video_material_params:
+        logger.info(
+            f"Scene integration rebuild requested for scenes {force_rebuild_scenes}; "
+            "using original task audio/video settings"
+        )
     
     if not task_id_or_path:
         raise HttpException(task_id="", status_code=400, message="Task ID or path is required")
