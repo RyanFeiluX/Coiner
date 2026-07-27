@@ -93,12 +93,11 @@ class MemoryState(BaseState):
         else:
             sequence_number = existing_task.get("sequence_number", self._task_sequence_counter)
         
-        # Auto-track start_time when task begins processing
-        previous_state = existing_task.get("state")
-        if state == const.TASK_STATE_PROCESSING and previous_state != const.TASK_STATE_PROCESSING:
+        # Auto-track start_time when task begins processing (only set once)
+        if state == const.TASK_STATE_PROCESSING and not existing_task.get("start_time"):
             kwargs["start_time"] = datetime.datetime.now().isoformat()
-        # Auto-track end_time when task completes or fails
-        if state in (const.TASK_STATE_COMPLETE, const.TASK_STATE_FAILED) and previous_state not in (const.TASK_STATE_COMPLETE, const.TASK_STATE_FAILED):
+        # Auto-track end_time when task completes or fails (only set once)
+        if state in (const.TASK_STATE_COMPLETE, const.TASK_STATE_FAILED) and not existing_task.get("end_time"):
             kwargs["end_time"] = datetime.datetime.now().isoformat()
 
         self._tasks[task_id] = {
@@ -165,7 +164,13 @@ class RedisState(BaseState):
         # Check if task already exists
         existing_task_data = self._redis.hgetall(task_id)
         is_new_task = not existing_task_data
-        
+
+        # Convert existing task data to a dictionary with decoded keys/values
+        existing_task = {
+            k.decode("utf-8"): self._convert_to_original_type(v)
+            for k, v in existing_task_data.items()
+        } if existing_task_data else {}
+
         # Get sequence number for new tasks
         if is_new_task:
             sequence_number = self._redis.incr(self._sequence_counter_key)
@@ -174,6 +179,13 @@ class RedisState(BaseState):
             sequence_number = int(existing_seq_num.decode("utf-8")) if existing_seq_num else self._redis.get(self._sequence_counter_key)
             if sequence_number is None:
                 sequence_number = 1
+
+        # Auto-track start_time when task begins processing (only set once)
+        if state == const.TASK_STATE_PROCESSING and not existing_task.get("start_time"):
+            kwargs["start_time"] = datetime.datetime.now().isoformat()
+        # Auto-track end_time when task completes or fails (only set once)
+        if state in (const.TASK_STATE_COMPLETE, const.TASK_STATE_FAILED) and not existing_task.get("end_time"):
+            kwargs["end_time"] = datetime.datetime.now().isoformat()
 
         fields = {
             "task_id": task_id,

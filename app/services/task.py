@@ -1182,7 +1182,11 @@ def start_multi_scene(task_id, params: VideoParams, stop_at: str = "video", task
                 return None
                 
             progress = 20 + (i / total_scenes) * 40
-            sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=int(progress))
+            # Preserve cancelling state if a cancellation request has been received
+            current_task = sm.state.get_task(task_id)
+            current_state = current_task.get("state") if current_task else const.TASK_STATE_PROCESSING
+            update_state = const.TASK_STATE_CANCELLING if current_state == const.TASK_STATE_CANCELLING else const.TASK_STATE_PROCESSING
+            sm.state.update_task(task_id, state=update_state, progress=int(progress))
             
             logger.info(f"========================================")
             logger.info(f"Processing scene {i+1}/{total_scenes}")
@@ -1214,7 +1218,11 @@ def start_multi_scene(task_id, params: VideoParams, stop_at: str = "video", task
             with completed_lock:
                 completed_count += 1
                 progress = 20 + (completed_count / total_scenes) * 40
-                sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=int(progress))
+                # Preserve cancelling state if a cancellation request has been received
+                current_task = sm.state.get_task(task_id)
+                current_state = current_task.get("state") if current_task else const.TASK_STATE_PROCESSING
+                update_state = const.TASK_STATE_CANCELLING if current_state == const.TASK_STATE_CANCELLING else const.TASK_STATE_PROCESSING
+                sm.state.update_task(task_id, state=update_state, progress=int(progress))
             
             if result:
                 logger.info(f"Scene {i+1} processed successfully, combined_video_path: {result.get('combined_video_path')}")
