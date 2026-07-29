@@ -14,6 +14,8 @@ export interface Task {
   start_time?: string;
   end_time?: string;
   sequence_number?: number;
+  scene_loss_warning?: string;
+  failed_scene_indices?: number[];
 }
 
 export const useTasksStore = defineStore('tasks', {

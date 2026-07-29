@@ -22,6 +22,7 @@ from app.services import keyword_utils, llm, material, subtitle, video, voice
 from app.services import state as sm
 from app.services.material import extract_style_keyword
 from app.services.scene_parser import detect_content_type, ContentType
+from app.services.scene_verifier import verify_scene_results
 from app.services.thread_manager import thread_manager
 from app.services.video_target import concat_videos_stream_copy
 from app.utils import utils
@@ -1269,24 +1270,27 @@ def start_multi_scene(task_id, params: VideoParams, stop_at: str = "video", task
     
     logger.success(f"successfully processed {len(scene_results)}/{total_scenes} scenes")
 
-    # Track scenes that failed for frontend notification
-    if len(scene_results) < total_scenes:
-        succeeded_indices = {r.get("scene_index", -1) for r in scene_results if r}
-        failed_indices = [i for i in range(total_scenes) if i not in succeeded_indices]
-        scene_loss_warning = f"{len(failed_indices)}/{total_scenes} scenes failed"
-        logger.warning(scene_loss_warning)
+    # Verify scene artifacts on disk instead of relying on runtime counters
+    verification = verify_scene_results(scenes, scene_results, stop_at=stop_at)
+    logger.info(f"Scene verification result: {verification['summary']}")
+    if verification["invalid_scenes"]:
+        for inv in verification["invalid_scenes"]:
+            logger.warning(f"Invalid scene {inv['scene_index']}: {inv['reason']} ({inv['path']})")
 
-        # Check against min_scene_success_ratio threshold
+    if not verification["is_fully_valid"]:
+        success_ratio = len(verification["valid_scene_indices"]) / total_scenes
         min_ratio = config.video.get("min_scene_success_ratio", 0.0)
-        if min_ratio > 0 and len(scene_results) / total_scenes < min_ratio:
-            logger.error(f"Scene success rate {len(scene_results)}/{total_scenes} "
-                         f"({len(scene_results)/total_scenes:.0%}) below threshold {min_ratio:.0%}")
+        if min_ratio > 0 and success_ratio < min_ratio:
+            logger.error(f"Scene success rate {len(verification['valid_scene_indices'])}/{total_scenes} "
+                         f"({success_ratio:.0%}) below threshold {min_ratio:.0%}")
             logger.error("Failing task due to too many lost scenes")
             sm.state.update_task(task_id, state=const.TASK_STATE_FAILED)
             return
+        scene_loss_warning = verification["summary"]
+        failed_indices = [inv["scene_index"] for inv in verification["invalid_scenes"]]
     else:
-        failed_indices = []
         scene_loss_warning = ""
+        failed_indices = []
     
     if stop_at == "audio":
         logger.info("Multi-scene: returning at stop_at='audio'")
@@ -1423,8 +1427,8 @@ def start_multi_scene(task_id, params: VideoParams, stop_at: str = "video", task
         "scenes": scenes,
         "scene_results": scene_results,
     }
+    kwargs["scene_loss_warning"] = scene_loss_warning
     if scene_loss_warning:
-        kwargs["scene_loss_warning"] = scene_loss_warning
         kwargs["failed_scene_indices"] = failed_indices
     sm.state.update_task(
         task_id, state=const.TASK_STATE_COMPLETE, progress=100, **kwargs

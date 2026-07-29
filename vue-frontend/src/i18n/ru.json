@@ -166,6 +166,7 @@
     "Video integration completed": "Интеграция сцен завершена",
     "Video integration failed": "Интеграция сцен не удалась",
     "Improve Integration": "Улучшить интеграцию",
+    "Improve Scenes": "Улучшить сцены",
     "Apply current config instead of original task config": "Использовать текущую конфигурацию вместо исходной",
     "Rebuild scene using current script, keeping original audio/video specs": "Пересобрать сцену с текущим сценарием, сохранив исходные параметры аудио/видео",
     "Task Management": "Управление задачами",

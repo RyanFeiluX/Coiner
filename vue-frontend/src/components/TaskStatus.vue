@@ -134,6 +134,16 @@
                     <el-icon><Delete /></el-icon>
                     {{ deleteText }}
                   </el-button>
+                  
+                  <el-button
+                    v-if="shouldShowImproveButton(task)"
+                    :key="'improve-'+task.task_id"
+                    type="success"
+                    size="small"
+                    @click="navigateToSceneIntegration(task.task_id)"
+                  >
+                    {{ t('Improve Scenes') }}
+                  </el-button>
                 </div>
               </div>
             </el-collapse-item>
@@ -286,6 +296,14 @@ const handleDownload = (task: Task) => {
 const router = useRouter();
 const navigateToSceneIntegration = (taskId: string) => {
   router.push({ name: 'SceneIntegration', query: { original_task_id: taskId } });
+};
+
+const shouldShowImproveButton = (task: Task): boolean => {
+  const show = task.status === 'completed' &&
+               !!task.videos && task.videos.length > 0 &&
+               !task.scene_loss_warning;
+  console.log(`[TaskStatus] task_id=${task.task_id}, status=${task.status}, videos=${task.videos?.length}, scene_loss_warning=${task.scene_loss_warning}, showImprove=${show}`);
+  return show;
 };
 </script>
 

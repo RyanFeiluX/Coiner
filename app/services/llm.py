@@ -1397,6 +1397,7 @@ def parse_multi_scene_script(script_text: str, original_content: str = "") -> Li
                 
                 scene = {
                     "id": f"scene_{scene_id}",
+                    "scene_index": scene_id - 1,
                     "title": title,
                     "visual": visual_content,
                     "audio": script,
@@ -1410,7 +1411,7 @@ def parse_multi_scene_script(script_text: str, original_content: str = "") -> Li
                 }
                 scenes.append(scene)
                 scene_id += 1
-            
+
             if scenes:
                 logger.info(f"Successfully parsed {len(scenes)} scenes from JSON format")
                 
@@ -1442,6 +1443,7 @@ def parse_multi_scene_script(script_text: str, original_content: str = "") -> Li
                     if script or visual_content:
                         scene = {
                             "id": "scene_1",
+                            "scene_index": 0,
                             "title": fields["title"] or "Scene 1",
                             "visual": visual_content,
                             "audio": script,
@@ -1465,6 +1467,7 @@ def parse_multi_scene_script(script_text: str, original_content: str = "") -> Li
                             visual_content = fields["visual"]
                             scene = {
                                 "id": f"scene_{j+1}",
+                                "scene_index": j,
                                 "title": fields["title"] or f"Scene {j+1}",
                                 "visual": visual_content,
                                 "audio": script,
@@ -1517,6 +1520,7 @@ def parse_multi_scene_script(script_text: str, original_content: str = "") -> Li
             
             scene = {
                 "id": f"scene_{scene_id}",
+                "scene_index": scene_id - 1,
                 "title": title.strip(),
                 "visual": clean_visual,
                 "audio": clean_audio,
@@ -1551,6 +1555,7 @@ def parse_multi_scene_script(script_text: str, original_content: str = "") -> Li
                 
                 scene = {
                     "id": f"scene_{scene_id}",
+                    "scene_index": scene_id - 1,
                     "title": title.strip(),
                     "visual": clean_visual,
                     "audio": clean_audio,
@@ -1604,6 +1609,7 @@ def parse_multi_scene_script(script_text: str, original_content: str = "") -> Li
                 
                 scene = {
                     "id": f"scene_{scene_id}",
+                    "scene_index": scene_id - 1,
                     "title": title,
                     "visual": clean_visual,
                     "audio": clean_audio,
@@ -1617,7 +1623,7 @@ def parse_multi_scene_script(script_text: str, original_content: str = "") -> Li
                 }
                 scenes.append(scene)
                 scene_id += 1
-    
+
     # 如果仍然没有匹配到场景，创建一个默认场景（但避免将原始JSON文本作为脚本内容）
     if not scenes:
         cleaned_content = script_text.replace('*', '').replace('#', '').strip()
@@ -1629,6 +1635,7 @@ def parse_multi_scene_script(script_text: str, original_content: str = "") -> Li
         # 创建默认场景
         scene = {
             "id": "scene_1",
+            "scene_index": 0,
             "title": "Default Scene",
             "visual": "Default visual requirements",
             "audio": cleaned_content,
@@ -1641,7 +1648,7 @@ def parse_multi_scene_script(script_text: str, original_content: str = "") -> Li
             "full_script": cleaned_content
         }
         scenes.append(scene)
-    
+
     # 限制场景数量在合理范围内 (3-16)
     max_scenes = 16
     min_scenes = 3
@@ -1667,6 +1674,7 @@ def _build_fallback_scenes(original_content: str, raw_response: str = "") -> Lis
         logger.warning("No original content available for fallback scenes, creating single placeholder scene")
         scene = {
             "id": "scene_1",
+            "scene_index": 0,
             "title": "Scene 1",
             "visual": "Visual content based on the video subject",
             "audio": "Content is being processed",
@@ -1704,6 +1712,7 @@ def _build_fallback_scenes(original_content: str, raw_response: str = "") -> Lis
         for j, (script_text, kw, vis) in enumerate(scenes_data):
             scene = {
                 "id": f"scene_{j+1}",
+                "scene_index": j,
                 "title": f"Scene {j+1}",
                 "visual": vis,
                 "audio": script_text,
@@ -1722,6 +1731,7 @@ def _build_fallback_scenes(original_content: str, raw_response: str = "") -> Lis
         for j, part in enumerate(parts[:8]):
             scene = {
                 "id": f"scene_{j+1}",
+                "scene_index": j,
                 "title": f"Scene {j+1}",
                 "visual": f"Visual for scene {j+1} based on the video content",
                 "audio": part.strip(),
@@ -1738,6 +1748,7 @@ def _build_fallback_scenes(original_content: str, raw_response: str = "") -> Lis
     if not scenes:
         scene = {
             "id": "scene_1",
+            "scene_index": 0,
             "title": "Scene 1",
             "visual": "Visual content based on the video subject",
             "audio": content[:200] if len(content) > 200 else content,
@@ -1750,7 +1761,7 @@ def _build_fallback_scenes(original_content: str, raw_response: str = "") -> Lis
             "full_script": content[:200] if len(content) > 200 else content
         }
         scenes.append(scene)
-    
+
     logger.info(f"Built {len(scenes)} fallback scenes from original content")
     return scenes
 

@@ -166,6 +166,7 @@
     "Video integration completed": "Sahne entegrasyonu tamamlandı",
     "Video integration failed": "Sahne entegrasyonu başarısız",
     "Improve Integration": "Entegrasyonu Geliştir",
+    "Improve Scenes": "Sahneleri İyileştir",
     "Apply current config instead of original task config": "Orijinal görev yapılandırması yerine mevcut yapılandırmayı kullan",
     "Rebuild scene using current script, keeping original audio/video specs": "Mevcut senaryoyu kullanarak sahneyi yeniden oluştur, orijinal ses/video ayarlarını koru",
     "Task Management": "Görev Yönetimi",

@@ -188,6 +188,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onUnmounted, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import { InfoFilled } from '@element-plus/icons-vue';
 import { useI18nStore } from '../stores/i18n';
 import { useSettingsStore } from '../stores/settings';
@@ -260,6 +261,14 @@ const saveToLocalStorage = () => {
 
 onMounted(() => {
   loadFromLocalStorage();
+
+  // If navigated from the task panel with an original task ID, pre-fill it.
+  const route = useRoute();
+  const originalTaskId = route.query.original_task_id;
+  if (originalTaskId && typeof originalTaskId === 'string') {
+    inputType.value = 'taskId';
+    taskInput.value = originalTaskId;
+  }
 });
 
 // Watch start scene changes, update end scene
