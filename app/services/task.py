@@ -1,4 +1,3 @@
-import ast
 import math
 import os.path
 import time
@@ -19,7 +18,7 @@ from app.config import config
 from app.config.config import load_config
 from app.models import const
 from app.models.schema import Scene, VideoConcatMode, VideoParams
-from app.services import llm, material, subtitle, video, voice
+from app.services import keyword_utils, llm, material, subtitle, video, voice
 from app.services import state as sm
 from app.services.material import extract_style_keyword
 from app.services.scene_parser import detect_content_type, ContentType
@@ -219,24 +218,21 @@ def generate_scene_terms(task_id, params, scenes):
         
         # Check if scene already has keywords (from UI/parsing)
         existing_keywords = scene.get('keywords', '')
-        if existing_keywords:
-            # Use existing keywords if they exist
-            if isinstance(existing_keywords, str):
-                # Try to parse as Python list literal first
-                try:
-                    parsed = ast.literal_eval(existing_keywords)
-                    if isinstance(parsed, list):
-                        terms = [str(term).strip() for term in parsed if term]
-                    else:
-                        # Not a list, treat as comma-separated string
-                        terms = [term.strip() for term in existing_keywords.split(',') if term.strip()]
-                except (ValueError, SyntaxError):
-                    # Fallback to comma-separated string parsing
-                    terms = [term.strip() for term in existing_keywords.split(',') if term.strip()]
+        terms = keyword_utils.parse_keywords(existing_keywords)
+        if terms:
+            validation_results = keyword_utils.validate_keywords(terms)
+            invalid_terms = [r.term for r in validation_results if not r.is_valid]
+            if invalid_terms:
+                logger.warning(
+                    f"scene {i+1} existing keywords contain invalid terms: {invalid_terms}, regenerating"
+                )
+                terms = llm.generate_scene_terms(
+                    scene_script=scene.get('audio', scene.get('script', '')),
+                    scene_camera=scene.get('visual', scene.get('camera', '')),
+                    amount=5
+                )
             else:
-                # Already a list
-                terms = existing_keywords
-            logger.info(f"Using existing keywords for scene {i+1}: {terms}")
+                logger.info(f"Using existing keywords for scene {i+1}: {terms}")
         else:
             # Generate new keywords if none exist
             terms = llm.generate_scene_terms(
@@ -248,6 +244,13 @@ def generate_scene_terms(task_id, params, scenes):
         if terms and not (isinstance(terms, str) and "Error: " in terms):
             # Filter out any empty terms
             terms = [term for term in terms if term and term.strip()]
+            # Warn if quality still isn't perfect after retries
+            final_validation = keyword_utils.validate_keywords(terms)
+            still_invalid = [r.term for r in final_validation if not r.is_valid]
+            if still_invalid:
+                logger.warning(
+                    f"scene {i+1} final keywords still contain invalid terms after retries: {still_invalid}"
+                )
             scene_terms_list.append(terms)
             # Update scene keywords with final terms as comma-separated string
             scene['keywords'] = ", ".join(terms)
@@ -319,9 +322,11 @@ def generate_scene_tags(scene_script, visual_requirement="", max_tags=3):
     return []
 
 
-def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_materials=None, check_cancelled=None):
+def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_materials=None, check_cancelled=None, scene_terms_list=None):
     if used_local_materials is None:
         used_local_materials = set()
+    if scene_terms_list is None:
+        scene_terms_list = []
     """
     Process a single scene:
     1. Generate audio for scene
@@ -335,6 +340,9 @@ def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_
         scene: Scene dictionary
         scene_index: Index of this scene (0-based)
         total_scenes: Total number of scenes
+        used_local_materials: Set of already-used local material URLs
+        check_cancelled: Optional callable to check if task was cancelled
+        scene_terms_list: Optional pre-generated search terms for each scene
     
     Returns:
         Scene result dictionary with video clip path, audio path, subtitle path
@@ -350,47 +358,28 @@ def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_
     
     scene_id = scene.get('id', f'scene_{scene_num}')
     scene_script = scene.get('audio', scene.get('script', ''))
-    # Remove scene configuration keywords, only use generated tags based on scene content and visual requirements
+    scene_visual = scene.get('visual', scene.get('camera', scene.get('visual_requirement', '')))
+
+    # Prefer pre-generated search terms from generate_scene_terms.
+    # Fall back to LLM tag generation only when pre-generated terms are missing or too few.
     processed_keywords = []
-    
-    # Generate 1-3 tags for the scene
-    scene_tags = generate_scene_tags(scene_script, visual_requirement=scene_title, max_tags=3)
-    if scene_tags:
-        # Add generated tags to scene keywords
-        processed_keywords.extend(scene_tags)
-        # Remove duplicates
-        processed_keywords = list(set(processed_keywords))
-        # Limit keywords to 3-5 per scene
-        if len(processed_keywords) > 5:
-            # Prioritize tags generated by LLM as they are more relevant
-            # First keep all generated tags, then add remaining keywords up to 5
-            prioritized_keywords = []
-            # Add all generated tags first
-            for tag in scene_tags:
-                if tag in processed_keywords:
-                    prioritized_keywords.append(tag)
-                    processed_keywords.remove(tag)
-            # Add remaining keywords up to total 5
-            prioritized_keywords.extend(processed_keywords[:5 - len(prioritized_keywords)])
-            processed_keywords = prioritized_keywords
-        elif len(processed_keywords) < 3:
-            # If less than 3 keywords, generate additional tags
-            additional_tags = generate_scene_tags(scene_script, visual_requirement=scene_title, max_tags=5 - len(processed_keywords))
-            for tag in additional_tags:
-                if tag not in processed_keywords:
-                    processed_keywords.append(tag)
-                if len(processed_keywords) >= 3:
-                    break
-        logger.info(f"scene {scene_num}: updated keywords with generated tags: {processed_keywords}")
-    else:
-        # If no tags generated, ensure at least 3 keywords
-        if len(processed_keywords) < 3:
-            # Generate additional tags
-            additional_tags = generate_scene_tags(scene_script, visual_requirement=scene_title, max_tags=3 - len(processed_keywords))
-            processed_keywords.extend(additional_tags)
-    
-    # Use processed keywords
-    scene_keywords = processed_keywords
+    if scene_terms_list and scene_index < len(scene_terms_list):
+        processed_keywords = keyword_utils.parse_keywords(scene_terms_list[scene_index])
+        if processed_keywords:
+            logger.info(f"scene {scene_num}: reusing pre-generated search terms: {processed_keywords}")
+
+    if len(processed_keywords) < 3:
+        needed = 5 - len(processed_keywords) if processed_keywords else 3
+        fallback_tags = generate_scene_tags(scene_script, visual_requirement=scene_visual, max_tags=needed)
+        for tag in fallback_tags:
+            if tag and tag.strip() and tag not in processed_keywords:
+                processed_keywords.append(tag)
+            if len(processed_keywords) >= 5:
+                break
+        logger.info(f"scene {scene_num}: generated fallback tags, final keywords: {processed_keywords}")
+
+    # Deduplicate and cap at 5 while preserving order
+    scene_keywords = list(dict.fromkeys([k.strip() for k in processed_keywords if k and k.strip()]))[:5]
     
     logger.info(f"scene {scene_num}: scene_id={scene_id}, script={scene_script[:50]}...")
     logger.info(f"scene {scene_num}: keywords={scene_keywords}")
@@ -1192,7 +1181,7 @@ def start_multi_scene(task_id, params: VideoParams, stop_at: str = "video", task
             logger.info(f"Processing scene {i+1}/{total_scenes}")
             logger.info(f"========================================")
             
-            result = process_scene(task_id, params, scene, i, total_scenes, used_local_materials, check_cancelled=check_cancelled)
+            result = process_scene(task_id, params, scene, i, total_scenes, used_local_materials, check_cancelled=check_cancelled, scene_terms_list=scene_terms_list)
             if result:
                 scene_results.append(result)
                 logger.info(f"Scene {i+1} processed successfully, combined_video_path: {result.get('combined_video_path')}")
@@ -1213,7 +1202,7 @@ def start_multi_scene(task_id, params: VideoParams, stop_at: str = "video", task
             logger.info(f"Processing scene {i+1}/{total_scenes} (parallel)")
             logger.info(f"========================================")
             
-            result = process_scene(task_id, params, scene, i, total_scenes, used_local_materials, check_cancelled=check_cancelled)
+            result = process_scene(task_id, params, scene, i, total_scenes, used_local_materials, check_cancelled=check_cancelled, scene_terms_list=scene_terms_list)
             
             with completed_lock:
                 completed_count += 1

@@ -10,6 +10,7 @@ from openai import AzureOpenAI, OpenAI
 from openai.types.chat import ChatCompletion
 
 from app.config import config
+from app.services import keyword_prompts, keyword_utils
 
 _max_retries = 5
 
@@ -471,31 +472,11 @@ Use this as factual reference, prioritize it over your internal knowledge when t
 
 
 def generate_terms(video_subject: str, video_script: str, amount: int = 5) -> List[str]:
-    prompt = f"""
-# Role: Video Search Terms Generator
-
-## Goals:
-Generate {amount} search terms for stock videos, depending on the subject of a video.
-
-## Constrains:
-1. the search terms are to be returned as a json-array of strings.
-2. each search term should consist of 1-3 words, always add the main subject of the video.
-3. you must only return the json-array of strings. you must not return anything else. you must not return the script.
-4. the search terms must be related to the subject of the video.
-5. generate both English and Chinese search terms to get more relevant videos.
-
-## Output Example:
-["design patterns", "设计模式", "software design", "软件设计", "coding best practices", "编程最佳实践", "object oriented", "面向对象", "design principles", "设计原则"]
-
-## Context:
-### Video Subject
-{video_subject}
-
-### Video Script
-{video_script}
-
-Please generate both English and Chinese search terms to ensure better search results.
-""".strip()
+    prompt = keyword_prompts.build_video_terms_prompt(
+        video_subject=video_subject,
+        video_script=video_script,
+        amount=amount,
+    )
 
     logger.info(f"subject: {video_subject}")
 
@@ -516,6 +497,23 @@ Please generate both English and Chinese search terms to ensure better search re
                 logger.error("response is not a list of strings.")
                 continue
 
+            # Validate keyword quality; regenerate with feedback if invalid terms found
+            validation_results = keyword_utils.validate_keywords(search_terms)
+            invalid = [r for r in validation_results if not r.is_valid]
+            if invalid:
+                invalid_terms = [r.term for r in invalid]
+                reasons = ", ".join(set(r.reason for r in invalid if r.reason))
+                logger.warning(f"generated video terms contain invalid keywords: {invalid_terms} ({reasons}), retrying with feedback")
+                prompt = keyword_prompts.build_video_terms_prompt(
+                    video_subject=video_subject,
+                    video_script=video_script,
+                    amount=amount,
+                    language=language,
+                    feedback=keyword_utils.format_feedback(validation_results),
+                )
+                search_terms = []
+                continue
+
         except Exception as e:
             logger.warning(f"failed to generate video terms: {str(e)}")
             if stop_on_api_failure:
@@ -527,6 +525,22 @@ Please generate both English and Chinese search terms to ensure better search re
                 if match:
                     try:
                         search_terms = json.loads(match.group())
+                        if isinstance(search_terms, list) and all(isinstance(term, str) for term in search_terms):
+                            validation_results = keyword_utils.validate_keywords(search_terms)
+                            invalid = [r for r in validation_results if not r.is_valid]
+                            if invalid:
+                                invalid_terms = [r.term for r in invalid]
+                                reasons = ", ".join(set(r.reason for r in invalid if r.reason))
+                                logger.warning(f"generated video terms contain invalid keywords: {invalid_terms} ({reasons}), retrying with feedback")
+                                prompt = keyword_prompts.build_video_terms_prompt(
+                                    video_subject=video_subject,
+                                    video_script=video_script,
+                                    amount=amount,
+                                    language=language,
+                                    feedback=keyword_utils.format_feedback(validation_results),
+                                )
+                                search_terms = []
+                                continue
                     except Exception as e:
                         logger.warning(f"failed to generate video terms: {str(e)}")
                         pass
@@ -545,102 +559,142 @@ Please generate both English and Chinese search terms to ensure better search re
     return search_terms
 
 
-def generate_tags(scene_script: str, visual_requirement: str = "", max_tags: int = 3) -> List[str]:
+def _generate_scene_keywords(
+    scene_script: str,
+    scene_context: str,
+    amount: int,
+    purpose: str = "search",
+    language: str = None,
+) -> List[str]:
     """
-    Generate 1-3 tags for a scene based on its script content and visual requirements.
-    
+    Unified per-scene keyword generation entry point.
+
     Args:
-        scene_script: Scene script text
-        visual_requirement: Scene visual requirements
-        max_tags: Maximum number of tags to generate
-        
+        scene_script: Narration/script for the scene.
+        scene_context: Camera/visual description or title, depending on caller.
+        amount: Number of keywords to generate.
+        purpose: "search" for scene search terms, "tag" for material-matching tags.
+        language: Target language (used for the final instruction line).
+
     Returns:
-        List of generated tags
+        List of generated keywords/tags.
     """
-    # Build context with both script and visual requirements
-    context = f"### Scene Script\n{scene_script}"
-    if visual_requirement and visual_requirement.strip():
-        context += f"\n\n### Visual Requirements\n{visual_requirement}"
-    
-    prompt = f"""
-    # Role: Scene Tag Generator
-    
-    ## Goals:
-    Generate {max_tags} relevant tags for a video scene based on its script content and visual requirements.
-    
-    ## Constrains:
-    1. The tags are to be returned as a json-array of strings.
-    2. Each tag should be a single word or short phrase (1-3 words).
-    3. The tags must be directly related to the content of the scene and its visual requirements.
-    4. You must only return the json-array of strings. You must not return anything else.
-    5. Respond in the same language as the scene script.
-    
-    ## Output Example:
-    ["tag1", "tag2", "tag3"]
-    
-    ## Context:
-    {context}
-    """
-    
-    # Strip whitespace and ensure proper formatting
-    prompt = prompt.strip()
-    
-    logger.info(f"Generating tags for scene script: {scene_script[:50]}...")
-    
-    tags = []
+    prompt = keyword_prompts.build_scene_keywords_prompt(
+        scene_script=scene_script,
+        scene_camera=scene_context,
+        amount=amount,
+        language=language,
+        purpose=purpose,
+    )
+
+    logger.info(f"Generating scene keywords for: {scene_script[:50]}...")
+
+    keywords = []
     response = ""
     for i in range(_max_retries):
         try:
             response = _generate_response(prompt)
-            
+
             if not response or response.strip() == "":
                 logger.warning(f"LLM API returned empty response, attempt {i + 1}/{_max_retries}")
                 continue
-                
+
             if "Error: " in response:
-                logger.error(f"Failed to generate tags: {response}")
+                logger.error(f"Failed to generate scene keywords: {response}")
                 if stop_on_api_failure:
                     return []
                 continue
-            tags = json.loads(response)
-            if not isinstance(tags, list) or not all(
-                isinstance(tag, str) for tag in tags
-            ):
+
+            keywords = json.loads(response)
+            if not isinstance(keywords, list) or not all(isinstance(k, str) for k in keywords):
                 logger.error("Response is not a list of strings.")
                 continue
-            
-            # Limit to max_tags
-            tags = tags[:max_tags]
-            
+
+            keywords = keywords[:amount]
+
+            # Validate keyword quality; regenerate with feedback if invalid terms found
+            validation_results = keyword_utils.validate_keywords(keywords)
+            invalid = [r for r in validation_results if not r.is_valid]
+            if invalid:
+                invalid_terms = [r.term for r in invalid]
+                reasons = ", ".join(set(r.reason for r in invalid if r.reason))
+                logger.warning(f"generated scene keywords contain invalid terms: {invalid_terms} ({reasons}), retrying with feedback")
+                prompt = keyword_prompts.build_scene_keywords_prompt(
+                    scene_script=scene_script,
+                    scene_camera=scene_context,
+                    amount=amount,
+                    language=language,
+                    purpose=purpose,
+                    feedback=keyword_utils.format_feedback(validation_results),
+                )
+                keywords = []
+                continue
+
         except Exception as e:
-            logger.warning(f"Failed to generate tags: {str(e)}")
+            logger.warning(f"Failed to generate scene keywords: {str(e)}")
             if stop_on_api_failure:
-                error_msg = f"LLM API failed to generate tags after {_max_retries} attempts: {str(e)}"
+                error_msg = f"LLM API failed to generate scene keywords after {_max_retries} attempts: {str(e)}"
                 logger.error(error_msg)
                 return []
             if response:
                 match = re.search(r"\[.*]", response)
                 if match:
                     try:
-                        tags = json.loads(match.group())
-                        # Limit to max_tags
-                        tags = tags[:max_tags]
+                        keywords = json.loads(match.group())
+                        if isinstance(keywords, list) and all(isinstance(k, str) for k in keywords):
+                            keywords = keywords[:amount]
+                            validation_results = keyword_utils.validate_keywords(keywords)
+                            invalid = [r for r in validation_results if not r.is_valid]
+                            if invalid:
+                                invalid_terms = [r.term for r in invalid]
+                                reasons = ", ".join(set(r.reason for r in invalid if r.reason))
+                                logger.warning(f"generated scene keywords contain invalid terms: {invalid_terms} ({reasons}), retrying with feedback")
+                                prompt = keyword_prompts.build_scene_keywords_prompt(
+                                    scene_script=scene_script,
+                                    scene_camera=scene_context,
+                                    amount=amount,
+                                    language=language,
+                                    purpose=purpose,
+                                    feedback=keyword_utils.format_feedback(validation_results),
+                                )
+                                keywords = []
+                                continue
                     except Exception as e:
-                        logger.warning(f"Failed to parse tags: {str(e)}")
+                        logger.warning(f"Failed to parse scene keywords: {str(e)}")
                         pass
-        
-        if tags and len(tags) > 0:
+
+        if keywords and len(keywords) > 0:
             break
         if i < _max_retries:
-            logger.warning(f"Failed to generate tags, trying again... {i + 1}")
-    
-    if not tags and stop_on_api_failure:
-        error_msg = f"LLM API failed to generate tags after {_max_retries} attempts"
+            logger.warning(f"Failed to generate scene keywords, trying again... {i + 1}")
+
+    if not keywords and stop_on_api_failure:
+        error_msg = f"LLM API failed to generate scene keywords after {_max_retries} attempts"
         logger.error(error_msg)
         return []
-    
-    logger.success(f"Generated tags: {tags}")
-    return tags
+
+    logger.success(f"Generated scene keywords: {keywords}")
+    return keywords
+
+
+def generate_tags(scene_script: str, visual_requirement: str = "", max_tags: int = 3) -> List[str]:
+    """
+    Generate 1-3 tags for a scene based on its script content and visual requirements.
+
+    Args:
+        scene_script: Scene script text
+        visual_requirement: Scene visual requirements
+        max_tags: Maximum number of tags to generate
+
+    Returns:
+        List of generated tags
+    """
+    return _generate_scene_keywords(
+        scene_script=scene_script,
+        scene_context=visual_requirement,
+        amount=max_tags,
+        purpose="tag",
+    )
 
 
 def _get_content_type_opening_guidance(content_type: str, language: str = "English") -> str:
@@ -870,6 +924,114 @@ def _is_valid_scenes_json(text: str) -> bool:
         return False
 
 
+def _build_multi_scene_base_prompt(
+    video_content: str,
+    language: str,
+    host_visible: bool,
+    content_type: str,
+    search_context: str,
+    options: dict,
+    goal: str,
+    output_format: str,
+    few_shot_examples: str,
+) -> str:
+    """
+    Build the shared part of multi-scene script prompts.
+
+    The two public functions (`generate_multi_scene_script` and
+    `convert_to_multi_scene`) differ mainly in output format; this builder
+    keeps the role, constraints, keyword policy, and post-processing additions
+    in one place.
+    """
+    host_visibility_instruction = (
+        "Host is visible on camera. Include host/presenter in visual descriptions, showing facial expressions and gestures."
+        if host_visible
+        else "Host is NOT visible on camera. Do NOT include any person, host, or presenter in visual descriptions. Focus on objects, scenes, graphics, and text-based visuals only."
+    )
+    keyword_instruction = keyword_prompts.build_multi_scene_keyword_instruction()
+
+    prompt = f"""
+# Role
+You are a senior video director and storyboard designer with 10 years of experience. You excel at transforming various types of text content (whether it's informative articles, stories, or marketing copy) into visually impactful and logically coherent storyboard scripts.
+
+# Goal
+{goal}
+
+{output_format}
+
+# Constraints & Workflow
+1. **Audio-First Principle**: Audio (dialogue) is the core, and video and subtitles serve the dialogue. All visual elements and scene designs should enhance the expression of the dialogue.
+2. **Semantic Scene Division**: Analyze the semantic structure of the article, identify logical turning points, and divide the content into 5-15 scenes (including opening, main body, and conclusion)
+   - **Opening Scene**: MUST start with a powerful hook — NOT a generic greeting like "大家好" or "Hello everyone". Use one of: a thought-provoking question ("你有没有想过..."), a surprising fact/statistic, a bold controversial statement, or an impactful scene-setting line. Get straight to the point while grabbing attention in the first 3 seconds.
+   - Each scene should have complete content and a clear theme, with logical coherence
+   - Scene content should be independent and able to clearly express a complete concept or viewpoint
+3. **Visual Transformation**:
+   - Reject boring visuals (such as "a person speaking").
+   - Must use **visual metaphors** (expressing abstract concepts with concrete objects), **dynamic graphics**, or **scene reenactment**.
+   - Visual descriptions should be **pure text, concise and standard**, including: subject, environment, action, camera movement (such as close-up, push-in, pull-out).
+   - Visual elements must be closely related to the dialogue content and able to enhance the expression of the dialogue.
+   - **Host Visibility**: {host_visibility_instruction}
+4. **Dialogue Optimization**: Rewrite the original text into natural spoken language and mark tone/emotion.
+   - Dialogue content should be clear, fluent, and suitable for spoken expression
+   - Emotion markers should accurately reflect the emotional tone of the dialogue
+   - **Technical Content Handling**: When dealing with technical content (code, terms, symbols):
+     - Replace technical terms with plain language explanations
+     - Avoid directly reading code or symbols (e.g., instead of reading "#", say "hashtag")
+     - Use analogies and examples to explain complex concepts
+     - Keep sentences short and conversational
+     - Ensure the content flows naturally when spoken aloud
+5. **Keyword Extraction (CRITICAL)**: {keyword_instruction}
+6. **ANTI-LAZY RULE (CRITICAL)**: Every scene's "script" field MUST contain **substantial, specific, and detailed** spoken content directly derived from the original text. Each scene script should be at least 40 characters long (for Chinese) or 80 characters long (for English).
+   - **FORBIDDEN**: Placeholder sentences that describe what the scene is about instead of actual spoken content. Examples of FORBIDDEN lazy scripts:
+     - "这是一个核心内容部分的详细讲解。"
+     - "下面我们来详细讲解一下这个部分。"
+     - "接下来让我们看看具体的内容。"
+     - "This section covers the core content in detail."
+     - "Now let's look at the specific content."
+   - Each scene's script MUST contain real, concrete spoken words that the host would actually say — including specific facts, examples, data points, or arguments extracted from the original text.
+   - If the original text has 5 key points, distribute them across scenes and write out the actual explanation for each point.
+
+{few_shot_examples}
+
+# Input Text
+[Original Text]:
+{video_content}
+""".strip()
+
+    # Add language instruction
+    if language:
+        prompt += f"\n- Language: {language}\n- IMPORTANT: Please respond in {language} language. All content, including scene titles, visual descriptions, dialogue scripts, and emotion markers, must be in {language}."
+    else:
+        detected_language = detect_language(video_content)
+        prompt += f"\n- Language: {detected_language}\n- IMPORTANT: Please respond in {detected_language} language. All content, including scene titles, visual descriptions, dialogue scripts, and emotion markers, must be in {detected_language}."
+
+    # Add search context if available
+    if search_context:
+        prompt += f"""
+
+# Web Search Reference Material
+The following information was retrieved from real-time web search to supplement the topic.
+Use this as factual reference, prioritize it over your internal knowledge when there are conflicts.
+
+<search_results>
+{search_context}
+</search_results>
+"""
+
+    # Add length/depth instructions from options
+    if options:
+        from app.services.script_options import build_length_instructions, build_style_instructions
+        prompt += f"\n\n{build_length_instructions(options)}"
+        prompt += build_style_instructions(options)
+
+    # Add content-type-specific opening scene guidance
+    if content_type:
+        content_type_guidance = _get_content_type_opening_guidance(content_type, language or detect_language(video_content))
+        prompt += f"\n\n# Content-Type Specific Opening Scene Guidance\n{content_type_guidance}"
+
+    return prompt
+
+
 def generate_multi_scene_script(
     video_content: str,
     language: str = "",
@@ -926,24 +1088,24 @@ def generate_multi_scene_script(
 ## Example 1 (Chinese):
 Input: 人工智能正在改变我们的生活方式
 Output:
-{"scenes":[{"title":"震撼开场","keywords":"人工智能,变革,未来","visual":"科技感十足的工作室，主持人表情严肃，背景大屏幕闪烁着数据流。运镜：快速推进到主持人面部特写。","script":"你有没有想过，未来十年，你的工作可能被一个程序完全取代？","emotion":"严肃,引人深思"},{"title":"AI应用场景","keywords":"智能家居,语音助手,自动化","visual":"特写智能音箱设备，灯光柔和闪烁，周围是现代化家居环境。运镜：缓慢平移展示智能家居全貌。","script":"从智能家居到语音助手，从自动驾驶到智能医疗，AI正在渗透到我们生活的方方面面。","emotion":"专业,讲解"},{"title":"未来展望","keywords":"发展趋势,创新,前景","visual":"主持人站在科技感背景前，屏幕显示未来城市景象。运镜：拉远镜头展示完整场景。","script":"展望未来，AI将带来更多可能性，让我们一起期待吧！","emotion":"自信,鼓舞"}]}
+{"scenes":[{"title":"震撼开场","keywords":"人工智能,AI芯片,数据流","visual":"科技感十足的工作室，主持人表情严肃，背景大屏幕闪烁着数据流。运镜：快速推进到主持人面部特写。","script":"你有没有想过，未来十年，你的工作可能被一个程序完全取代？","emotion":"严肃,引人深思"},{"title":"AI应用场景","keywords":"智能家居,语音助手,自动化","visual":"特写智能音箱设备，灯光柔和闪烁，周围是现代化家居环境。运镜：缓慢平移展示智能家居全貌。","script":"从智能家居到语音助手，从自动驾驶到智能医疗，AI正在渗透到我们生活的方方面面。","emotion":"专业,讲解"},{"title":"未来展望","keywords":"未来城市,科技创新,城市夜景","visual":"主持人站在科技感背景前，屏幕显示未来城市景象。运镜：拉远镜头展示完整场景。","script":"展望未来，AI将带来更多可能性，让我们一起期待吧！","emotion":"自信,鼓舞"}]}
 
 ## Example 2 (English):
 Input: The importance of healthy eating habits
 Output:
-{"scenes":[{"title":"Shocking Start","keywords":"health,diet,crisis","visual":"Close-up of a heart monitor beeping erratically, then cut to host in a bright kitchen. Camera: Quick zoom out from monitor to reveal host.","script":"Did you know that poor eating habits kill more people every year than smoking, accidents, and violence combined?","emotion":"serious,urgent"},{"title":"Balanced Diet","keywords":"proteins,vegetables,fruits","visual":"Close-up of colorful vegetables and fruits arranged on a kitchen counter. Camera: Slow pan across the ingredients.","script":"A balanced diet includes plenty of vegetables, fruits, lean proteins, and whole grains. These provide essential nutrients for our body.","emotion":"informative,clear"},{"title":"Healthy Lifestyle","keywords":"exercise,habit,wellness","visual":"Host in a gym setting with modern equipment. Camera: Medium shot with background blur.","script":"Remember, healthy eating combined with regular exercise creates the foundation for a wellness lifestyle.","emotion":"motivational,inspiring"}]}"""
+{"scenes":[{"title":"Shocking Start","keywords":"heart monitor,bright kitchen,health crisis","visual":"Close-up of a heart monitor beeping erratically, then cut to host in a bright kitchen. Camera: Quick zoom out from monitor to reveal host.","script":"Did you know that poor eating habits kill more people every year than smoking, accidents, and violence combined?","emotion":"serious,urgent"},{"title":"Balanced Diet","keywords":"vegetables,fruits,lean proteins","visual":"Close-up of colorful vegetables and fruits arranged on a kitchen counter. Camera: Slow pan across the ingredients.","script":"A balanced diet includes plenty of vegetables, fruits, lean proteins, and whole grains. These provide essential nutrients for our body.","emotion":"informative,clear"},{"title":"Healthy Lifestyle","keywords":"gym equipment,fitness workout,healthy lifestyle","visual":"Host in a gym setting with modern equipment. Camera: Medium shot with background blur.","script":"Remember, healthy eating combined with regular exercise creates the foundation for a wellness lifestyle.","emotion":"motivational,inspiring"}]}"""
     else:
         few_shot_examples = """# Few-Shot Examples
 
 ## Example 1 (Chinese):
 Input: 人工智能正在改变我们的生活方式
 Output:
-{"scenes":[{"title":"震撼开场","keywords":"人工智能,变革,未来","visual":"数据流在黑色背景中快速流动，聚光灯照亮中央的AI芯片。运镜：从芯片特写快速拉远展示数据网络。","script":"就在你听这段话的这一秒钟，AI已经做出了十亿个决策——而你浑然不知。","emotion":"紧迫,震撼"},{"title":"AI应用场景","keywords":"智能家居,语音助手,自动化","visual":"特写智能音箱设备，灯光柔和闪烁，周围是现代化家居环境。运镜：缓慢平移展示智能家居全貌。","script":"从智能家居到语音助手，从自动驾驶到智能医疗，AI正在渗透到我们生活的方方面面。","emotion":"专业,讲解"},{"title":"未来展望","keywords":"发展趋势,创新,前景","visual":"科技感背景屏幕显示未来城市景象的动画。运镜：拉远镜头展示完整场景。","script":"展望未来，AI将带来更多可能性，让我们一起期待吧！","emotion":"自信,鼓舞"}]}
+{"scenes":[{"title":"震撼开场","keywords":"人工智能,AI芯片,数据流","visual":"数据流在黑色背景中快速流动，聚光灯照亮中央的AI芯片。运镜：从芯片特写快速拉远展示数据网络。","script":"就在你听这段话的这一秒钟，AI已经做出了十亿个决策——而你浑然不知。","emotion":"紧迫,震撼"},{"title":"AI应用场景","keywords":"智能家居,语音助手,自动化","visual":"特写智能音箱设备，灯光柔和闪烁，周围是现代化家居环境。运镜：缓慢平移展示智能家居全貌。","script":"从智能家居到语音助手，从自动驾驶到智能医疗，AI正在渗透到我们生活的方方面面。","emotion":"专业,讲解"},{"title":"未来展望","keywords":"未来城市,科技创新,城市夜景","visual":"科技感背景屏幕显示未来城市景象的动画。运镜：拉远镜头展示完整场景。","script":"展望未来，AI将带来更多可能性，让我们一起期待吧！","emotion":"自信,鼓舞"}]}
 
 ## Example 2 (English):
 Input: The importance of healthy eating habits
 Output:
-{"scenes":[{"title":"Shocking Start","keywords":"health,diet,crisis","visual":"Animated infographic showing a ticking clock with food icons spinning around it. Camera: Fast zoom into the clock face.","script":"Every single meal you eat is either adding years to your life — or taking them away. Which one are you choosing?","emotion":"serious,thought-provoking"},{"title":"Balanced Diet","keywords":"proteins,vegetables,fruits","visual":"Close-up of colorful vegetables and fruits arranged on a kitchen counter. Camera: Slow pan across the ingredients.","script":"A balanced diet includes plenty of vegetables, fruits, lean proteins, and whole grains. These provide essential nutrients for our body.","emotion":"informative,clear"},{"title":"Healthy Lifestyle","keywords":"exercise,habit,wellness","visual":"Modern gym equipment with motivational graphics displayed on screens. Camera: Medium shot with background blur.","script":"Remember, healthy eating combined with regular exercise creates the foundation for a wellness lifestyle.","emotion":"motivational,inspiring"}]}"""
+{"scenes":[{"title":"Shocking Start","keywords":"heart monitor,bright kitchen,health crisis","visual":"Animated infographic showing a ticking clock with food icons spinning around it. Camera: Fast zoom into the clock face.","script":"Every single meal you eat is either adding years to your life — or taking them away. Which one are you choosing?","emotion":"serious,thought-provoking"},{"title":"Balanced Diet","keywords":"vegetables,fruits,lean proteins","visual":"Close-up of colorful vegetables and fruits arranged on a kitchen counter. Camera: Slow pan across the ingredients.","script":"A balanced diet includes plenty of vegetables, fruits, lean proteins, and whole grains. These provide essential nutrients for our body.","emotion":"informative,clear"},{"title":"Healthy Lifestyle","keywords":"gym equipment,fitness workout,healthy lifestyle","visual":"Modern gym equipment with motivational graphics displayed on screens. Camera: Medium shot with background blur.","script":"Remember, healthy eating combined with regular exercise creates the foundation for a wellness lifestyle.","emotion":"motivational,inspiring"}]}"""
 
     # Adaptive prompts for different retry attempts
     retry_adaptive_prompts = {
@@ -953,110 +1115,31 @@ Output:
         3: "\n\n[CRITICAL] Your previous responses had JSON formatting issues. Output ONLY valid JSON like this example: {\"scenes\":[{\"title\":\"...\",\"keywords\":\"...\",\"visual\":\"...\",\"script\":\"...\",\"emotion\":\"...\"}]}",
     }
 
-    # Build base prompt
-    prompt = """
-# Role
-You are a senior video director and storyboard designer with 10 years of experience. You excel at transforming various types of text content (whether it's informative articles, stories, or marketing copy) into visually impactful and logically coherent storyboard scripts.
-
-# Goal
-Please read the user-provided [Original Text] and adapt it into a structured multi-scene script in JSON format.
-
-# JSON Schema (STRICT OUTPUT FORMAT)
+    output_format = f"""# JSON Schema (STRICT OUTPUT FORMAT)
 Your output MUST conform to this JSON Schema:
 {json_schema}
 
-# Constraints & Workflow
-1. **Audio-First Principle**: Audio (dialogue) is the core, and video and subtitles serve the dialogue. All visual elements and scene designs should enhance the expression of the dialogue.
-2. **Semantic Scene Division**: Analyze the semantic structure of the article, identify logical turning points, and divide the content into 5-15 scenes (including opening, main body, and conclusion)
-   - **Opening Scene**: MUST start with a powerful hook — NOT a generic greeting like "大家好" or "Hello everyone". Use one of: a thought-provoking question ("你有没有想过..."), a surprising fact/statistic, a bold controversial statement, or an impactful scene-setting line. Get straight to the point while grabbing attention in the first 3 seconds.
-   - Each scene should have complete content and a clear theme, with logical coherence
-   - Scene content should be independent and able to clearly express a complete concept or viewpoint
-3. **Visual Transformation**:
-   - Reject boring visuals (such as "a person speaking").
-   - Must use **visual metaphors** (expressing abstract concepts with concrete objects), **dynamic graphics**, or **scene reenactment**.
-   - Visual descriptions should be **pure text, concise and standard**, including: subject, environment, action, camera movement (such as close-up, push-in, pull-out).
-   - Visual elements must be closely related to the dialogue content and able to enhance the expression of the dialogue.
-   - **Host Visibility**: {host_visibility_instruction}
-4. **Dialogue Optimization**: Rewrite the original text into natural spoken language and mark tone/emotion.
-   - Dialogue content should be clear, fluent, and suitable for spoken expression
-   - Emotion markers should accurately reflect the emotional tone of the dialogue
-   - **Technical Content Handling**: When dealing with technical content (code, terms, symbols):
-     - Replace technical terms with plain language explanations
-     - Avoid directly reading code or symbols (e.g., instead of reading "#", say "hashtag")
-     - Use analogies and examples to explain complex concepts
-     - Keep sentences short and conversational
-     - Ensure the content flows naturally when spoken aloud
-5. **Keyword Extraction**: Extract 3-5 core keywords for each scene.
-6. **ANTI-LAZY RULE (CRITICAL)**: Every scene's "script" field MUST contain **substantial, specific, and detailed** spoken content directly derived from the original text. Each scene script should be at least 40 characters long (for Chinese) or 80 characters long (for English).
-   - **FORBIDDEN**: Placeholder sentences that describe what the scene is about instead of actual spoken content. Examples of FORBIDDEN lazy scripts:
-     - "这是一个核心内容部分的详细讲解。"
-     - "下面我们来详细讲解一下这个部分。"
-     - "接下来让我们看看具体的内容。"
-     - "This section covers the core content in detail."
-     - "Now let's look at the specific content."
-   - Each scene's script MUST contain real, concrete spoken words that the host would actually say — including specific facts, examples, data points, or arguments extracted from the original text.
-   - If the original text has 5 key points, distribute them across scenes and write out the actual explanation for each point.
-
-{few_shot_examples}
-
 # CRITICAL Output Requirements
 1. Return ONLY the raw JSON object, NO markdown code blocks, NO backticks, NO explanatory text
-2. The response must start with `{` and end with `}` - nothing before or after
+2. The response must start with `{{` and end with `}}` - nothing before or after
 3. All string values MUST use straight double quotes (not single quotes)
 4. NO trailing commas in arrays or objects
 5. NO escape characters within string values (use proper JSON escaping if needed)
 6. Each scene object must have ALL 5 fields: title, keywords, visual, script, emotion
 7. DO NOT wrap the JSON in ```json or ``` markers - output pure JSON only
-8. The scenes array must be valid and properly formatted
+8. The scenes array must be valid and properly formatted"""
 
-# Input Text
-[Original Text]:
-"""
-    prompt += video_content
-    prompt += """
-"""
-    prompt = prompt.strip()
-    
-    # Add host visibility instruction
-    if host_visible:
-        host_visibility_instruction = "Host is visible on camera. Include host/presenter in visual descriptions, showing facial expressions and gestures."
-    else:
-        host_visibility_instruction = "Host is NOT visible on camera. Do NOT include any person, host, or presenter in visual descriptions. Focus on objects, scenes, graphics, and text-based visuals only."
-    
-    # Replace placeholders
-    prompt = prompt.replace("{json_schema}", json_schema).replace("{few_shot_examples}", few_shot_examples).replace("{host_visibility_instruction}", host_visibility_instruction)
-
-    # Add language instruction
-    if language:
-        prompt += f"\n- Language: {language}\n- IMPORTANT: Please respond in {language} language. All content, including scene titles, visual descriptions, dialogue scripts, and emotion markers, must be in {language}."
-    else:
-        # Auto-detect language from video content
-        detected_language = detect_language(video_content)
-        prompt += f"\n- Language: {detected_language}\n- IMPORTANT: Please respond in {detected_language} language. All content, including scene titles, visual descriptions, dialogue scripts, and emotion markers, must be in {detected_language}."
-
-    # Add search context if available
-    if search_context:
-        prompt += f"""
-
-# Web Search Reference Material
-The following information was retrieved from real-time web search to supplement the topic.
-Use this as factual reference, prioritize it over your internal knowledge when there are conflicts.
-
-<search_results>
-{search_context}
-</search_results>
-"""
-
-    # Add length/depth instructions from options
-    if options:
-        from app.services.script_options import build_length_instructions, build_style_instructions
-        prompt += f"\n\n{build_length_instructions(options)}"
-        prompt += build_style_instructions(options)
-
-    # Add content-type-specific opening scene guidance
-    if content_type:
-        content_type_guidance = _get_content_type_opening_guidance(content_type, language or detect_language(video_content))
-        prompt += f"\n\n# Content-Type Specific Opening Scene Guidance\n{content_type_guidance}"
+    prompt = _build_multi_scene_base_prompt(
+        video_content=video_content,
+        language=language,
+        host_visible=host_visible,
+        content_type=content_type,
+        search_context=search_context,
+        options=options,
+        goal="Please read the user-provided [Original Text] and adapt it into a structured multi-scene script in JSON format.",
+        output_format=output_format,
+        few_shot_examples=few_shot_examples,
+    )
 
     final_script = ""
     for i in range(_max_retries):
@@ -1701,49 +1784,8 @@ def convert_to_multi_scene(
     
     # Host visibility instruction
     host_visibility_instruction = "Host is visible on camera. Include host/presenter in visual descriptions, showing facial expressions and gestures." if host_visible else "Host is NOT visible on camera. Do NOT include any person, host, or presenter in visual descriptions. Focus on objects, scenes, graphics, and text-based visuals only."
-    
-    prompt = f"""
-# Role
-You are a senior video director and storyboard designer with 10 years of experience. You excel at transforming various types of text content (whether it's informative articles, stories, or marketing copy) into visually impactful and logically coherent storyboard scripts.
 
-# Goal
-Please read the user-provided [Original Text] and adapt it into a standardized **scene-based storyboard script**.
-
-# Constraints & Workflow
-1. **Audio-First Principle**: Audio (dialogue) is the core, and video and subtitles serve the dialogue. All visual elements and scene designs should enhance the expression of the dialogue.
-2. **Semantic Scene Division**: Analyze the semantic structure of the article, identify logical turning points, and divide the content into 5-15 scenes (including opening, main body, and conclusion)
-   - **Opening Scene**: MUST start with a powerful hook — NOT a generic greeting like "大家好" or "Hello everyone". Use one of: a thought-provoking question ("你有没有想过..."), a surprising fact/statistic, a bold controversial statement, or an impactful scene-setting line. Get straight to the point while grabbing attention in the first 3 seconds.
-   - Each scene should have complete content and a clear theme, with logical coherence
-   - Scene content should be independent and able to clearly express a complete concept or viewpoint
-3. **Visual Transformation**:
-    - Reject boring visuals (such as "a person speaking").
-    - Must use **visual metaphors** (expressing abstract concepts with concrete objects), **dynamic graphics**, or **scene reenactment**.
-    - Visual descriptions should be **pure text, concise and standard**, including: subject, environment, action, camera movement (such as close-up, push-in, pull-out).
-    - Visual elements must be closely related to the dialogue content and able to enhance the expression of the dialogue.
-    - **Host Visibility**: {host_visibility_instruction}
-    - **Format Requirements**: Use clear, straightforward language without special formatting or markers.
-4. **Dialogue Optimization**: Rewrite the original text into natural spoken language and mark tone/emotion.
-   - Dialogue content should be clear, fluent, and suitable for spoken expression
-   - Emotion markers should accurately reflect the emotional tone of the dialogue
-   - **Technical Content Handling**: When dealing with technical content (code, terms, symbols):
-     - Replace technical terms with plain language explanations
-     - Avoid directly reading code or symbols (e.g., instead of reading "#", say "hashtag")
-     - Use analogies and examples to explain complex concepts
-     - Keep sentences short and conversational
-     - Ensure the content flows naturally when spoken aloud
-5. **Keyword Extraction**: Extract 3-5 core keywords for each scene.
-6. **ANTI-LAZY RULE (CRITICAL)**: Every scene's dialogue (Audio) field MUST contain **substantial, specific, and detailed** spoken content directly derived from the original text. Each scene dialogue should be at least 40 characters long (for Chinese) or 80 characters long (for English).
-   - **FORBIDDEN**: Placeholder sentences that describe what the scene is about instead of actual spoken content. Examples of FORBIDDEN lazy scripts:
-     - "这是一个核心内容部分的详细讲解。"
-     - "下面我们来详细讲解一下这个部分。"
-     - "接下来让我们看看具体的内容。"
-     - "This section covers the core content in detail."
-     - "Now let's look at the specific content."
-   - Each scene's dialogue MUST contain real, concrete spoken words that the host would actually say — including specific facts, examples, data points, or arguments extracted from the original text.
-   - If the original text has 5 key points, distribute them across scenes and write out the actual explanation for each point.
-7. **Format Enforcement**: **Must** strictly follow the [Output Template] format below, without arbitrarily adding or removing fields.
-
-# Output Template (Please strictly follow this format)
+    output_format = """# Output Template (Please strictly follow this format)
 
 ###  Scene [Number]: [Scene Core Theme]
 - **Core Keywords**: Keyword 1, Keyword 2, Keyword 3
@@ -1753,7 +1795,10 @@ Please read the user-provided [Original Text] and adapt it into a standardized *
 - **Audio (Dialogue Script)**:
     - ([Emotion Marker]) Dialogue content
 
-# Few-Shot Example (Reference Example)
+# Format Enforcement
+**Must** strictly follow the [Output Template] format above, without arbitrarily adding or removing fields."""
+
+    few_shot_examples = """# Few-Shot Example (Reference Example)
 *If the input is "Procrastination is because the brain is avoiding pain", the output should include:*
 ###  Scene 1: The Instinct to Avoid Pain
 - **Core Keywords**: Monkey, Steering Wheel, Chaos
@@ -1761,39 +1806,19 @@ Please read the user-provided [Original Text] and adapt it into a standardized *
     - **Visual Contrast**: On the left side of the screen, a happy little monkey doll is grabbing the steering wheel, while on the right side, a rational helmsman (human) is tied to a pole. The background is a chaotic amusement park.
     - **Camera Movement**: Quick push-pull to express a sense of chaos.
 - **Audio (Dialogue Script)**:
-    - ([Vivid, Metaphorical]) Procrastination is not actually a time management issue, but an emotional management issue. It's like having a monkey in your brain that grabs the steering wheel...
+    - ([Vivid, Metaphorical]) Procrastination is not actually a time management issue, but an emotional management issue. It's like having a monkey in your brain that grabs the steering wheel..."""
 
-# Input Text
-[Original Text]:
-{video_script}
-""".strip()
-
-    if language:
-        prompt += f"\n- Language: {language}\n- IMPORTANT: Please respond in {language} language. All content, including scene titles, visual descriptions, dialogue scripts, and emotion markers, must be in {language}."
-
-    # Add search context if available
-    if search_context:
-        prompt += f"""
-
-# Web Search Reference Material
-The following information was retrieved from real-time web search to supplement the topic.
-Use this as factual reference, prioritize it over your internal knowledge when there are conflicts.
-
-<search_results>
-{search_context}
-</search_results>
-"""
-
-    # Add length/depth instructions from options
-    if options:
-        from app.services.script_options import build_length_instructions, build_style_instructions
-        prompt += f"\n\n{build_length_instructions(options)}"
-        prompt += build_style_instructions(options)
-
-    # Add content-type-specific opening scene guidance
-    if content_type:
-        content_type_guidance = _get_content_type_opening_guidance(content_type, language or "English")
-        prompt += f"\n\n# Content-Type Specific Opening Scene Guidance\n{content_type_guidance}"
+    prompt = _build_multi_scene_base_prompt(
+        video_content=video_script,
+        language=language,
+        host_visible=host_visible,
+        content_type=content_type,
+        search_context=search_context,
+        options=options,
+        goal="Please read the user-provided [Original Text] and adapt it into a standardized **scene-based storyboard script**.",
+        output_format=output_format,
+        few_shot_examples=few_shot_examples,
+    )
 
     logger.info("converting single-scene script to multi-scene format")
     
@@ -1977,74 +2002,12 @@ def generate_scene_terms(
     Returns:
         List of search terms in the original language
     """
-    prompt = f"""
-# Role: Scene-Specific Video Search Terms Generator
-
-## Goals:
-Generate {amount} search terms for stock videos for a specific scene.
-
-## Constraints:
-1. The search terms should be relevant to both the scene's visual description and narration
-2. Each search term should consist of 1-3 words
-3. You must only return the JSON array of strings
-4. Generate search terms in the same language as the scene script
-5. Focus on visual elements mentioned in the camera description
-
-## Output Example:
-["城市夜景", "摩天大楼", "都市生活", "繁华街道", "现代建筑"]
-
-## Context:
-### Scene Camera/Visual Description
-{scene_camera}
-
-### Scene Script
-{scene_script}
-
-Please generate search terms in the same language as the scene script.
-""".strip()
-
-    logger.info(f"generating terms for scene")
-
-    search_terms = []
-    response = ""
-    for i in range(_max_retries):
-        try:
-            response = _generate_response(prompt)
-            
-            if not response or response.strip() == "":
-                logger.warning(f"LLM API returned empty response, attempt {i + 1}/{_max_retries}")
-                continue
-                
-            if "Error: " in response:
-                logger.error(f"failed to generate scene terms: {response}")
-                if stop_on_api_failure:
-                    return f"Error: {response}"
-                continue
-            search_terms = json.loads(response)
-            if not isinstance(search_terms, list) or not all(
-                isinstance(term, str) for term in search_terms
-            ):
-                logger.error("response is not a list of strings.")
-                continue
-        except Exception as e:
-            logger.warning(f"failed to generate scene terms: {str(e)}")
-            if stop_on_api_failure:
-                error_msg = f"LLM API failed to generate scene terms after {_max_retries} attempts: {str(e)}"
-                logger.error(error_msg)
-                return f"Error: {error_msg}"
-            if response:
-                match = re.search(r'\[.*]', response)
-                if match:
-                    try:
-                        search_terms = json.loads(match.group())
-                    except Exception as e:
-                        logger.warning(f"failed to parse scene terms: {str(e)}")
-                        pass
-
-        if search_terms and len(search_terms) > 0:
-            break
-        if i < _max_retries - 1:
-            logger.warning(f"failed to generate scene terms, trying again... {i + 1}")
+    search_terms = _generate_scene_keywords(
+        scene_script=scene_script,
+        scene_context=scene_camera,
+        amount=amount,
+        purpose="search",
+    )
 
     if not search_terms and stop_on_api_failure:
         error_msg = f"LLM API failed to generate scene terms after {_max_retries} attempts"
