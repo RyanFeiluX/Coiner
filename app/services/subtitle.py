@@ -125,17 +125,72 @@ def create(audio_file, subtitle_file: str = ""):
     start = timer()
     subtitles = []
 
+    def _estimate_subtitle_max_chars(text: str) -> int:
+        """Estimate max chars per subtitle line based on detected script."""
+        if not text:
+            return 35
+        ascii_chars = sum(1 for c in text if ord(c) < 128)
+        if ascii_chars / len(text) > 0.5:
+            return 80  # English / Latin scripts
+        return 35  # Chinese / CJK scripts
+
+    def _split_long_segment(seg_text: str, seg_start: float, seg_end: float, max_chars: int = None):
+        """Split a long subtitle segment into shorter chunks with proportional timestamps."""
+        if max_chars is None:
+            max_chars = _estimate_subtitle_max_chars(seg_text)
+
+        if len(seg_text) <= max_chars:
+            return [(seg_text, seg_start, seg_end)]
+
+        # First try to split at punctuation to preserve semantics
+        punctuation_chars = '，,。！!？?；;：:、'
+        parts = []
+        current = ""
+        for char in seg_text:
+            current += char
+            if char in punctuation_chars and len(current) >= max_chars * 0.5:
+                parts.append(current.strip())
+                current = ""
+        if current.strip():
+            parts.append(current.strip())
+
+        # Force split any part that is still too long
+        final_parts = []
+        for part in parts:
+            while len(part) > max_chars:
+                final_parts.append(part[:max_chars])
+                part = part[max_chars:]
+            if part:
+                final_parts.append(part)
+
+        if not final_parts:
+            final_parts = [seg_text]
+
+        # Distribute timestamps proportionally by character count
+        total_chars = len(seg_text)
+        result = []
+        current_chars = 0
+        for part in final_parts:
+            ratio_start = current_chars / total_chars
+            current_chars += len(part)
+            ratio_end = current_chars / total_chars
+            part_start = seg_start + (seg_end - seg_start) * ratio_start
+            part_end = seg_start + (seg_end - seg_start) * ratio_end
+            result.append((part, part_start, part_end))
+
+        return result
+
     def recognized(seg_text, seg_start, seg_end):
         seg_text = seg_text.strip()
         if not seg_text:
             return
 
-        msg = "[%.2fs -> %.2fs] %s" % (seg_start, seg_end, seg_text)
-        logger.debug(msg)
-
-        subtitles.append(
-            {"msg": seg_text, "start_time": seg_start, "end_time": seg_end}
-        )
+        for split_text, split_start, split_end in _split_long_segment(seg_text, seg_start, seg_end):
+            msg = "[%.2fs -> %.2fs] %s" % (split_start, split_end, split_text)
+            logger.debug(msg)
+            subtitles.append(
+                {"msg": split_text, "start_time": split_start, "end_time": split_end}
+            )
 
     for segment in segments:
         words_idx = 0

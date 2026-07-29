@@ -38,10 +38,11 @@ STYLE_INSTRUCTIONS = {
   1. **Opening Hook** (开场): 提出有争议性或引人深思的核心议题，直接亮明立场 — 用"你可能没想到…"或"很多人都错了…"式开场
   2. **Fact Foundation** (事实铺垫): 客观阐述原文的核心事实/观点，建立信息基础，让观众理解讨论的起点
   3. **Multi-Angle Analysis** (多角度剖析): 对核心观点进行至少2-3个角度的深入分析——支持方论据、反方批评、中立调和视角。每个角度单独展开，逻辑清晰
-  4. **Engagement Climax** (互动高潮): 提出开放性问题，邀请观众站队和讨论 — "你觉得哪种观点更有道理？"
-  5. **Closing with CTA** (收尾引导): 总结核心论点，以引导评论互动结束 — "在评论区告诉我你的想法"
+  4. **Engagement Climax** (互动高潮): 提出一个开放性问题，邀请观众思考和站队，但**不要**在此场景要求评论、点赞或关注。示例："你觉得哪种观点更有道理？"
+  5. **Closing with CTA** (收尾引导): 用一句话总结核心论点，并**只在最后这一个场景**给出明确的评论互动引导。示例："在评论区告诉我你的想法"
 - **Across All Scenes**: Maintain a provocative, analytical, debate-driven tone throughout the ENTIRE script
 - **Interaction Hooks**: At key turning points, insert rhetorical questions or challenges that invite audience reflection and participation
+- **CTA Uniqueness Rule**: 全文中只能有一个场景包含"在评论区告诉我你的想法"或类似的明确评论引导语，且必须放在最后一个场景。
 - **Depth Control**: The selected preset (concise/standard/in-depth) controls how many perspectives each viewpoint gets and how much supporting data is included""",
 }
 
@@ -164,6 +165,7 @@ def build_length_instructions(options: Dict) -> str:
 - Target total script length: ~{target} words
 - Number of scenes: {min_scenes}-{max_scenes}
 - Each scene script length: {min_words}-{max_words} characters
+- Each sentence within a scene script should be short (Chinese: ~20-35 chars, English: ~40-80 chars) to keep subtitles readable and avoid line wrapping
 - Topic expansion scope: {expansion}
 - Detail level: {detail}
 """.strip()

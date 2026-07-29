@@ -990,6 +990,8 @@ You are a senior video director and storyboard designer with 10 years of experie
      - "Now let's look at the specific content."
    - Each scene's script MUST contain real, concrete spoken words that the host would actually say — including specific facts, examples, data points, or arguments extracted from the original text.
    - If the original text has 5 key points, distribute them across scenes and write out the actual explanation for each point.
+7. **Avoid Repetitive Closing Hooks**: 在多场景文案的最后两段（倒数第二场景和最后一个场景）中，不要让两个场景都出现"在评论区告诉我你的想法"、"欢迎留言"、"点赞关注"或功能相同的互动引导语。只有一个场景——通常是最后一个场景——应该明确邀请观众评论。倒数第二场景可以提出开放性问题或总结观点，但不得重复最后一个场景的 CTA 句式。
+8. **Short Sentence Rule for Subtitles**: Each scene's "script" should be composed of short, natural sentences. For Chinese, prefer each sentence to be 20-35 characters; for English, prefer 40-80 characters. Avoid writing one very long sentence that spans the entire scene. Use commas and periods to break long clauses into multiple short sentences. This ensures subtitles display cleanly without awkward line breaks.
 
 {few_shot_examples}
 
@@ -1313,6 +1315,62 @@ def _extract_scene_fields(scene_data: Dict) -> Dict:
     }
 
 
+def _deduplicate_scene_ctas(scenes: List[Dict]) -> List[Dict]:
+    """
+    Remove duplicate call-to-action phrases from the second-to-last scene.
+
+    The last scene is allowed to keep its CTA (e.g. "tell me in the comments");
+    if the second-to-last scene repeats the same type of CTA, strip it so the
+    closing hook only appears once.
+    """
+    if len(scenes) < 2:
+        return scenes
+
+    # Patterns for common Chinese and English comment/like CTAs
+    cta_patterns = [
+        r"在评论区(?:告诉|告知|说|分享)(?:给我|我)?(?:你的)?想法",
+        r"在评论区(?:告诉|告知|说|分享)我(?:你的)?想法",
+        r"欢迎在评论区[留言发表看法分享]+",
+        r"欢迎留言",
+        r"点赞[加并]?关注",
+        r"记得点赞",
+        r"let me know in the comments",
+        r"leave a comment below",
+        r"drop a comment",
+        r"like and subscribe",
+        r"don't forget to like",
+    ]
+    combined_pattern = re.compile("(" + "|".join(cta_patterns) + r")[,，.。!！?？]*", re.IGNORECASE)
+
+    last_idx = len(scenes) - 1
+    second_last_idx = last_idx - 1
+
+    last_script = scenes[last_idx].get("script", "") or ""
+    second_last_script = scenes[second_last_idx].get("script", "") or ""
+
+    # Only clean the second-to-last scene if BOTH it and the last scene contain CTA patterns
+    if combined_pattern.search(last_script) and combined_pattern.search(second_last_script):
+        cleaned = combined_pattern.sub("", second_last_script).strip()
+        # Remove leftover leading/trailing punctuation or extra spaces
+        cleaned = re.sub(r"^[，,。\s]+|[，,。\s]+$", "", cleaned)
+        # Remove dangling incomplete introducers like "不妨", "那就", "快来", "记得"
+        cleaned = re.sub(r"(?:不妨|那就|快来|记得)$", "", cleaned).strip()
+        cleaned = re.sub(r"^[，,。\s]+|[，,。\s]+$", "", cleaned)
+        # Avoid leaving an empty or too-short script
+        if len(cleaned) >= 10:
+            scenes[second_last_idx]["script"] = cleaned
+        else:
+            # Fallback: replace the redundant CTA with a neutral reflection prompt
+            scenes[second_last_idx]["script"] = re.sub(
+                combined_pattern,
+                "你怎么看？",
+                second_last_script,
+                count=1,
+            ).strip()
+
+    return scenes
+
+
 def parse_multi_scene_script(script_text: str, original_content: str = "") -> List[Dict]:
     """
     Parse multi-scene script text into structured data.
@@ -1423,8 +1481,8 @@ def parse_multi_scene_script(script_text: str, original_content: str = "") -> Li
                     scenes = scenes[:max_scenes]
                 elif len(scenes) < min_scenes:
                     logger.warning(f"Found {len(scenes)} scenes, which is less than the recommended minimum of {min_scenes} scenes")
-                
-                return scenes
+
+                return _deduplicate_scene_ctas(scenes)
             else:
                 logger.warning("JSON had scenes array but all items were invalid, treating as parse failure")
         elif scenes_data is not None:
@@ -1457,7 +1515,7 @@ def parse_multi_scene_script(script_text: str, original_content: str = "") -> Li
                         }
                         scenes.append(scene)
                         logger.info(f"Found single scene in field '{alt_key}', returning 1 scene")
-                        return scenes
+                        return _deduplicate_scene_ctas(scenes)
                 elif isinstance(alt_data, list):
                     # Alternative scenes list found
                     for j, item in enumerate(alt_data):
@@ -1482,7 +1540,7 @@ def parse_multi_scene_script(script_text: str, original_content: str = "") -> Li
                             scenes.append(scene)
                     if scenes:
                         logger.info(f"Found {len(scenes)} scenes in alternative field '{alt_key}', returning")
-                        return scenes
+                        return _deduplicate_scene_ctas(scenes)
     except json.JSONDecodeError as e:
         logger.warning(f"JSON parsing failed after repair: {e}")
     except Exception as e:
@@ -1630,8 +1688,8 @@ def parse_multi_scene_script(script_text: str, original_content: str = "") -> Li
         
         # 检测清理后的内容是否仍然是JSON结构，如果是则使用原始内容构建
         if _is_json_content(cleaned_content):
-            return _build_fallback_scenes(original_content, script_text)
-        
+            return _deduplicate_scene_ctas(_build_fallback_scenes(original_content, script_text))
+
         # 创建默认场景
         scene = {
             "id": "scene_1",
@@ -1659,7 +1717,7 @@ def parse_multi_scene_script(script_text: str, original_content: str = "") -> Li
         logger.warning(f"Found {len(scenes)} scenes, which is less than the recommended minimum of {min_scenes} scenes")
     
     logger.info(f"parsed {len(scenes)} scenes from multi-scene script")
-    return scenes
+    return _deduplicate_scene_ctas(scenes)
 
 
 def _build_fallback_scenes(original_content: str, raw_response: str = "") -> List[Dict]:
