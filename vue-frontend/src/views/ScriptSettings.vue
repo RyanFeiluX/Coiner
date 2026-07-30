@@ -365,12 +365,11 @@ const setPreset = (preset: string) => {
 };
 
 const onFieldChange = (field: string, value: any) => {
-  // When user changes any advanced option, mark preset as custom
-  if (field !== 'scriptPreset') {
-    form.scriptPreset = 'custom';
-    scriptStore.updateScriptPreset('custom');
-  }
-  
+  // Do NOT mark preset as 'custom' when advanced options change.
+  // The selected preset (concise/standard/in_depth) should still determine
+  // core length parameters like min/max_scenes and target_word_count.
+  // Only explicit preset button clicks via setPreset() change scriptPreset.
+
   const actions: Record<string, (v: any) => void> = {
     webSearchEnabled: (v) => scriptStore.updateWebSearchEnabled(v),
     searchResultsCount: (v) => scriptStore.updateSearchResultsCount(v),
@@ -917,7 +916,14 @@ const parseVideoScript = async () => {
       video_script: form.videoScript,
       language: language,
       host_visible: settingsStore.video.hostVisible,
-      script_style: form.scriptStyle
+      script_preset: form.scriptPreset || 'standard',
+      web_search_enabled: form.webSearchEnabled,
+      search_results_count: form.searchResultsCount,
+      search_rounds: form.searchRounds,
+      search_source_preference: form.searchSourcePreference,
+      expansion_depth: form.expansionDepth,
+      paragraph_detail: form.paragraphDetail,
+      script_style: form.scriptStyle,
     });
     
     if (response.status === 'success' || response.status === 'manual') {

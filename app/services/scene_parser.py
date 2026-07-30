@@ -874,10 +874,22 @@ def evaluate_scenes(scenes: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-def parse_script_with_llm(script: str, language: str = None, host_visible: bool = True, script_style: str = None) -> List[Dict[str, Any]]:
+def parse_script_with_llm(
+    script: str,
+    language: str = None,
+    host_visible: bool = True,
+    script_style: str = None,
+    script_preset: str = "standard",
+    web_search_enabled: bool = None,
+    search_results_count: int = None,
+    search_rounds: int = None,
+    search_source_preference: str = None,
+    expansion_depth: str = None,
+    paragraph_detail: str = None,
+) -> List[Dict[str, Any]]:
     """
     Parse script using LLM to divide it into scenes.
-    
+
     Args:
         script: Script text to parse
         language: Language for the generated content
@@ -885,7 +897,14 @@ def parse_script_with_llm(script: str, language: str = None, host_visible: bool 
                      should focus on objects, graphics, and scenes without showing
                      the host/presenter.
         script_style: Script style for tone/format guidance (general, professional, popular, passionate, storytelling, commentary)
-    
+        script_preset: Script preset (concise/standard/in_depth) controlling scene count and length
+        web_search_enabled: Whether to enable web search (unused in parse path, kept for consistency)
+        search_results_count: Number of search results (unused in parse path)
+        search_rounds: Number of search rounds (unused in parse path)
+        search_source_preference: Source preference for search (unused in parse path)
+        expansion_depth: Expansion depth override
+        paragraph_detail: Paragraph detail override
+
     Returns:
         Dict with keys:
         - video_title: str - An attractive and surprising video title
@@ -911,16 +930,25 @@ def parse_script_with_llm(script: str, language: str = None, host_visible: bool 
     # This is important for proper language comparisons in scene generation
     language = normalize_language(language)
     
-    # Build options dict with script_style if provided
-    options = None
-    if script_style:
-        from app.services.script_options import resolve_options
-        options = resolve_options(
-            script_preset="custom",
-            script_style=script_style,
-        )
+    # Build options dict from the actual script preset and provided overrides
+    from app.services.script_options import resolve_options
+    options = resolve_options(
+        script_preset=script_preset or "standard",
+        web_search_enabled=web_search_enabled,
+        search_results_count=search_results_count,
+        search_rounds=search_rounds,
+        search_source_preference=search_source_preference,
+        expansion_depth=expansion_depth,
+        paragraph_detail=paragraph_detail,
+        script_style=script_style,
+    )
     
-    logger.info(f"Starting to parse script with LLM, script length: {len(script)}, language: {language}, host_visible: {host_visible}, script_style: {script_style}")
+    logger.info(
+        f"Starting to parse script with LLM, script length: {len(script)}, "
+        f"language: {language}, host_visible: {host_visible}, "
+        f"script_preset={script_preset}, script_style={script_style}, "
+        f"resolved_scenes={options.get('min_scenes')}-{options.get('max_scenes')}"
+    )
     
     # Generate an attractive and surprising video title first
     video_title = generate_video_title(script, language=language)
@@ -1165,10 +1193,24 @@ def parse_script_with_llm(script: str, language: str = None, host_visible: bool 
     }
 
 
-def auto_parse_script(script: str, max_retries: int = 3, auto_mode: bool = True, language: str = None, host_visible: bool = True, script_style: str = None) -> Dict[str, Any]:
+def auto_parse_script(
+    script: str,
+    max_retries: int = 3,
+    auto_mode: bool = True,
+    language: str = None,
+    host_visible: bool = True,
+    script_style: str = None,
+    script_preset: str = "standard",
+    web_search_enabled: bool = None,
+    search_results_count: int = None,
+    search_rounds: int = None,
+    search_source_preference: str = None,
+    expansion_depth: str = None,
+    paragraph_detail: str = None,
+) -> Dict[str, Any]:
     """
     Automatically parse script with retry mechanism.
-    
+
     Args:
         script: The script text to parse
         max_retries: Maximum number of retry attempts for LLM parsing
@@ -1178,7 +1220,14 @@ def auto_parse_script(script: str, max_retries: int = 3, auto_mode: bool = True,
                      should focus on objects, graphics, and scenes without showing
                      the host/presenter.
         script_style: Script style for tone/format guidance (general, professional, popular, passionate, storytelling, commentary)
-    
+        script_preset: Script preset (concise/standard/in_depth) controlling scene count and length
+        web_search_enabled: Whether to enable web search (unused in parse path)
+        search_results_count: Number of search results (unused in parse path)
+        search_rounds: Number of search rounds (unused in parse path)
+        search_source_preference: Source preference for search (unused in parse path)
+        expansion_depth: Expansion depth override
+        paragraph_detail: Paragraph detail override
+
     Returns:
         Dict with keys:
         - status: "success", "manual", or "failed"
@@ -1195,15 +1244,30 @@ def auto_parse_script(script: str, max_retries: int = 3, auto_mode: bool = True,
     
     # Step 1: Always use LLM to parse script for multi-scene construction
     # regardless of whether it's already divided
-    logger.info(f"Using LLM to parse script for multi-scene construction, host_visible: {host_visible}, script_style: {script_style}")
-    
+    logger.info(
+        f"Using LLM to parse script for multi-scene construction, "
+        f"host_visible: {host_visible}, script_preset: {script_preset}, script_style: {script_style}"
+    )
+
     scenes = []
     video_title = ""
-    
+
     # Step 2: Parse with LLM
     for attempt in range(max_retries):
         try:
-            result = parse_script_with_llm(script, language=language, host_visible=host_visible, script_style=script_style)
+            result = parse_script_with_llm(
+                script,
+                language=language,
+                host_visible=host_visible,
+                script_style=script_style,
+                script_preset=script_preset,
+                web_search_enabled=web_search_enabled,
+                search_results_count=search_results_count,
+                search_rounds=search_rounds,
+                search_source_preference=search_source_preference,
+                expansion_depth=expansion_depth,
+                paragraph_detail=paragraph_detail,
+            )
             
             if result and "scenes" in result and len(result["scenes"]) > 0:
                 scenes = result["scenes"]

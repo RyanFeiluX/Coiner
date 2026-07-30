@@ -79,6 +79,13 @@ export interface ParseScriptRequest {
   video_script: string;
   language: string | null;
   host_visible?: boolean;
+  script_preset?: string;
+  web_search_enabled?: boolean;
+  search_results_count?: number;
+  search_rounds?: number;
+  search_source_preference?: string;
+  expansion_depth?: string;
+  paragraph_detail?: string;
   script_style?: string;
 }
 

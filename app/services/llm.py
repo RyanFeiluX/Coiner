@@ -950,6 +950,10 @@ def _build_multi_scene_base_prompt(
     )
     keyword_instruction = keyword_prompts.build_multi_scene_keyword_instruction()
 
+    # Use resolved min/max scenes when options are provided; otherwise fall back to 5-18
+    min_scenes_for_prompt = options.get("min_scenes", 5) if options else 5
+    max_scenes_for_prompt = options.get("max_scenes", 18) if options else 18
+
     prompt = f"""
 # Role
 You are a senior video director and storyboard designer with 10 years of experience. You excel at transforming various types of text content (whether it's informative articles, stories, or marketing copy) into visually impactful and logically coherent storyboard scripts.
@@ -961,7 +965,7 @@ You are a senior video director and storyboard designer with 10 years of experie
 
 # Constraints & Workflow
 1. **Audio-First Principle**: Audio (dialogue) is the core, and video and subtitles serve the dialogue. All visual elements and scene designs should enhance the expression of the dialogue.
-2. **Semantic Scene Division**: Analyze the semantic structure of the article, identify logical turning points, and divide the content into 5-18 scenes (including opening, main body, and conclusion)
+2. **Semantic Scene Division**: Analyze the semantic structure of the article, identify logical turning points, and divide the content into {min_scenes_for_prompt}-{max_scenes_for_prompt} scenes (including opening, main body, and conclusion)
    - **Opening Scene**: MUST start with a powerful hook — NOT a generic greeting like "大家好" or "Hello everyone". Use one of: a thought-provoking question ("你有没有想过..."), a surprising fact/statistic, a bold controversial statement, or an impactful scene-setting line. Get straight to the point while grabbing attention in the first 3 seconds.
    - Each scene should have complete content and a clear theme, with logical coherence
    - Scene content should be independent and able to clearly express a complete concept or viewpoint
