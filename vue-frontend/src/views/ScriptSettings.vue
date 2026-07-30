@@ -1,7 +1,7 @@
 <template>
   <div class="script-settings">
     <!-- Script Settings Card -->
-    <el-card :body-style="{ padding: '20px' }" class="main-card">
+    <el-card :body-style="{ padding: '10px 20px 20px 20px' }" class="main-card">
       <template #header>
         <div class="card-header">
           <h2 class="title">✏️ {{ t('Script Settings') }}</h2>
@@ -34,7 +34,7 @@
               <el-option :label="t('Turkish')" value="tr" />
               <el-option :label="t('Vietnamese')" value="vi" />
             </el-select>
-            <el-button size="small" @click="scriptOptionsDialogVisible = true">
+            <el-button class="script-options-button" @click="scriptOptionsDialogVisible = true">
               <el-icon><Setting /></el-icon>
               {{ t('Script Options') }}
             </el-button>
@@ -1002,6 +1002,12 @@ defineExpose({
   margin-bottom: 4px;
 }
 
+.main-card :deep(.el-card__header),
+.scene-card-container :deep(.el-card__header) {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
 .main-card {
   display: flex;
   flex-direction: column;
@@ -1041,7 +1047,7 @@ defineExpose({
 
 .form-label {
   font-size: 14px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   margin-top: 0;
   padding: 0;
 }
@@ -1100,7 +1106,12 @@ defineExpose({
 .language-row {
   display: flex;
   gap: 8px;
-  align-items: flex-start;
+  align-items: center;
+}
+
+.script-options-button {
+  height: 32px;
+  padding: 0 16px;
 }
 
 .language-select {
@@ -1156,7 +1167,7 @@ defineExpose({
 
 .form-label {
   font-size: 14px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   margin-top: 0;
   padding: 0;
 }
@@ -1256,7 +1267,7 @@ defineExpose({
 
 .scene-content .form-label {
   font-size: 14px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   margin-top: 0;
   padding: 0;
 }
