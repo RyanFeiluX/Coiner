@@ -762,6 +762,9 @@ def get_bgm_file(bgm_type: str = "random", bgm_file: str = ""):
         suffix = "*.mp3"
         song_dir = utils.song_dir()
         files = glob.glob(os.path.join(song_dir, suffix))
+        if not files:
+            logger.warning(f"No BGM files found in {song_dir}, continuing without background music")
+            return ""
         return random.choice(files)
 
     return ""
