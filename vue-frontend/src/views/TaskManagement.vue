@@ -124,7 +124,7 @@ onUnmounted(() => {
 <style scoped>
 .task-management {
   width: 100%;
-  height: calc(100vh - 104px);
+  height: 100%;
   overflow: hidden;
   display: flex;
   flex-direction: column;

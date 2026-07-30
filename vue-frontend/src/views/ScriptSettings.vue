@@ -991,17 +991,29 @@ defineExpose({
 <style scoped>
 .script-settings {
   width: 100%;
+  height: 100%;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
   gap: 20px;
-  align-items: start;
+  overflow: hidden;
 }
 
 .card-header {
   margin-bottom: 4px;
 }
 
+.main-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 
+.main-card :deep(.el-card__body) {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
 
 .settings-form {
   display: flex;
@@ -1140,6 +1152,17 @@ defineExpose({
 
 .scene-card-container {
   margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scene-card-container :deep(.el-card__body) {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* 场景管理样式 */
@@ -1147,6 +1170,9 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 15px;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .scene-actions {
@@ -1166,6 +1192,9 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 15px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .scene-card {
