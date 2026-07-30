@@ -359,7 +359,7 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   height: 64px;
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
   width: 100%;
 }
@@ -397,7 +397,7 @@ onUnmounted(() => {
 
 .app-main {
   flex: 1;
-  max-width: 1200px;
+  max-width: 1600px;
   width: 100%;
   margin: 0 auto;
   padding: 20px;
@@ -424,9 +424,14 @@ onUnmounted(() => {
 .app-footer {
   background-color: #f5f5f5;
   border-top: 1px solid #e8e8e8;
-  padding: 20px;
+  padding: 4px 20px;
   text-align: center;
   margin-top: auto;
+}
+
+.app-footer p {
+  margin: 0;
+  line-height: 1.5;
 }
 
 .fade-enter-active,
