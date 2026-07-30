@@ -57,6 +57,10 @@
                       <el-tag :key="task.status" :type="getStatusType(task.status)">{{ getStatusText(task.status) }}</el-tag>
                     </transition>
                   </div>
+                  <div class="info-item">
+                    <span class="label">{{ taskIdText }}:</span>
+                    <span>{{ task.task_id }}</span>
+                  </div>
                   <div class="info-item" v-if="task.task_type">
                     <span class="label">{{ taskTypeText }}:</span>
                     <el-tag type="info">{{ getTaskTypeText(task.task_type) }}</el-tag>
@@ -178,6 +182,8 @@ interface Task {
   start_time?: string;
   end_time?: string;
   sequence_number?: number;
+  title_text?: string;
+  video_title?: string;
   scene_loss_warning?: string;
   failed_scene_indices?: number[];
 }
@@ -204,6 +210,7 @@ interface Props {
   deleteText?: string;
   cancelText?: string;
   sequenceNumberText?: string;
+  taskIdText?: string;
 }
 
 withDefaults(defineProps<Props>(), {
@@ -227,7 +234,8 @@ withDefaults(defineProps<Props>(), {
   downloadText: 'Download',
   deleteText: 'Delete',
   cancelText: 'Cancel',
-  sequenceNumberText: 'Task #'
+  sequenceNumberText: 'Task #',
+  taskIdText: 'Task ID'
 });
 
 const emit = defineEmits(['refresh', 'delete', 'cancel']);
@@ -244,7 +252,15 @@ const onCollapseChange = (newNames: string | string[]) => {
 
 const getTaskTitle = (task: Task): string => {
   const taskNumber = task.sequence_number ? `#${task.sequence_number}` : '';
-  return `${t('Task')} ${taskNumber} ${task.task_id} - ${getStatusText(task.status)}`;
+  const titleText = task.title_text?.trim() || '';
+  const videoTitle = task.video_title?.trim() || '';
+
+  const parts: string[] = [];
+  if (titleText) parts.push(titleText);
+  if (videoTitle && videoTitle !== titleText) parts.push(videoTitle);
+
+  const displayTitle = parts.join(' · ') || task.task_id;
+  return `${taskNumber} ${displayTitle} - ${getStatusText(task.status)}`;
 };
 
 const getStatusText = (status: string): string => {

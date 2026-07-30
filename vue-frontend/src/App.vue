@@ -177,13 +177,14 @@ const generateVideo = async () => {
   try {
     // Fetch audio config from backend
     await getAudioConfig();
-    
+
     // 直接使用store获取数据
     const scriptStore = useScriptStore();
-    
+
     // 检查必要的参数（参照streamlit逻辑）
     const videoSubject = scriptStore.videoSubject || '';
     const videoScript = scriptStore.videoScript || '';
+    const videoTitle = scriptStore.videoTitle || '';
     const scenes = scriptStore.scenes || [];
     
     // Convert camelCase to snake_case for backend compatibility
@@ -219,6 +220,7 @@ const generateVideo = async () => {
     
     const taskParams: any = {
       video_subject: videoSubject,
+      video_title: videoTitle,
       video_script: videoScript,
       video_terms: '',
       video_source: settingsStore.video.source,

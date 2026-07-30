@@ -94,6 +94,7 @@ class VideoParams(BaseModel):
     """
 
     video_subject: Optional[str] = ""
+    video_title: Optional[str] = ""  # Human-readable title for task panel (from Script Settings)
     video_script: str = ""  # Script used to generate the video
     video_terms: Optional[str | list] = None  # Keywords used to generate the video
     video_aspect: Optional[VideoAspect] = VideoAspect.portrait.value

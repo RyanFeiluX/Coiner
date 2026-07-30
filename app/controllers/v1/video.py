@@ -57,6 +57,19 @@ def create_audio(
     return create_task(request, body, stop_at="audio")
 
 
+def _extract_display_titles(body: Union[TaskVideoRequest, SubtitleRequest, AudioRequest]) -> tuple[str, str]:
+    """Extract title_text (Title Settings) and video_title (Script Settings) for task panel display."""
+    title_text = ""
+    video_title = ""
+
+    if hasattr(body, "title_text") and body.title_text:
+        title_text = body.title_text.strip()
+    if hasattr(body, "video_title") and body.video_title:
+        video_title = body.video_title.strip()
+
+    return title_text, video_title
+
+
 def create_task(
     request: Request,
     body: Union[TaskVideoRequest, SubtitleRequest, AudioRequest],
@@ -66,7 +79,7 @@ def create_task(
     task_create_time = _time.time()
     task_id = utils.get_uuid()
     request_id = base.get_task_id(request)
-    
+
     # Task will be queued if another task is running (handled by thread_manager)
     try:
         task = {
@@ -74,18 +87,26 @@ def create_task(
             "request_id": request_id,
             "params": body.model_dump(),
         }
-        
+
         # Debug: Check what voice_name is being received
         if hasattr(body, 'voice_name'):
             logger.debug(f"[Task Creation] voice_name received: {body.voice_name[:100]}...")
             logger.debug(f"[Task Creation] voice_name starts with 'coze|': {body.voice_name.startswith('coze|')}")
-        
+
         # Debug: Check host_visible
         if hasattr(body, 'host_visible'):
             logger.debug(f"[Task Creation] host_visible received: {body.host_visible}")
             logger.debug(f"[Task Creation] host_visible type: {type(body.host_visible)}")
-        
-        sm.state.update_task(task_id, state=const.TASK_STATE_PENDING, progress=0, task_type="video_generation")
+
+        title_text, video_title = _extract_display_titles(body)
+        sm.state.update_task(
+            task_id,
+            state=const.TASK_STATE_PENDING,
+            progress=0,
+            task_type="video_generation",
+            title_text=title_text,
+            video_title=video_title,
+        )
         logger.debug(f"video_controller: Calling start_async for task_id={task_id}, thread_manager_id={id(tm)}")
         _, queue_status = tm.start_async(task_id, body, stop_at, task_create_time=task_create_time)
         
@@ -994,9 +1015,24 @@ def recover_scene_integration(request: Request, body: dict):
     
     # Generate unique task_id for tracking
     task_id = utils.get_uuid()
-    
+
+    # Derive display titles for the scene integration task
+    si_title_text = title_params.get("title_text", "").strip()
+    si_video_title = ""
+    if task_id_or_path:
+        original_task = sm.state.get_task(task_id_or_path)
+        if original_task:
+            si_video_title = original_task.get("video_title", "")
+
     # Register task immediately so it appears in task management
-    sm.state.update_task(task_id, state=const.TASK_STATE_PENDING, progress=0, task_type="scene_integration")
+    sm.state.update_task(
+        task_id,
+        state=const.TASK_STATE_PENDING,
+        progress=0,
+        task_type="scene_integration",
+        title_text=si_title_text,
+        video_title=si_video_title,
+    )
     
     # Submit to thread manager for proper concurrency control
     from app.services.video import recover_video_synthesis
