@@ -461,6 +461,9 @@ const loadConfig = async () => {
         if (cfg.audio.voice_name) {
           form.speechSynthesis = cfg.audio.voice_name;
         }
+        if (cfg.audio.voice_emotion !== undefined) {
+          form.voiceEmotion = cfg.audio.voice_emotion;
+        }
         if (cfg.audio.voice_volume !== undefined) {
           form.speechVolume = String(cfg.audio.voice_volume);
         }
@@ -499,6 +502,7 @@ const saveConfig = async () => {
       audio: {
         tts_server: form.ttsServer,
         voice_name: form.speechSynthesis,
+        voice_emotion: form.voiceEmotion,
         voice_volume: parseFloat(form.speechVolume),
         voice_rate: parseFloat(form.speechRate),
         bgm_type: form.backgroundMusic === 'none' ? '' : form.backgroundMusic,

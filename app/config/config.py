@@ -20,7 +20,7 @@ secrets_file = f"{root_dir}/secrets.toml"
 # Keys that belong to [audio] — used for migrating from legacy [ui] or [app] location
 _AUDIO_KEYS = {
     "tts_server", "voice_name", "voice_volume", "voice_rate",
-    "bgm_type", "bgm_volume",
+    "voice_emotion", "bgm_type", "bgm_volume",
 }
 
 # Keys that belong to [subtitle] — used for migrating from legacy [ui] or [app] location

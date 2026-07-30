@@ -516,6 +516,10 @@ export const useSettingsStore = defineStore('settings', {
                     this.audio.speechRate = String(data.audio.voice_rate);
                     console.log('[SettingsStore] Updated speechRate from config.audio:', this.audio.speechRate);
                 }
+                if (data.audio.voice_emotion !== undefined) {
+                    this.audio.voiceEmotion = data.audio.voice_emotion;
+                    console.log('[SettingsStore] Updated voiceEmotion from config.audio:', this.audio.voiceEmotion);
+                }
                 if (data.audio.bgm_type !== undefined) {
                     const bgmType = data.audio.bgm_type === '' ? 'none' : data.audio.bgm_type;
                     this.audio.backgroundMusic = bgmType;
