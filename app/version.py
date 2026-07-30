@@ -1,2 +1,2 @@
 project_name = "Coiner"
-project_version = "2.12.27-3"
+project_version = "2.12.27-4"
