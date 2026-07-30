@@ -38,7 +38,7 @@
             <el-collapse-item v-for="task in tasks" :key="task.task_id" :name="task.task_id">
               <template #title>
                 <span class="task-title-wrapper">
-                  {{ getTaskTitle(task) }}
+                  <span class="task-title-text">{{ getTaskTitle(task) }}</span>
                   <el-icon v-if="tasksStore.isNewlyCompleted(task.task_id)"
                            class="new-star-icon">
                     <StarFilled />
@@ -60,6 +60,10 @@
                   <div class="info-item">
                     <span class="label">{{ taskIdText }}:</span>
                     <span>{{ task.task_id }}</span>
+                  </div>
+                  <div class="info-item" v-if="task.title_text">
+                    <span class="label">{{ titleTextLabel }}:</span>
+                    <span>{{ task.title_text }}</span>
                   </div>
                   <div class="info-item" v-if="task.task_type">
                     <span class="label">{{ taskTypeText }}:</span>
@@ -211,6 +215,7 @@ interface Props {
   cancelText?: string;
   sequenceNumberText?: string;
   taskIdText?: string;
+  titleTextLabel?: string;
 }
 
 withDefaults(defineProps<Props>(), {
@@ -235,7 +240,8 @@ withDefaults(defineProps<Props>(), {
   deleteText: 'Delete',
   cancelText: 'Cancel',
   sequenceNumberText: 'Task #',
-  taskIdText: 'Task ID'
+  taskIdText: 'Task ID',
+  titleTextLabel: 'Title Text'
 });
 
 const emit = defineEmits(['refresh', 'delete', 'cancel']);
@@ -252,14 +258,7 @@ const onCollapseChange = (newNames: string | string[]) => {
 
 const getTaskTitle = (task: Task): string => {
   const taskNumber = task.sequence_number ? `#${task.sequence_number}` : '';
-  const titleText = task.title_text?.trim() || '';
-  const videoTitle = task.video_title?.trim() || '';
-
-  const parts: string[] = [];
-  if (titleText) parts.push(titleText);
-  if (videoTitle && videoTitle !== titleText) parts.push(videoTitle);
-
-  const displayTitle = parts.join(' · ') || task.task_id;
+  const displayTitle = task.video_title?.trim() || task.task_id;
   return `${taskNumber} ${displayTitle} - ${getStatusText(task.status)}`;
 };
 
@@ -423,6 +422,14 @@ const shouldShowImproveButton = (task: Task): boolean => {
   align-items: center;
   gap: 6px;
   overflow: hidden;
+}
+
+.task-title-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .new-star-icon {

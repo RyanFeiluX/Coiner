@@ -38,6 +38,7 @@
         :cancel-text="t('Cancel')"
         :sequence-number-text="t('Task #')"
         :task-id-text="t('Task ID')"
+        :title-text-label="t('Title Text')"
         :start-time-text="t('Start Time')"
         :end-time-text="t('End Time')"
         @refresh="refreshTasks"
