@@ -1059,8 +1059,8 @@ def parse_script_with_llm(script: str, language: str = None, host_visible: bool 
         
         paragraphs = [p.strip() for p in script.split("\n\n") if p.strip()]
         
-        # Limit the number of paragraphs to a reasonable range (5-16)
-        max_scenes = 16
+        # Limit the number of paragraphs to a reasonable range (5-18)
+        max_scenes = 18
         min_scenes = 5
         if len(paragraphs) > max_scenes:
             logger.warning(f"Found {len(paragraphs)} paragraphs, limiting to {max_scenes} scenes")
@@ -1149,15 +1149,15 @@ def parse_script_with_llm(script: str, language: str = None, host_visible: bool 
             logger.info(f"[Scene {i+1} Created Successfully] Lines length: {len(paragraph)} chars, Estimated duration: {duration} seconds")
             current_time += duration
     
-    # Limit the number of scenes to a reasonable range (3-16)
-    max_scenes = 16
+    # Limit the number of scenes to a reasonable range (3-18)
+    max_scenes = 18
     min_scenes = 3
     if len(scenes) > max_scenes:
         logger.warning(f"Found {len(scenes)} scenes, limiting to {max_scenes} scenes")
         scenes = scenes[:max_scenes]
     elif len(scenes) < min_scenes:
         logger.warning(f"Found {len(scenes)} scenes, which is less than the recommended minimum of {min_scenes} scenes")
-    
+
     return {
         "video_title": video_title,
         "scenes": scenes,

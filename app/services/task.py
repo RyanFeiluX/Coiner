@@ -155,7 +155,7 @@ def generate_multi_scene_script(task_id, params):
         video_script = llm.generate_multi_scene_script(
             video_content=params.video_subject,
             language=params.video_language,
-            max_scenes=resolved_options.get("max_scenes", 16),
+            max_scenes=resolved_options.get("max_scenes", 18),
             content_type=content_type_result['content_type'],
             host_visible=host_visible_to_send,
             search_context=search_context,

@@ -961,7 +961,7 @@ You are a senior video director and storyboard designer with 10 years of experie
 
 # Constraints & Workflow
 1. **Audio-First Principle**: Audio (dialogue) is the core, and video and subtitles serve the dialogue. All visual elements and scene designs should enhance the expression of the dialogue.
-2. **Semantic Scene Division**: Analyze the semantic structure of the article, identify logical turning points, and divide the content into 5-15 scenes (including opening, main body, and conclusion)
+2. **Semantic Scene Division**: Analyze the semantic structure of the article, identify logical turning points, and divide the content into 5-18 scenes (including opening, main body, and conclusion)
    - **Opening Scene**: MUST start with a powerful hook — NOT a generic greeting like "大家好" or "Hello everyone". Use one of: a thought-provoking question ("你有没有想过..."), a surprising fact/statistic, a bold controversial statement, or an impactful scene-setting line. Get straight to the point while grabbing attention in the first 3 seconds.
    - Each scene should have complete content and a clear theme, with logical coherence
    - Scene content should be independent and able to clearly express a complete concept or viewpoint
@@ -1037,7 +1037,7 @@ Use this as factual reference, prioritize it over your internal knowledge when t
 def generate_multi_scene_script(
     video_content: str,
     language: str = "",
-    max_scenes: int = 16,
+    max_scenes: int = 18,
     content_type: str = "",
     host_visible: bool = True,
     search_context: str = "",
@@ -1473,8 +1473,8 @@ def parse_multi_scene_script(script_text: str, original_content: str = "") -> Li
             if scenes:
                 logger.info(f"Successfully parsed {len(scenes)} scenes from JSON format")
                 
-                # 限制场景数量在合理范围内 (3-16)
-                max_scenes = 16
+                # 限制场景数量在合理范围内 (3-18)
+                max_scenes = 18
                 min_scenes = 3
                 if len(scenes) > max_scenes:
                     logger.warning(f"Found {len(scenes)} scenes, limiting to {max_scenes} scenes")
@@ -1707,15 +1707,15 @@ def parse_multi_scene_script(script_text: str, original_content: str = "") -> Li
         }
         scenes.append(scene)
 
-    # 限制场景数量在合理范围内 (3-16)
-    max_scenes = 16
+    # 限制场景数量在合理范围内 (3-18)
+    max_scenes = 18
     min_scenes = 3
     if len(scenes) > max_scenes:
         logger.warning(f"Found {len(scenes)} scenes, limiting to {max_scenes} scenes")
         scenes = scenes[:max_scenes]
     elif len(scenes) < min_scenes:
         logger.warning(f"Found {len(scenes)} scenes, which is less than the recommended minimum of {min_scenes} scenes")
-    
+
     logger.info(f"parsed {len(scenes)} scenes from multi-scene script")
     return _deduplicate_scene_ctas(scenes)
 
