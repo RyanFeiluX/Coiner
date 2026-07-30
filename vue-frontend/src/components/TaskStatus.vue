@@ -425,7 +425,7 @@ const shouldShowImproveButton = (task: Task): boolean => {
 }
 
 .task-title-text {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
