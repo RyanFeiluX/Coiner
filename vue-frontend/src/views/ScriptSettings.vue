@@ -991,6 +991,10 @@ defineExpose({
 <style scoped>
 .script-settings {
   width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));
+  gap: 20px;
+  align-items: start;
 }
 
 .card-header {
@@ -1135,7 +1139,7 @@ defineExpose({
 }
 
 .scene-card-container {
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 
 /* 场景管理样式 */
