@@ -128,11 +128,11 @@ def create(audio_file, subtitle_file: str = ""):
     def _estimate_subtitle_max_chars(text: str) -> int:
         """Estimate max chars per subtitle line based on detected script."""
         if not text:
-            return 35
+            return 40
         ascii_chars = sum(1 for c in text if ord(c) < 128)
         if ascii_chars / len(text) > 0.5:
             return 80  # English / Latin scripts
-        return 35  # Chinese / CJK scripts
+        return 40  # Chinese / CJK scripts
 
     def _split_long_segment(seg_text: str, seg_start: float, seg_end: float, max_chars: int = None):
         """Split a long subtitle segment into shorter chunks with proportional timestamps."""

@@ -1316,6 +1316,14 @@ def crop_clip_to_target(clip, target_width, target_height, max_scale=1.10):
     return clip
 
 
+def _is_cjk_text(text):
+    """Check if text is dominated by CJK (non-ASCII) characters."""
+    if not text:
+        return False
+    ascii_chars = sum(1 for c in text if ord(c) < 128)
+    return ascii_chars / len(text) <= 0.5
+
+
 def wrap_text(text, max_width, font="Arial", font_size_px=60, auto_fit=False, min_font_ratio=0.85, balance_lines=True):
     """Wrap text to fit within max_width.
     
@@ -1394,15 +1402,23 @@ def wrap_text(text, max_width, font="Arial", font_size_px=60, auto_fit=False, mi
         # Look for punctuation/space near the greedy split position (backward only, keep first line within max_width)
         best_split_pos = _find_punctuation_split(current_line, best_split_pos, max_width, get_text_size, punctuation_chars)
         
-        # Balanced line breaking: if the second line would be too short, 
+        # Balanced line breaking: if the second line would be too short,
         # try moving words back from line 1 to line 2
         if balance_lines:
             second_line = current_line[best_split_pos:].strip()
             if second_line:
                 w2, _ = get_text_size(second_line)
-                if w2 < max_width * 0.25:
+                min_line_ratio = 0.30
+                min_cjk_chars = 3
+                is_cjk = _is_cjk_text(current_line)
+                needs_balance = w2 < max_width * min_line_ratio
+                if is_cjk and len(second_line) < min_cjk_chars:
+                    needs_balance = True
+                if needs_balance:
                     best_split_pos = _balance_split(
-                        current_line, best_split_pos, max_width, get_text_size, word_boundary_chars
+                        current_line, best_split_pos, max_width, get_text_size, word_boundary_chars,
+                        min_line_width=max_width * min_line_ratio,
+                        min_chars=min_cjk_chars if is_cjk else 0
                     )
         
         line = current_line[:best_split_pos].strip()
@@ -1432,38 +1448,94 @@ def _find_punctuation_split(text, split_pos, max_width, get_text_size, punctuati
     return split_pos
 
 
-def _balance_split(current_line, split_pos, max_width, get_text_size, word_boundary_chars):
+def _balance_split(current_line, split_pos, max_width, get_text_size, word_boundary_chars,
+                   min_line_width=0, min_chars=0):
+    """Search backwards for a better split that satisfies minimum line constraints.
+
+    First tries word boundaries, then falls back to any character position.
+    As a last resort, forcefully moves enough characters to the second line
+    to satisfy the minimum constraints.
+    """
     second_line_remainder = current_line[split_pos:].strip()
-    if not second_line_remainder or len(second_line_remainder) > 3:
+    if not second_line_remainder:
         return split_pos
-    
+
+    w2, _ = get_text_size(second_line_remainder)
+    if w2 >= min_line_width and len(second_line_remainder) >= min_chars:
+        return split_pos
+
     best_pos = split_pos
     best_balance = -1.0
-    
-    # Search backwards from split_pos, preferring word boundaries
-    for candidate in range(split_pos - 1, max(0, split_pos - 15), -1):
+
+    # Phase 1: search backwards from split_pos, preferring word boundaries
+    for candidate in range(split_pos - 1, max(0, split_pos - 20), -1):
         if candidate == 0:
             continue
         ch = current_line[candidate]
         if ch not in word_boundary_chars:
             continue
-        
+
         line1 = current_line[:candidate].strip()
         line2 = current_line[candidate:].strip()
         if not line1 or not line2:
             continue
-        
+
         w1, _ = get_text_size(line1)
         w2, _ = get_text_size(line2)
         if w1 > max_width or w2 > max_width:
             continue
-        
+        if w2 < min_line_width or len(line2) < min_chars:
+            continue
+
         balance = min(w1, w2) / max(w1, w2) if max(w1, w2) > 0 else 0
         if balance > best_balance:
             best_balance = balance
             best_pos = candidate
-    
+
+    # Phase 2: if no word boundary satisfies constraints, allow splitting at any position
+    if best_pos == split_pos:
+        for candidate in range(split_pos - 1, max(0, split_pos - 20), -1):
+            if candidate == 0:
+                continue
+
+            line1 = current_line[:candidate].strip()
+            line2 = current_line[candidate:].strip()
+            if not line1 or not line2:
+                continue
+
+            w1, _ = get_text_size(line1)
+            w2, _ = get_text_size(line2)
+            if w1 > max_width or w2 > max_width:
+                continue
+            if w2 < min_line_width or len(line2) < min_chars:
+                continue
+
+            balance = min(w1, w2) / max(w1, w2) if max(w1, w2) > 0 else 0
+            if balance > best_balance:
+                best_balance = balance
+                best_pos = candidate
+
+    # Phase 3: hard fallback - force enough characters to line 2 so that it
+    # meets the minimum constraints. We search from the closest position to
+    # the original split so the first satisfying position moves the fewest
+    # characters.
+    if best_pos == split_pos:
+        for candidate in range(split_pos - 1, -1, -1):
+            line2 = current_line[candidate:].strip()
+            if not line2:
+                continue
+            w2, _ = get_text_size(line2)
+            if w2 >= min_line_width and len(line2) >= min_chars:
+                line1 = current_line[:candidate].strip()
+                w1, _ = get_text_size(line1)
+                if w1 <= max_width:
+                    best_pos = candidate
+                    break
+            if candidate == 0:
+                break
+
     return best_pos
+
 
 def analyze_video_params(video_path):
     """
