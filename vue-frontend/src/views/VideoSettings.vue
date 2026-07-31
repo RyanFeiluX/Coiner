@@ -8,7 +8,8 @@
       </template>
       
       <div class="settings-form">
-        <div class="form-item">
+        <div class="left-column">
+          <div class="form-item">
           <label class="form-label" v-html="parseLabelMarkdown(t('Video Source'))"></label>
           <el-select v-model="form.videoSource" :placeholder="t('Select video source')" class="form-select">
             <el-option :label="t('Pexels')" value="pexels" />
@@ -108,7 +109,8 @@
             <el-option :label="t('AI')" value="ai" />
           </el-select>
         </div>
-        
+      </div>
+      <div class="right-column">
         <div class="form-group intro-video-background-group">
           <div class="form-item">
             <label class="form-label" v-html="parseLabelMarkdown(t('Intro Video Background Type'))"></label>
@@ -243,6 +245,7 @@
             />
           </div>
         </div>
+      </div>
       </div>
     </el-card>
   </div>
@@ -598,6 +601,22 @@ defineExpose({
 <style scoped>
 .video-settings {
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.video-settings > .el-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.video-settings :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .card-header {
@@ -607,9 +626,24 @@ defineExpose({
 
 
 .settings-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.left-column,
+.right-column {
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.left-column {
+  border-right: 1px solid #e4e7ed;
 }
 
 .form-item {

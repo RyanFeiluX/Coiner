@@ -1,7 +1,7 @@
 <template>
   <div class="script-settings">
     <!-- Script Settings Card -->
-    <el-card :body-style="{ padding: '20px' }" class="main-card">
+    <el-card :body-style="{ padding: '10px 20px 20px 20px' }" class="main-card">
       <template #header>
         <div class="card-header">
           <h2 class="title">✏️ {{ t('Script Settings') }}</h2>
@@ -34,7 +34,7 @@
               <el-option :label="t('Turkish')" value="tr" />
               <el-option :label="t('Vietnamese')" value="vi" />
             </el-select>
-            <el-button size="small" @click="scriptOptionsDialogVisible = true">
+            <el-button class="script-options-button" @click="scriptOptionsDialogVisible = true">
               <el-icon><Setting /></el-icon>
               {{ t('Script Options') }}
             </el-button>
@@ -45,13 +45,12 @@
           <el-button type="primary" class="form-button" @click="handleGenerateVideoScript" :loading="loading.generateScript">{{ t('Generate [Video Script] from Topic') }}</el-button>
         </div>
         
-        <div class="form-item">
+        <div class="form-item form-item-textarea">
           <label class="form-label" v-html="parseLabelMarkdown(t('Video Script'))"></label>
           <el-input
             v-model="form.videoScript"
             :placeholder="t('Enter video script')"
             type="textarea"
-            :rows="6"
             maxlength="10000"
             show-word-limit
             class="form-textarea"
@@ -991,18 +990,44 @@ defineExpose({
 <style scoped>
 .script-settings {
   width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 20px;
+  overflow: hidden;
 }
 
 .card-header {
   margin-bottom: 4px;
 }
 
+.main-card :deep(.el-card__header),
+.scene-card-container :deep(.el-card__header) {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
 
+.main-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.main-card :deep(.el-card__body) {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 
 .settings-form {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  flex: 1;
+  min-height: 0;
 }
 
 .form-item {
@@ -1013,9 +1038,16 @@ defineExpose({
   padding: 0;
 }
 
+.form-item-textarea {
+  flex: 1;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+}
+
 .form-label {
   font-size: 14px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   margin-top: 0;
   padding: 0;
 }
@@ -1032,10 +1064,16 @@ defineExpose({
 .form-textarea {
   width: 100%;
   margin-top: 0;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.form-textarea :deep(.el-textarea) {
-  margin-top: 0;
+.form-textarea :deep(.el-textarea__inner) {
+  flex: 1;
+  min-height: 80px !important;
+  resize: none;
 }
 
 .form-select {
@@ -1068,7 +1106,12 @@ defineExpose({
 .language-row {
   display: flex;
   gap: 8px;
-  align-items: flex-start;
+  align-items: center;
+}
+
+.script-options-button {
+  height: 32px;
+  padding: 0 16px;
 }
 
 .language-select {
@@ -1124,7 +1167,7 @@ defineExpose({
 
 .form-label {
   font-size: 14px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   margin-top: 0;
   padding: 0;
 }
@@ -1135,7 +1178,18 @@ defineExpose({
 }
 
 .scene-card-container {
-  margin-bottom: 20px;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scene-card-container :deep(.el-card__body) {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* 场景管理样式 */
@@ -1143,6 +1197,9 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 15px;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .scene-actions {
@@ -1162,6 +1219,9 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 15px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .scene-card {
@@ -1207,7 +1267,7 @@ defineExpose({
 
 .scene-content .form-label {
   font-size: 14px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   margin-top: 0;
   padding: 0;
 }

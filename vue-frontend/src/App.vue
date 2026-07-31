@@ -67,11 +67,13 @@
         </el-aside>
         
         <el-main class="app-content">
-          <router-view v-slot="{ Component }">
-            <transition name="fade">
-              <component :is="Component" />
-            </transition>
-          </router-view>
+          <div class="page-router">
+            <router-view v-slot="{ Component }">
+              <transition name="fade">
+                <component :is="Component" />
+              </transition>
+            </router-view>
+          </div>
           
           <div class="app-actions" v-if="$route.path !== '/task' && $route.path !== '/logs' && $route.path !== '/scene'">
             <el-button type="danger" size="large" @click="generateVideo" :loading="isGenerating">
@@ -341,10 +343,16 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+:global(body) {
+  margin: 0;
+}
+
 .app {
   min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .app-header {
@@ -359,7 +367,7 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   height: 64px;
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
   width: 100%;
 }
@@ -397,36 +405,66 @@ onUnmounted(() => {
 
 .app-main {
   flex: 1;
-  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  max-width: 1600px;
   width: 100%;
   margin: 0 auto;
   padding: 20px;
+  min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
-.app-sidebar {
+.app-main > .el-container {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-sidebar.el-aside {
   background-color: #f5f5f5;
   border-right: 1px solid #e8e8e8;
+  height: 100%;
+  overflow-y: auto;
 }
 
 .sidebar-menu {
   height: 100%;
 }
 
-.app-content {
+.app-content.el-main {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   padding: 0 20px;
+}
+
+.page-router {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .app-actions {
   margin-top: 30px;
   text-align: center;
+  flex-shrink: 0;
 }
 
 .app-footer {
   background-color: #f5f5f5;
   border-top: 1px solid #e8e8e8;
-  padding: 20px;
+  padding: 4px 20px;
   text-align: center;
   margin-top: auto;
+}
+
+.app-footer p {
+  margin: 0;
+  line-height: 1.5;
 }
 
 .fade-enter-active,
@@ -440,20 +478,40 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
+  .app {
+    height: auto;
+    overflow: visible;
+  }
+
   .app-main {
     flex-direction: column;
+    overflow: visible;
   }
-  
-  .app-sidebar {
+
+  .app-main > .el-container {
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  .app-sidebar.el-aside {
     width: 100% !important;
     height: auto;
+    overflow-y: visible;
   }
-  
+
   .sidebar-menu {
     display: flex;
     overflow-x: auto;
   }
-  
+
+  .app-content.el-main {
+    overflow: visible;
+  }
+
+  .page-router {
+    overflow-y: visible;
+  }
+
   .el-menu-item {
     white-space: nowrap;
   }

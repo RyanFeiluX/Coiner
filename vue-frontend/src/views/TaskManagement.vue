@@ -17,47 +17,52 @@
         style="margin-bottom: 16px;"
       />
 
-      <TaskStatus
-        :tasks="tasks"
-        :loading="loading"
-        :error="error"
-        :title="t('Task List')"
-        :refreshable="true"
-        :refresh-text="t('Refresh')"
-        :loading-text="t('Loading tasks...')"
-        :retry-text="t('Retry')"
-        :empty-text="t('No tasks')"
-        :status-text="t('Status')"
-        :task-type-text="t('Task Type')"
-        :progress-text="t('Progress')"
-        :created-at-text="t('Created At')"
-        :updated-at-text="t('Updated At')"
-        :error-text="t('Error')"
-        :download-text="t('Download')"
-        :delete-text="t('Delete')"
-        :cancel-text="t('Cancel')"
-        :sequence-number-text="t('Task #')"
-        :task-id-text="t('Task ID')"
-        :title-text-label="t('Title Text')"
-        :start-time-text="t('Start Time')"
-        :end-time-text="t('End Time')"
-        @refresh="refreshTasks"
-        @delete="deleteTask"
-        @cancel="cancelTask"
-      />
-      
-      <div class="task-stats" v-if="tasks.length > 0">
-        <el-card :body-style="{ padding: '15px' }">
-          <div class="stats-header">
-            <span>{{ t('Task Statistics') }}</span>
+      <div class="task-columns">
+        <div class="left-column">
+          <TaskStatus
+            :tasks="tasks"
+            :loading="loading"
+            :error="error"
+            :title="t('Task List')"
+            :refreshable="true"
+            :refresh-text="t('Refresh')"
+            :loading-text="t('Loading tasks...')"
+            :retry-text="t('Retry')"
+            :empty-text="t('No tasks')"
+            :status-text="t('Status')"
+            :task-type-text="t('Task Type')"
+            :progress-text="t('Progress')"
+            :created-at-text="t('Created At')"
+            :updated-at-text="t('Updated At')"
+            :error-text="t('Error')"
+            :download-text="t('Download')"
+            :delete-text="t('Delete')"
+            :cancel-text="t('Cancel')"
+            :sequence-number-text="t('Task #')"
+            :task-id-text="t('Task ID')"
+            :title-text-label="t('Title Text')"
+            :start-time-text="t('Start Time')"
+            :end-time-text="t('End Time')"
+            @refresh="refreshTasks"
+            @delete="deleteTask"
+            @cancel="cancelTask"
+          />
+        </div>
+        <div class="right-column">
+          <div class="task-stats" v-if="tasks.length > 0">
+            <el-card :body-style="{ padding: '15px' }">
+              <div class="stats-header">
+                <span>{{ t('Task Statistics') }}</span>
+              </div>
+              <div class="stats-content">
+                <el-statistic :value="tasks.length" :title="t('Total Tasks')" />
+                <el-statistic :value="runningTasks.length" :title="t('Running Tasks')" />
+                <el-statistic :value="completedTasks.length" :title="t('Completed Tasks')" />
+                <el-statistic :value="failedTasks.length" :title="t('Failed Tasks')" />
+              </div>
+            </el-card>
           </div>
-          <div class="stats-content">
-            <el-statistic :value="tasks.length" :title="t('Total Tasks')" />
-            <el-statistic :value="runningTasks.length" :title="t('Running Tasks')" />
-            <el-statistic :value="completedTasks.length" :title="t('Completed Tasks')" />
-            <el-statistic :value="failedTasks.length" :title="t('Failed Tasks')" />
-          </div>
-        </el-card>
+        </div>
       </div>
     </el-card>
   </div>
@@ -124,7 +129,7 @@ onUnmounted(() => {
 <style scoped>
 .task-management {
   width: 100%;
-  height: calc(100vh - 104px);
+  height: 100%;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -144,6 +149,34 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+.task-columns {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 20px;
+  overflow: hidden;
+}
+
+.left-column {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.left-column .task-status {
+  flex: 1;
+  min-height: 0;
+}
+
+.right-column {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -151,7 +184,7 @@ onUnmounted(() => {
 }
 
 .task-stats {
-  margin-top: 30px;
+  margin-top: 0;
 }
 
 .stats-header {
@@ -159,8 +192,8 @@ onUnmounted(() => {
 }
 
 .stats-content {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 </style>

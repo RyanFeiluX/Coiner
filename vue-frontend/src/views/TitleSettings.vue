@@ -7,8 +7,9 @@
         </div>
       </template>
       
-      <div class="settings-form">
-        <div class="form-item">
+      <div class="settings-form" :class="{ 'has-preview': form.titleEnabled }">
+        <div class="left-column">
+          <div class="form-item">
           <label class="form-label">
             <el-checkbox v-model="form.titleEnabled" />
             {{ t('Enable Title') }}
@@ -316,7 +317,9 @@
               <el-option :label="t('Right')" value="right" />
             </el-select>
           </div>
-          
+        </div>
+      </div>
+      <div v-if="form.titleEnabled" class="right-column">
           <div class="preview-section">
             <h3>{{ t('Preview') }} <span v-if="isLoadingPreview" style="font-size:12px;color:#909399;font-weight:normal;">(loading...)</span></h3>
             <div class="preview-container">
@@ -991,6 +994,22 @@ defineExpose({
 <style scoped>
 .title-settings {
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.title-settings > .el-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.title-settings :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .card-header {
@@ -998,9 +1017,29 @@ defineExpose({
 }
 
 .settings-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.settings-form.has-preview {
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.left-column,
+.right-column {
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.settings-form.has-preview .left-column {
+  border-right: 1px solid #e4e7ed;
 }
 
 .form-item {
@@ -1199,9 +1238,9 @@ defineExpose({
 }
 
 .preview-section {
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px dashed #e4e7ed;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 
 .preview-section h3 {
