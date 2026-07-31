@@ -8,8 +8,9 @@
       </template>
 
       <div class="settings-form">
-        <div class="form-item">
-          <label class="form-label">{{ t('TTS Server') }}</label>
+        <div class="left-column">
+          <div class="form-item">
+            <label class="form-label">{{ t('TTS Server') }}</label>
           <el-select v-model="form.ttsServer" :placeholder="t('Select TTS server')" class="form-select" @change="onTtsServerChange">
             <el-option :label="t('Azure TTS V1')" value="azure-tts-v1" />
             <el-option :label="t('Azure TTS V2')" value="azure-tts-v2" />
@@ -178,7 +179,8 @@
             </el-alert>
           </div>
         </div>
-
+      </div>
+      <div class="right-column">
         <div class="form-item">
           <label class="form-label">{{ t('Speaking Volume (1.0 means 100%)') }}</label>
           <el-select v-model="form.speechVolume" :placeholder="t('Select volume')" class="form-select">
@@ -269,6 +271,7 @@
             <el-option label="1.0" value="1.0" />
           </el-select>
         </div>
+      </div>
       </div>
     </el-card>
   </div>
@@ -678,6 +681,17 @@ defineExpose({
 
 
 .settings-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.left-column,
+.right-column {
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
