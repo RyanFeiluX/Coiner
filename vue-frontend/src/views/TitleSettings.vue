@@ -991,6 +991,22 @@ defineExpose({
 <style scoped>
 .title-settings {
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.title-settings > .el-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.title-settings :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .card-header {

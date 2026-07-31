@@ -598,6 +598,22 @@ defineExpose({
 <style scoped>
 .video-settings {
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.video-settings > .el-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.video-settings :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .card-header {

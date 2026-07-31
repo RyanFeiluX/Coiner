@@ -425,6 +425,22 @@ defineExpose({
 <style scoped>
 .subtitle-settings {
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.subtitle-settings > .el-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.subtitle-settings :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .card-header {

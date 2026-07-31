@@ -653,6 +653,22 @@ defineExpose({
 <style scoped>
 .audio-settings {
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.audio-settings > .el-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.audio-settings :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .card-header {
