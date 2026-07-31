@@ -1,6 +1,6 @@
 <template>
   <div class="logs-view">
-    <el-card :body-style="{ padding: '20px' }">
+    <el-card class="logs-card" :body-style="{ padding: '20px' }">
       <template #header>
         <div class="card-header">
           <h2 class="title">{{ t('Running Logs') }}</h2>
@@ -191,7 +191,24 @@ onUnmounted(() => {
 
 <style scoped>
 .logs-view {
-  padding: 20px 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.logs-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.logs-card :deep(.el-card__body) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .card-header {
@@ -208,6 +225,7 @@ onUnmounted(() => {
 
 .logs-filter {
   margin-bottom: 20px;
+  flex-shrink: 0;
 }
 
 .filter-row {
@@ -228,7 +246,8 @@ onUnmounted(() => {
   border: 1px solid #e8e8e8;
   border-radius: 4px;
   padding: 10px;
-  max-height: 400px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   background-color: #fafafa;
   font-family: monospace;
@@ -290,5 +309,6 @@ onUnmounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+  flex-shrink: 0;
 }
 </style>
