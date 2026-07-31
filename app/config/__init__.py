@@ -79,7 +79,7 @@ def __init_logger():
         )
         return _format
 
-    logger.remove()
+    logger.remove(0)
     logger.add(
         sys.stdout,
         level=_console_lvl,
