@@ -7,7 +7,8 @@
         </div>
       </template>
       
-      <div class="settings-form">
+      <div class="settings-form" :class="{ 'has-preview': form.enableSubtitles }">
+        <div class="left-column">
         <div class="form-item">
           <el-checkbox v-model="form.enableSubtitles">{{ t('Enable Subtitles') }}</el-checkbox>
         </div>
@@ -107,6 +108,8 @@
           </el-tooltip>
         </div>
         
+        </div>
+        <div v-if="form.enableSubtitles" class="right-column">
         <div v-if="form.enableSubtitles" class="preview-section">
           <h3>{{ t('Preview') }} <span v-if="isLoadingPreview" style="font-size:12px;color:#909399;font-weight:normal;">(loading...)</span></h3>
           <div class="preview-container">
@@ -127,6 +130,7 @@
             </div>
           </div>
         </div>
+      </div>
       </div>
     </el-card>
   </div>
@@ -448,6 +452,22 @@ defineExpose({
 }
 
 .settings-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.settings-form.has-preview {
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.left-column,
+.right-column {
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -502,9 +522,9 @@ defineExpose({
 }
 
 .preview-section {
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px dashed #e4e7ed;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 
 .preview-section h3 {
