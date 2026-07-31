@@ -1038,6 +1038,10 @@ defineExpose({
   gap: 16px;
 }
 
+.settings-form.has-preview .left-column {
+  border-right: 1px solid #e4e7ed;
+}
+
 .form-item {
   display: flex;
   flex-direction: column;

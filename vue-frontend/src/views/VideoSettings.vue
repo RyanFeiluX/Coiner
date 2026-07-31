@@ -642,6 +642,10 @@ defineExpose({
   gap: 16px;
 }
 
+.left-column {
+  border-right: 1px solid #e4e7ed;
+}
+
 .form-item {
   display: flex;
   flex-direction: column;
