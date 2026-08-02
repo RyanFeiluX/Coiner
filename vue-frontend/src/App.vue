@@ -196,6 +196,7 @@ const generateVideo = async () => {
       intro_video_original_path: scene.introVideoOriginalPath || scene.intro_video_original_path,
       intro_duration: scene.introVideoDuration || scene.intro_duration || 10,
       intro_video_cover_full: scene.introVideoCoverFull || false,
+      use_locallens: scene.useLocallens || scene.use_locallens || false,
     }));
     
     const hasScenes = scenes.length > 0;
@@ -335,10 +336,12 @@ onMounted(async () => {
   await settingsStore.checkBackendHealth();
   await settingsStore.fetchVersion();
   await settingsStore.fetchConfig();
+  settingsStore.startLocallensPolling();
 });
 
 onUnmounted(() => {
   isGenerating.value = false;
+  settingsStore.stopLocallensPolling();
 });
 </script>
 

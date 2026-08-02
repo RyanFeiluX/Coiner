@@ -170,6 +170,11 @@ export const apiService = {
     return response.data;
   },
 
+  getLocallensStatus: async (): Promise<ApiResponse> => {
+    const response = await api.get('/locallens/status');
+    return response.data;
+  },
+
   updateConfig: async (cfg: any): Promise<ApiResponse> => {
     const response = await api.put('/config', cfg);
     return response.data;
