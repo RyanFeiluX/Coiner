@@ -223,7 +223,7 @@
         
         <div v-if="clonedVoices.length === 0" class="empty-state">
           <el-empty 
-            description="No cloned voices configured. Click 'Add Voice' or 'Import JSON' to add."
+            :description="t('No cloned voices configured')"
           />
         </div>
         
@@ -234,11 +234,11 @@
           class="mt-4"
           :max-height="300"
         >
-          <el-table-column label="Display Name" prop="displayName" />
-          <el-table-column label="Voice ID" prop="voiceId" width="300" />
-          <el-table-column label="Gender" prop="gender" />
-          <el-table-column label="Model" prop="model" width="200" />
-          <el-table-column label="Actions" width="120">
+          <el-table-column :label="t('Display Name')" prop="displayName" />
+          <el-table-column :label="t('Voice ID')" prop="voiceId" width="300" />
+          <el-table-column :label="t('Gender')" prop="gender" />
+          <el-table-column :label="t('Model')" prop="model" width="200" />
+          <el-table-column :label="t('Actions')" width="120">
             <template #default="scope">
               <el-button 
                 size="small" 
@@ -273,9 +273,9 @@
           </el-form-item>
           <el-form-item :label="t('Gender')">
             <el-select v-model="voiceForm.gender">
-              <el-option label="Male" value="Male" />
-              <el-option label="Female" value="Female" />
-              <el-option label="Unknown" value="" />
+              <el-option :label="t('Male')" value="Male" />
+              <el-option :label="t('Female')" value="Female" />
+              <el-option :label="t('Unknown')" value="" />
             </el-select>
           </el-form-item>
           <el-form-item :label="t('Model')" required>
