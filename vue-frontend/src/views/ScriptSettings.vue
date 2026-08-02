@@ -77,6 +77,17 @@
           <el-button size="small" @click="exportScenes">{{ t('Export Scenes') }}</el-button>
           <el-button size="small" @click="triggerImport">{{ t('Import Scenes') }}</el-button>
           <el-button size="small" type="danger" @click="clearScenes">{{ t('Clear Scenes') }}</el-button>
+          <el-tooltip :content="locallensTooltip" placement="top">
+            <div class="locallens-toggle" :class="{ disabled: !locallensAvailable || scenes.length === 0 }">
+              <span>{{ t('Local Search') }}</span>
+              <el-switch
+                v-model="allLocallensOn"
+                :disabled="!locallensAvailable || scenes.length === 0"
+                :indeterminate="someLocallensOn"
+                @change="onAllLocallensToggle"
+              />
+            </div>
+          </el-tooltip>
           <input
             ref="fileInput"
             type="file"
@@ -106,6 +117,10 @@
             <div class="scene-header">
               <div class="scene-title">{{ t('Scene') }} {{ index + 1 }}</div>
               <div class="scene-header-actions">
+                <div class="locallens-toggle" :class="{ disabled: !locallensAvailable }">
+                  <span>{{ t('Local Search') }}</span>
+                  <el-switch v-model="scene.useLocallens" :disabled="!locallensAvailable" />
+                </div>
                 <el-button size="small" @click="deleteScene(index)">{{ t('Delete') }}</el-button>
                 <el-button size="small" @click="copyScene(index)">{{ t('Copy') }}</el-button>
                 <el-button size="small" @click="moveSceneUp(index)" :disabled="index === 0">{{ t('Move Up') }}</el-button>
@@ -400,6 +415,7 @@ interface Scene {
   introVideoOriginalPath?: string;
   introVideoDuration?: number;
   introVideoCoverFull?: boolean;
+  useLocallens?: boolean;
 }
 
 const addNewScene = () => {
@@ -412,7 +428,8 @@ const addNewScene = () => {
     script: '',
     introVideo: undefined,
     introVideoDuration: 10,
-    introVideoCoverFull: false
+    introVideoCoverFull: false,
+    useLocallens: false
   };
   scriptStore.addScene(newScene);
 };
@@ -433,13 +450,50 @@ const copyScene = (index: number) => {
     introVideo: sceneToCopy.introVideo,
     introVideoOriginalPath: sceneToCopy.introVideoOriginalPath,
     introVideoDuration: sceneToCopy.introVideoDuration,
-    introVideoCoverFull: sceneToCopy.introVideoCoverFull
+    introVideoCoverFull: sceneToCopy.introVideoCoverFull,
+    useLocallens: sceneToCopy.useLocallens
   };
   // Copy to index+1 position
   const newScenes = [...scenes.value];
   newScenes.splice(index + 1, 0, copiedScene);
   scriptStore.updateScenes(newScenes);
 };
+
+const locallensAvailable = computed(() => settingsStore.locallensAvailable);
+
+// Whether every scene currently has local search enabled (drives the global toggle).
+const allLocallensOn = computed({
+  get: () => scenes.value.length > 0 && scenes.value.every(s => !!s.useLocallens),
+  set: (value: boolean) => {
+    const newScenes = scenes.value.map(s => ({ ...s, useLocallens: value }));
+    scriptStore.updateScenes(newScenes);
+  }
+});
+
+// True when at least one (but not all) scene has local search enabled (indeterminate state).
+const someLocallensOn = computed(() => {
+  const onCount = scenes.value.filter(s => !!s.useLocallens).length;
+  return onCount > 0 && onCount < scenes.value.length;
+});
+
+// Sync per-scene switches when the global toggle is flipped.
+const onAllLocallensToggle = (value: boolean | string) => {
+  ElMessage.success(value ? t('All scenes local search enabled') : t('All scenes local search disabled'));
+};
+
+const locallensTooltip = computed(() => {
+  if (scenes.value.length === 0) {
+    return t('Add a scene first to enable local search');
+  }
+  const baseUrl = settingsStore.locallensBaseUrl || t('LocalLens server');
+  if (settingsStore.locallensStatus === 'online') {
+    return t('LocalLens server online') + ' (' + baseUrl + ')';
+  }
+  if (settingsStore.locallensStatus === 'offline') {
+    return t('LocalLens server unavailable, local search disabled');
+  }
+  return t('Probing LocalLens server...');
+});
 
 const moveSceneUp = (index: number) => {
   if (index > 0) {
@@ -1249,6 +1303,23 @@ defineExpose({
 .scene-header-actions {
   display: flex;
   gap: 5px;
+  align-items: center;
+}
+
+.locallens-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 10px;
+  padding-right: 10px;
+  border-right: 1px solid #e0e0e0;
+  font-size: 13px;
+  color: #555;
+  white-space: nowrap;
+}
+
+.locallens-toggle.disabled span {
+  color: #bbb;
 }
 
 .scene-content {

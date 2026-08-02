@@ -114,6 +114,7 @@ interface VersionInfo {
 }
 
 type BackendStatus = 'unknown' | 'checking' | 'online' | 'offline';
+type LocallensStatus = 'unknown' | 'online' | 'offline';
 
 export const useSettingsStore = defineStore('settings', {
   state: (): {
@@ -128,12 +129,21 @@ export const useSettingsStore = defineStore('settings', {
     version: VersionInfo | null;
     backendStatus: BackendStatus;
     lastHealthCheck: number;
+    locallensStatus: LocallensStatus;
+    locallensBaseUrl: string;
+    locallensEnabled: boolean;
+    _locallensTimer: number | null;
   } => ({
     // Version information
     version: null,
     // Backend health status
     backendStatus: 'unknown',
     lastHealthCheck: 0,
+    // LocalLens external server status
+    locallensStatus: 'unknown',
+    locallensBaseUrl: '',
+    locallensEnabled: false,
+    _locallensTimer: null,
     // App settings
     app: {
       llmProvider: 'openai',
@@ -265,7 +275,11 @@ export const useSettingsStore = defineStore('settings', {
         return state.videoSources.pixabayApiKeys;
       }
       return [];
-    }
+    },
+
+    locallensAvailable: (state): boolean => {
+      return state.locallensStatus === 'online';
+    },
   },
   
   actions: {
@@ -438,6 +452,38 @@ export const useSettingsStore = defineStore('settings', {
         return true;
       }
       return await this.checkBackendHealth();
+    },
+
+    async fetchLocallensStatus(): Promise<boolean> {
+      try {
+        const response = await apiService.getLocallensStatus();
+        const data = response?.data;
+        this.locallensStatus = data && data.available ? 'online' : 'offline';
+        if (data?.base_url) {
+          this.locallensBaseUrl = data.base_url;
+        }
+        if (typeof data?.enabled === 'boolean') {
+          this.locallensEnabled = data.enabled;
+        }
+        return this.locallensStatus === 'online';
+      } catch (error) {
+        console.warn('Failed to fetch LocalLens status:', error);
+        this.locallensStatus = 'offline';
+        return false;
+      }
+    },
+
+    startLocallensPolling(intervalMs: number = 10000) {
+      this.stopLocallensPolling();
+      this.fetchLocallensStatus();
+      this._locallensTimer = window.setInterval(() => this.fetchLocallensStatus(), intervalMs);
+    },
+
+    stopLocallensPolling() {
+      if (this._locallensTimer) {
+        clearInterval(this._locallensTimer);
+        this._locallensTimer = null;
+      }
     },
     
     async fetchVersion() {

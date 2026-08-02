@@ -18,6 +18,7 @@ from app.utils import utils
 
 # Import log_service to register the logger handler
 from app.services import log_service  # noqa: F401
+from app.services import locallens
 
 
 def exception_handler(request: Request, e: HttpException):
@@ -111,11 +112,13 @@ def _periodic_storage_cleanup():
 @app.on_event("shutdown")
 def shutdown_event():
     logger.info("shutdown event")
+    locallens.stop_monitor()
 
 
 @app.on_event("startup")
 def startup_event():
     logger.info("startup event")
+    locallens.start_monitor()
     utils.cleanup_stale_previews()
     utils.cleanup_stale_local_videos()
     utils.cleanup_stale_cache_videos()

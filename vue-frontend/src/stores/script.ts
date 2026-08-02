@@ -11,6 +11,7 @@ interface Scene {
   introVideoOriginalPath?: string;
   introVideoDuration?: number;
   introVideoCoverFull?: boolean;
+  useLocallens?: boolean;
 }
 
 export interface ScriptSettings {

@@ -128,6 +128,7 @@ def save_config():
     _cfg["ui"] = ui
     _cfg["video"] = video
     _cfg["storage"] = storage
+    _cfg["locallens"] = locallens
 
     secrets_data = {}
     for section, keys in SECRET_KEYS.items():
@@ -182,6 +183,14 @@ storage = _cfg.get("storage", {
     "cache_videos_ttl_days": 7,
     "cache_downscaled_ttl_days": 7,
     "temp_ttl_hours": 1,
+})
+
+locallens = _cfg.get("locallens", {
+    "base_url": "http://127.0.0.1",
+    "port": 8123,
+    "enabled": False,
+    "probe_interval_seconds": 10,
+    "timeout_seconds": 3,
 })
 
 # Migrate audio keys that may still be in [ui] or [app] from older configs

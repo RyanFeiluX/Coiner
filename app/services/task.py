@@ -19,6 +19,8 @@ from app.config.config import load_config
 from app.models import const
 from app.models.schema import Scene, VideoConcatMode, VideoParams
 from app.services import keyword_utils, llm, material, subtitle, video, voice
+from app.services import local_collector
+from app.services import locallens
 from app.services import state as sm
 from app.services.material import extract_style_keyword
 from app.services.scene_parser import detect_content_type, ContentType
@@ -509,18 +511,40 @@ def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_
     downloaded_videos = []
     local_materials = []
     supplement_videos = []
-    
+
     # Use global video style keyword from params
     style_keyword = params.video_style
     if style_keyword and style_keyword != "none":
         logger.info(f"Using global video style keyword: {style_keyword}")
     else:
         logger.info("No global video style keyword provided")
-    
+
     local_materials = []
     has_local_materials = False
-    
-    if params.video_source == "local" or (params.video_materials and len(params.video_materials) > 0):
+    locallens_materials = []
+
+    # Required material count is derived from the audio duration.
+    needed_count = max(1, int(math.ceil(audio_duration / max(params.video_clip_duration, 1))))
+    logger.info(f"scene {scene_num}: required material count by audio duration: {needed_count}")
+
+    # LocalLens local-material search: per-scene toggle with a global fallback.
+    locallens_enabled = bool(scene.get("use_locallens", config.locallens.get("enabled", False)))
+    if locallens_enabled and locallens.is_available():
+        logger.info(f"scene {scene_num}: [LocalLens] local search enabled, target {needed_count} assets")
+        try:
+            locallens_materials = local_collector.collect_local_assets(
+                locallens.LocallensClient(),
+                scene_keywords,
+                used_local_materials,
+                needed_count,
+            )
+            logger.success(f"scene {scene_num}: [LocalLens] collected {len(locallens_materials)} local assets")
+        except Exception as e:
+            logger.error(f"scene {scene_num}: [LocalLens] local collection failed: {e}")
+    elif locallens_enabled:
+        logger.warning(f"scene {scene_num}: [LocalLens] enabled but server unavailable, skipping local search")
+
+    if params.video_source == "local" or (params.video_materials and len(params.video_materials) > 0) or locallens_enabled:
         # For local source or when local materials are provided, use them first
         logger.info(f"scene {scene_num}: processing local materials. Video materials count: {len(params.video_materials) if params.video_materials else 0}")
         logger.info(f"scene {scene_num}: already used local materials: {len(used_local_materials)}")
@@ -539,6 +563,11 @@ def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_
                     logger.info(f"scene {scene_num}: available material: {os.path.basename(m.url)}")
                 else:
                     logger.info(f"scene {scene_num}: skipping used material: {os.path.basename(m.url)}")
+
+        # LocalLens assets are an independent supplement to the user-provided list.
+        for m in locallens_materials:
+            if m.url not in [av.url for av in available_materials]:
+                available_materials.append(m)
         
         logger.info(f"scene {scene_num}: available materials after filtering: {len(available_materials)}")
         
@@ -589,30 +618,37 @@ def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_
     online_source = "pexels"
     target_online_clips = 0
 
+    effective_duration = audio_duration - (intro_dur if intro_exists and not intro_cover_full and intro_dur < audio_duration else 0)
+
     if intro_sufficient:
         logger.info(f"scene {scene_num}: intro video sufficient for audio ({audio_duration:.2f}s), skipping online download")
+    elif locallens_enabled:
+        # LocalLens is the primary source; supplement online only when short of the audio-derived target.
+        if params.video_source != "local":
+            online_source = params.video_source
+        if len(local_materials) >= needed_count:
+            logger.info(f"scene {scene_num}: [LocalLens] local materials ({len(local_materials)}) >= required ({needed_count}), no supplement videos needed")
+        else:
+            logger.info(f"scene {scene_num}: [LocalLens] local materials ({len(local_materials)}) less than required ({needed_count}), downloading supplement videos from {online_source}")
+            should_download_online = True
+            target_online_clips = max(1, needed_count - len(local_materials))
     elif params.video_source == "local":
         # If local source but no local materials, download online videos
         if len(local_materials) == 0:
             logger.warning(f"scene {scene_num}: no local materials available, downloading online videos from {online_source}")
             should_download_online = True
-            # Calculate how many online clips are needed
-            effective_duration = audio_duration - (intro_dur if intro_exists and not intro_cover_full and intro_dur < audio_duration else 0)
             target_online_clips = max(1, int(math.ceil(effective_duration / params.video_clip_duration)))
-        elif len(local_materials) < len(scene_keywords):
-            logger.info(f"scene {scene_num}: local materials ({len(local_materials)}) less than keywords ({len(scene_keywords)}), downloading supplement videos from {online_source}")
+        elif len(local_materials) < needed_count:
+            logger.info(f"scene {scene_num}: local materials ({len(local_materials)}) less than required ({needed_count}), downloading supplement videos from {online_source}")
             should_download_online = True
-            # Calculate how many online clips are needed to supplement
-            target_online_clips = max(1, len(scene_keywords) - len(local_materials))
+            target_online_clips = max(1, needed_count - len(local_materials))
         else:
-            logger.info(f"scene {scene_num}: local materials ({len(local_materials)}) >= keywords ({len(scene_keywords)}), no supplement videos needed")
+            logger.info(f"scene {scene_num}: local materials ({len(local_materials)}) >= required ({needed_count}), no supplement videos needed")
     else:
         # Non-local source, always download
         online_source = params.video_source
         logger.info(f"scene {scene_num}: using {online_source} as video source, downloading videos")
         should_download_online = True
-        # Calculate how many online clips are needed
-        effective_duration = audio_duration - (intro_dur if intro_exists and not intro_cover_full and intro_dur < audio_duration else 0)
         target_online_clips = max(1, int(math.ceil(effective_duration / params.video_clip_duration)))
     
     supplement_videos = []
@@ -748,7 +784,16 @@ def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_
     elif has_local_materials and available_materials and not used_local_paths:
         # No local materials were used (e.g., intro video was sufficient)
         logger.info(f"scene {scene_num}: no local materials were used in the video (intro video may be sufficient)")
-    
+
+    # Mark LocalLens assets as consumed so later scenes never reuse them.
+    if locallens_enabled and locallens_materials:
+        for m in locallens_materials:
+            if m.url in used_local_materials:
+                continue
+            used_local_materials.add(m.url)
+            logger.info(f"scene {scene_num}: [LocalLens] marked asset as used: {os.path.basename(m.url)}")
+        logger.info(f"scene {scene_num}: [LocalLens] total used local assets now: {len(used_local_materials)}")
+
     # Return scene result
     return {
         "scene_id": scene_id,
