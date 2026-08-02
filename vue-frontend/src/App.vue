@@ -130,10 +130,10 @@ const backendStatusType = computed(() => {
 
 const backendStatusText = computed(() => {
   switch (settingsStore.backendStatus) {
-    case 'online': return 'Backend Online';
-    case 'offline': return 'Backend Offline';
-    case 'checking': return 'Checking...';
-    default: return 'Unknown';
+    case 'online': return t('Backend Online');
+    case 'offline': return t('Backend Offline');
+    case 'checking': return t('Checking...');
+    default: return t('Unknown');
   }
 });
 
