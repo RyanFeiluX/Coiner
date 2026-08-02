@@ -14,12 +14,16 @@ def get_locallens_status(request: Request):
     """Return server reachability, config and feature flags used by the UI
     to enable/disable the per-scene local-search toggles."""
     try:
+        status = locallens.get_status()
         return utils.get_response(
             200,
             {
-                "available": locallens.is_available(),
-                "base_url": locallens.get_base_url(),
+                "available": status["available"],
+                "base_url": status["base_url"],
                 "enabled": config.locallens.get("enabled", False),
+                "last_probe_ts": status["last_probe_ts"],
+                "probe_count": status["probe_count"],
+                "last_latency_ms": status["last_latency_ms"],
             },
         )
     except Exception as e:

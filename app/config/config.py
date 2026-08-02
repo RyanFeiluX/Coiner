@@ -191,6 +191,7 @@ locallens = _cfg.get("locallens", {
     "enabled": False,
     "probe_interval_seconds": 10,
     "timeout_seconds": 3,
+    "probe_heartbeat_interval_seconds": 300,
 })
 
 # Migrate audio keys that may still be in [ui] or [app] from older configs

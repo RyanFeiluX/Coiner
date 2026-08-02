@@ -47,6 +47,8 @@
     "Import Intro Video": "Import Intro Video",
     "Add New Scene": "Add New Scene",
     "Local Search": "Local Search",
+    "Global Local Search": "Global Local Search",
+    "Some scenes local search enabled": "Local search enabled for some scenes",
     "Enable All Scenes": "Enable All Scenes",
     "All scenes local search enabled": "All scenes local search enabled",
     "All scenes local search disabled": "All scenes local search disabled",

@@ -47,6 +47,8 @@
     "Import Intro Video": "导入片头视频",
     "Add New Scene": "添加新场景",
     "Local Search": "本地搜索",
+    "Global Local Search": "全局本地搜索",
+    "Some scenes local search enabled": "部分场景已启用本地搜索",
     "Enable All Scenes": "全部启用本地搜索",
     "All scenes local search enabled": "已为所有场景启用本地搜索",
     "All scenes local search disabled": "已为所有场景关闭本地搜索",

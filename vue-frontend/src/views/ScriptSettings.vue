@@ -79,11 +79,11 @@
           <el-button size="small" type="danger" @click="clearScenes">{{ t('Clear Scenes') }}</el-button>
           <el-tooltip :content="locallensTooltip" placement="top">
             <div class="locallens-toggle" :class="{ disabled: !locallensAvailable || scenes.length === 0 }">
-              <span>{{ t('Local Search') }}</span>
+              <span>{{ t('Global Local Search') }}</span>
               <el-switch
                 v-model="allLocallensOn"
                 :disabled="!locallensAvailable || scenes.length === 0"
-                :indeterminate="someLocallensOn"
+                :class="{ 'locallens-partial': someLocallensOn }"
                 @change="onAllLocallensToggle"
               />
             </div>
@@ -486,13 +486,16 @@ const locallensTooltip = computed(() => {
     return t('Add a scene first to enable local search');
   }
   const baseUrl = settingsStore.locallensBaseUrl || t('LocalLens server');
-  if (settingsStore.locallensStatus === 'online') {
-    return t('LocalLens server online') + ' (' + baseUrl + ')';
+  const statusText =
+    settingsStore.locallensStatus === 'online'
+      ? t('LocalLens server online') + ' (' + baseUrl + ')'
+      : settingsStore.locallensStatus === 'offline'
+        ? t('LocalLens server unavailable, local search disabled')
+        : t('Probing LocalLens server...');
+  if (someLocallensOn.value) {
+    return statusText + ' · ' + t('Some scenes local search enabled');
   }
-  if (settingsStore.locallensStatus === 'offline') {
-    return t('LocalLens server unavailable, local search disabled');
-  }
-  return t('Probing LocalLens server...');
+  return statusText;
 });
 
 const moveSceneUp = (index: number) => {
@@ -1320,6 +1323,20 @@ defineExpose({
 
 .locallens-toggle.disabled span {
   color: #bbb;
+}
+
+.locallens-partial :deep(.el-switch__core .el-switch__action) {
+  left: calc(50% - 8px);
+}
+
+.locallens-partial :deep(.el-switch__core) {
+  background-color: var(--el-color-warning);
+  border-color: var(--el-color-warning);
+  transition: var(--el-transition-duration);
+}
+
+.locallens-partial :deep(.el-switch__core .el-switch__action) {
+  color: var(--el-color-warning);
 }
 
 .scene-content {
