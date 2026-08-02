@@ -136,7 +136,7 @@
               
               <div class="form-item">
                 <label class="form-label" v-html="parseLabelMarkdown(t('Visual Requirements'))"></label>
-                <el-input v-model="scene.visual_requirement" type="textarea" :rows="3" :placeholder="t('Enter detailed description')" class="form-textarea" />
+                <el-input v-model="scene.visual_requirement" type="textarea" :rows="2" :placeholder="t('Enter detailed description')" class="form-textarea" />
               </div>
               
               <div class="form-item">
@@ -146,7 +146,7 @@
               
               <div class="form-item">
                 <label class="form-label" v-html="parseLabelMarkdown(t('Scene Script'))"></label>
-                <el-input v-model="scene.script" type="textarea" :rows="4" :placeholder="t('Enter scene script')" class="form-textarea" />
+                <el-input v-model="scene.script" type="textarea" :rows="2" :placeholder="t('Enter scene script')" class="form-textarea" />
               </div>
               
               <div class="form-item">
@@ -1129,7 +1129,7 @@ defineExpose({
 
 .form-textarea :deep(.el-textarea__inner) {
   flex: 1;
-  min-height: 80px !important;
+  min-height: 56px !important;
   resize: none;
 }
 
