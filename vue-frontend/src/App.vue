@@ -76,7 +76,7 @@
           </div>
           
           <div class="app-actions" v-if="$route.path !== '/task' && $route.path !== '/logs' && $route.path !== '/scene'">
-            <el-button type="danger" size="large" @click="generateVideo" :loading="isGenerating">
+            <el-button type="danger" size="large" class="generate-video-btn" @click="generateVideo" :loading="isGenerating">
               <el-icon><VideoPlay /></el-icon>
               {{ isGenerating ? t('Generating Video') : t('Generate Video') }}
             </el-button>
@@ -452,9 +452,14 @@ onUnmounted(() => {
 }
 
 .app-actions {
-  margin-top: 30px;
+  margin-top: 12px;
   text-align: center;
   flex-shrink: 0;
+}
+
+.generate-video-btn {
+  width: 20%;
+  min-width: 160px;
 }
 
 .app-footer {

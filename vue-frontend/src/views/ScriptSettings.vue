@@ -1082,7 +1082,7 @@ defineExpose({
 .settings-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   flex: 1;
   min-height: 0;
 }
