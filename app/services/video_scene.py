@@ -90,6 +90,7 @@ def process_scene_videos(
     video_transition_mode: VideoTransitionMode,
     max_clip_duration: int,
     local_video_paths: List[str] = None,
+    audio_duration: float = None,
 ) -> List:
     """
     Process videos for a single scene
@@ -101,6 +102,7 @@ def process_scene_videos(
         video_transition_mode: Video transition mode
         max_clip_duration: Maximum clip duration
         local_video_paths: List of local video paths
+        audio_duration: Target audio duration for early exit optimization
     
     Returns:
         List of processed video clips
@@ -311,6 +313,13 @@ def process_scene_videos(
             # Track source path for local material usage tracking
             clip.source_path = subclipped_item.file_path
             processed_clips.append(clip)
+            
+            # Early exit: stop processing if we have enough duration
+            if audio_duration is not None:
+                accumulated = sum(c.duration for c in processed_clips)
+                if accumulated >= audio_duration:
+                    logger.debug(f"Early exit: accumulated {accumulated:.1f}s >= audio {audio_duration:.1f}s, stopping clip processing")
+                    break
             
             # Release memory more frequently
             if len(processed_clips) % 3 == 0:
@@ -781,7 +790,8 @@ def build_scene_video(
             video_concat_mode=video_concat_mode,
             video_transition_mode=video_transition_mode,
             max_clip_duration=max_clip_duration,
-            local_video_paths=local_video_paths
+            local_video_paths=local_video_paths,
+            audio_duration=audio_duration
         )
         
         # Combine intro clips with scene clips

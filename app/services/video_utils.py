@@ -1248,13 +1248,12 @@ def crop_clip_to_target(clip, target_width, target_height, max_scale=1.10):
         # Create new clip and release old one
         old_clip = clip
         clip = clip.resized(new_size=(new_width, new_height))
-        # Close old clip to release memory
+        # Drop old reference without closing reader (new clip shares the same reader)
         try:
-            old_clip.close()
             del old_clip
             gc.collect()
         except Exception as e:
-            logger.debug(f"Error closing old clip: {e}")
+            logger.debug(f"Error releasing old clip: {e}")
         
         clip_w, clip_h = new_width, new_height
     else:
@@ -1285,13 +1284,12 @@ def crop_clip_to_target(clip, target_width, target_height, max_scale=1.10):
         # Crop to target dimensions
         old_clip = clip
         clip = clip.with_effects([vfx.Crop(x1=x1, y1=y1, width=new_width, height=new_height)])
-        # Close old clip to release memory
+        # Drop old reference without closing reader (new clip shares the same reader)
         try:
-            old_clip.close()
             del old_clip
             gc.collect()
         except Exception as e:
-            logger.debug(f"Error closing old clip: {e}")
+            logger.debug(f"Error releasing old clip: {e}")
     
     # Final resize if needed (should be minimal or none)
     final_w, final_h = clip.size
@@ -1304,13 +1302,12 @@ def crop_clip_to_target(clip, target_width, target_height, max_scale=1.10):
         # Create new clip and release old one
         old_clip = clip
         clip = clip.resized(new_size=(target_width, target_height))
-        # Close old clip to release memory
+        # Drop old reference without closing reader (new clip shares the same reader)
         try:
-            old_clip.close()
             del old_clip
             gc.collect()
         except Exception as e:
-            logger.debug(f"Error closing old clip: {e}")
+            logger.debug(f"Error releasing old clip: {e}")
     
     logger.success(f"Clip processed successfully: {target_width}x{target_height}")
     return clip
