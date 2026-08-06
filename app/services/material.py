@@ -538,16 +538,17 @@ def download_videos(
 
     # Calculate and limit the number of videos to download
     total_available_videos = len(valid_video_items)
+    clip_ratio = config.download_clip_ratio
     if target_number_of_clips is None:
         # Calculate minimum required clips based on audio duration
         min_required_clips = max(1, int(math.ceil(audio_duration / max_clip_duration)))
-        # Set target to 1.5x the required clips for better coverage
-        target_number_of_clips = int(min_required_clips * 1.5)
-        logger.info(f"No target specified - calculated: min_required={min_required_clips}, target={target_number_of_clips} (1.5x)")
+        # Set target to clip_ratio times the required clips for better coverage
+        target_number_of_clips = int(min_required_clips * clip_ratio)
+        logger.info(f"No target specified - calculated: min_required={min_required_clips}, target={target_number_of_clips} ({clip_ratio}x)")
     else:
-        # Set target to 1.5x the provided target for better coverage
-        target_number_of_clips = int(target_number_of_clips * 1.5)
-        logger.info(f"Using provided target: {target_number_of_clips} (1.5x)")
+        # Set target to clip_ratio times the provided target for better coverage
+        target_number_of_clips = int(target_number_of_clips * clip_ratio)
+        logger.info(f"Using provided target: {target_number_of_clips} ({clip_ratio}x)")
     
     # Randomly select specific number of videos from search results
     if len(valid_video_items) > target_number_of_clips:
@@ -597,21 +598,28 @@ def download_videos(
                 save_path = f"{save_dir}/{video_id}.mp4"
             
             # Check if video already exists and is valid
-            if os.path.exists(save_path) and os.path.getsize(save_path) > 0:
+            file_size = os.path.getsize(save_path) if os.path.exists(save_path) else 0
+            if file_size > 102400:  # >100KB, skip heavy validation for cache hits
+                logger.info(f"Video already exists and is valid: {save_path}")
+                try:
+                    os.utime(save_path, None)
+                except Exception:
+                    pass
+                downloaded_paths.append(save_path)
+                cached_count += 1
+                seconds = min(max_clip_duration, item.duration)
+                total_duration += seconds
+                download_count += 1
+                continue  # skip adding to download queue
+            elif file_size > 0:
+                # Small file, might be corrupted, validate with VideoFileClip
                 try:
                     clip = VideoFileClip(save_path)
                     valid = clip.duration > 0 and clip.fps > 0
                     clip.close()
                 except Exception:
                     valid = False
-                if not valid:
-                    logger.warning(f"Existing cached video is corrupted, will re-download: {save_path}")
-                    try:
-                        os.remove(save_path)
-                    except Exception:
-                        pass
-                    # Fall through to download queue
-                else:
+                if valid:
                     logger.info(f"Video already exists and is valid: {save_path}")
                     try:
                         os.utime(save_path, None)
@@ -623,6 +631,12 @@ def download_videos(
                     total_duration += seconds
                     download_count += 1
                     continue  # skip adding to download queue
+                else:
+                    logger.warning(f"Existing cached video is corrupted, will re-download: {save_path}")
+                    try:
+                        os.remove(save_path)
+                    except Exception:
+                        pass
             
             if not (os.path.exists(save_path) and os.path.getsize(save_path) > 0):
                 # Add to download queue

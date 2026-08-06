@@ -177,6 +177,9 @@ ui = _cfg.get(
 )
 video = _cfg.get("video", {})
 
+# Download clip ratio: how many more clips to download than strictly required (e.g., 1.2 = 20% more)
+download_clip_ratio = 1.2
+
 storage = _cfg.get("storage", {
     "local_videos_ttl_days": 30,
     "storage_cleanup_interval_hours": 6,
