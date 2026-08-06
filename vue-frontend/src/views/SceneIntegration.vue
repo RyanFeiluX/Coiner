@@ -36,115 +36,121 @@
         
         <!-- Scan Results -->
         <div v-if="taskFiles" class="scan-results">
-          <h3 class="section-title">{{ t('Detected Files') }}</h3>
-          
-          <div class="file-status">
-            <el-alert
-              v-if="taskFiles.sceneVideos > 0"
-              type="success"
-              :title="`✅ ${t('Scene Videos')}: ${taskFiles.sceneVideos} ${t('items')}`"
-              :closable="false"
-            />
-            <el-alert
-              v-else
-              type="error"
-              :title="t('No valid scene videos found in task directory')"
-              :closable="false"
-            />
-            
-            <el-alert
-              :type="taskFiles.sceneAudio > 0 ? 'success' : 'warning'"
-              :title="taskFiles.sceneAudio > 0 ? `✅ ${t('Scene Audio')}: ${taskFiles.sceneAudio} ${t('items')}` : '⚠️ ' + t('No scene audio found')"
-              :closable="false"
-            />
-          </div>
-          
-          <!-- Scene Range Selection -->
-          <div v-if="taskFiles.sceneVideos > 0" class="scene-range">
-            <h3 class="section-title">{{ t('Scene Range Selection') }}</h3>
-            <div class="range-selectors">
-              <div class="form-item">
-                <label class="form-label">{{ t('Start Scene') }}</label>
-                <el-select v-model="startScene" class="form-select">
-                  <el-option
-                    v-for="i in taskFiles.sceneNums"
-                    :key="i"
-                    :label="i"
-                    :value="i"
-                  />
-                </el-select>
+          <div class="two-column-layout">
+            <!-- 左列：检测到的文件 + 场景范围选择 -->
+            <div class="column-left">
+              <h3 class="section-title">{{ t('Detected Files') }}</h3>
+              
+              <div class="file-status">
+                <el-alert
+                  v-if="taskFiles.sceneVideos > 0"
+                  type="success"
+                  :title="`✅ ${t('Scene Videos')}: ${taskFiles.sceneVideos} ${t('items')}`"
+                  :closable="false"
+                />
+                <el-alert
+                  v-else
+                  type="error"
+                  :title="t('No valid scene videos found in task directory')"
+                  :closable="false"
+                />
+                
+                <el-alert
+                  :type="taskFiles.sceneAudio > 0 ? 'success' : 'warning'"
+                  :title="taskFiles.sceneAudio > 0 ? `✅ ${t('Scene Audio')}: ${taskFiles.sceneAudio} ${t('items')}` : '⚠️ ' + t('No scene audio found')"
+                  :closable="false"
+                />
               </div>
-              <div class="form-item">
-                <label class="form-label">{{ t('End Scene') }}</label>
-                <el-select v-model="endScene" class="form-select">
-                  <el-option
-                    v-for="i in taskFiles.sceneNums"
-                    :key="i"
-                    :label="i"
-                    :value="i"
-                    :disabled="i < startScene"
-                  />
-                </el-select>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Scene Details Collapse -->
-          <div v-if="taskFiles.sceneVideos > 0 && taskFiles.scenes" class="scene-details-section">
-            <el-divider />
-            <el-collapse>
-              <el-collapse-item :title="`${t('Scene Details')} (${taskFiles.scenes.length})`">
-                <div v-for="scene in taskFiles.scenes" :key="scene.sceneNum" class="scene-row">
-                  <div class="scene-row-header">
-                    <span class="scene-num">{{ t('Scene') }} {{ scene.sceneNum }}</span>
-                    <span class="status-badge" :class="scene.video ? 'status-ok' : 'status-missing'">
-                      {{ scene.video ? '✅' : '❌' }} {{ t('Video') }}
-                    </span>
-                    <span class="status-badge" :class="scene.audio ? 'status-ok' : 'status-missing'">
-                      {{ scene.audio ? '✅' : '❌' }} {{ t('Audio') }}
-                    </span>
-                    <span class="status-badge" :class="scene.subtitle ? 'status-ok' : 'status-missing'">
-                      {{ scene.subtitle ? '✅' : '❌' }} {{ t('Subtitle') }}
-                    </span>
-                    <el-switch
-                      v-model="forceRebuildScenes[scene.sceneNum]"
-                      :disabled="isRunning"
-                      size="small"
-                      active-text=""
-                      inactive-text=""
-                    />
-                    <span class="rebuild-label">{{ t('Rebuild') }}</span>
+              
+              <!-- Scene Range Selection -->
+              <div v-if="taskFiles.sceneVideos > 0" class="scene-range">
+                <h3 class="section-title">{{ t('Scene Range Selection') }}</h3>
+                <div class="range-selectors">
+                  <div class="form-item">
+                    <label class="form-label">{{ t('Start Scene') }}</label>
+                    <el-select v-model="startScene" class="form-select">
+                      <el-option
+                        v-for="i in taskFiles.sceneNums"
+                        :key="i"
+                        :label="i"
+                        :value="i"
+                      />
+                    </el-select>
+                  </div>
+                  <div class="form-item">
+                    <label class="form-label">{{ t('End Scene') }}</label>
+                    <el-select v-model="endScene" class="form-select">
+                      <el-option
+                        v-for="i in taskFiles.sceneNums"
+                        :key="i"
+                        :label="i"
+                        :value="i"
+                        :disabled="i < startScene"
+                      />
+                    </el-select>
                   </div>
                 </div>
-              </el-collapse-item>
-            </el-collapse>
-          </div>
-
-          <!-- Scene Rebuild Hint -->
-          <div v-if="taskFiles.sceneVideos > 0" class="rebuild-hint">
-            <el-alert
-              :title="t('Rebuild scene using current script, keeping original audio/video specs')"
-              type="info"
-              :closable="false"
-              :show-icon="true"
-            />
-          </div>
-
-          <!-- Improve Integration Toggle -->
-          <div v-if="taskFiles.sceneVideos > 0" class="improve-section">
-            <el-divider />
-            <div class="improve-toggle">
-              <el-switch v-model="improveIntegration" />
-              <span class="improve-label">{{ t('Improve Integration') }}</span>
-              <el-tooltip :content="t('Apply current config instead of original task config')" placement="top">
-                <el-icon class="improve-info"><InfoFilled /></el-icon>
-              </el-tooltip>
+              </div>
             </div>
-            <div v-if="improveIntegration" class="improve-items">
-              <el-checkbox v-model="improveSubtitle">{{ t('Subtitle Settings') }}</el-checkbox>
-              <el-checkbox v-model="improveBgm">{{ t('Background Music') }}</el-checkbox>
-              <el-checkbox v-model="improveTitle">{{ t('Title Settings') }}</el-checkbox>
-              <el-checkbox v-model="improveVideoEnhancement">{{ t('Video Enhancement') }}</el-checkbox>
+
+            <!-- 右列：场景详情 + 改进集成 -->
+            <div class="column-right">
+              <!-- Scene Details Collapse -->
+              <div v-if="taskFiles.sceneVideos > 0 && taskFiles.scenes" class="scene-details-section">
+                <el-collapse>
+                  <el-collapse-item :title="`${t('Scene Details')} (${taskFiles.scenes.length})`">
+                    <div v-for="scene in taskFiles.scenes" :key="scene.sceneNum" class="scene-row">
+                      <div class="scene-row-header">
+                        <span class="scene-num">{{ t('Scene') }} {{ scene.sceneNum }}</span>
+                        <span class="status-badge" :class="scene.video ? 'status-ok' : 'status-missing'">
+                          {{ scene.video ? '✅' : '❌' }} {{ t('Video') }}
+                        </span>
+                        <span class="status-badge" :class="scene.audio ? 'status-ok' : 'status-missing'">
+                          {{ scene.audio ? '✅' : '❌' }} {{ t('Audio') }}
+                        </span>
+                        <span class="status-badge" :class="scene.subtitle ? 'status-ok' : 'status-missing'">
+                          {{ scene.subtitle ? '✅' : '❌' }} {{ t('Subtitle') }}
+                        </span>
+                        <el-switch
+                          v-model="forceRebuildScenes[scene.sceneNum]"
+                          :disabled="isRunning"
+                          size="small"
+                          active-text=""
+                          inactive-text=""
+                        />
+                        <span class="rebuild-label">{{ t('Rebuild') }}</span>
+                      </div>
+                    </div>
+                  </el-collapse-item>
+                </el-collapse>
+              </div>
+
+              <!-- Scene Rebuild Hint -->
+              <div v-if="taskFiles.sceneVideos > 0" class="rebuild-hint">
+                <el-alert
+                  :title="t('Rebuild scene using current script, keeping original audio/video specs')"
+                  type="info"
+                  :closable="false"
+                  :show-icon="true"
+                />
+              </div>
+
+              <!-- Improve Integration Toggle -->
+              <div v-if="taskFiles.sceneVideos > 0" class="improve-section">
+                <div class="improve-toggle">
+                  <el-switch v-model="improveIntegration" />
+                  <span class="improve-label">{{ t('Improve Integration') }}</span>
+                  <el-tooltip :content="t('Apply current config instead of original task config')" placement="top">
+                    <el-icon class="improve-info"><InfoFilled /></el-icon>
+                  </el-tooltip>
+                </div>
+                <div v-if="improveIntegration" class="improve-items">
+                  <el-checkbox v-model="improveSubtitle">{{ t('Subtitle Settings') }}</el-checkbox>
+                  <el-checkbox v-model="improveBgm">{{ t('Background Music') }}</el-checkbox>
+                  <el-checkbox v-model="improveTitle">{{ t('Title Settings') }}</el-checkbox>
+                  <el-checkbox v-model="improveVideoEnhancement">{{ t('Video Enhancement') }}</el-checkbox>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -578,11 +584,48 @@ defineExpose({
   width: 100%;
 }
 
+.scene-integration :deep(.el-card) {
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+.scene-integration :deep(.el-card__header) {
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: white;
+}
+
+.scene-integration :deep(.el-card__body) {
+  overflow-y: visible;
+}
+
 .card-header {
   margin-bottom: 4px;
 }
 
+.two-column-layout {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
 
+.column-left,
+.column-right {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 16px;
+  background-color: #fafafa;
+}
+
+.column-left .section-title,
+.column-right .section-title {
+  margin-top: 0;
+}
 
 .integration-content {
   display: flex;
