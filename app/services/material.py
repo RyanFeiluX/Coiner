@@ -192,6 +192,7 @@ def search_videos_pexels(
             # First try to find exact match
             best_video = None
             best_quality_score = -1
+            best_is_1080p = False
             
             for video in video_files:
                 w = int(video["width"])
@@ -199,29 +200,56 @@ def search_videos_pexels(
                 
                 # Calculate quality score (prefer higher resolution)
                 quality_score = w * h
+                is_1080p = min(w, h) >= 1080  # Short side >= 1080
                 
                 # Check if this is an exact match
                 if w == video_width and h == video_height:
                     best_video = video
                     best_quality_score = quality_score
+                    best_is_1080p = is_1080p
                     break  # Exact match found, use it
                 
                 # If no exact match yet, track the best quality video
                 # that is at least as large as target resolution
-                if best_video is None or quality_score > best_quality_score:
-                    if w >= video_width and h >= video_height:
+                # Prefer 1080p videos over non-1080p videos
+                if w >= video_width and h >= video_height:
+                    if best_video is None:
                         best_video = video
                         best_quality_score = quality_score
+                        best_is_1080p = is_1080p
+                    elif is_1080p and not best_is_1080p:
+                        # New video is 1080p, current is not → prefer new
+                        best_video = video
+                        best_quality_score = quality_score
+                        best_is_1080p = is_1080p
+                    elif is_1080p == best_is_1080p and quality_score > best_quality_score:
+                        # Same 1080p status → prefer higher quality
+                        best_video = video
+                        best_quality_score = quality_score
+                        best_is_1080p = is_1080p
             
             # If no suitable video found, use the highest quality available
+            # (with 1080p preference)
             if best_video is None and video_files:
                 for video in video_files:
                     w = int(video["width"])
                     h = int(video["height"])
                     quality_score = w * h
-                    if best_video is None or quality_score > best_quality_score:
+                    is_1080p = min(w, h) >= 1080
+                    if best_video is None:
                         best_video = video
                         best_quality_score = quality_score
+                        best_is_1080p = is_1080p
+                    elif is_1080p and not best_is_1080p:
+                        # New video is 1080p, current is not → prefer new
+                        best_video = video
+                        best_quality_score = quality_score
+                        best_is_1080p = is_1080p
+                    elif is_1080p == best_is_1080p and quality_score > best_quality_score:
+                        # Same 1080p status → prefer higher quality
+                        best_video = video
+                        best_quality_score = quality_score
+                        best_is_1080p = is_1080p
             
             # Filter out low quality videos
             if best_video:
@@ -324,6 +352,7 @@ def search_videos_pixabay(
             # First try to find exact match
             best_video = None
             best_quality_score = -1
+            best_is_1080p = False
             
             for video_type in video_files:
                 video = video_files[video_type]
@@ -332,30 +361,57 @@ def search_videos_pixabay(
                 
                 # Calculate quality score (prefer higher resolution)
                 quality_score = w * h
+                is_1080p = min(w, h) >= 1080  # Short side >= 1080
                 
                 # Check if this is an exact match
                 if w == video_width and h == video_height:
                     best_video = video
                     best_quality_score = quality_score
+                    best_is_1080p = is_1080p
                     break  # Exact match found, use it
                 
                 # If no exact match yet, track the best quality video
                 # that is at least as large as target resolution
-                if best_video is None or quality_score > best_quality_score:
-                    if w >= video_width and h >= video_height:
+                # Prefer 1080p videos over non-1080p videos
+                if w >= video_width and h >= video_height:
+                    if best_video is None:
                         best_video = video
                         best_quality_score = quality_score
+                        best_is_1080p = is_1080p
+                    elif is_1080p and not best_is_1080p:
+                        # New video is 1080p, current is not → prefer new
+                        best_video = video
+                        best_quality_score = quality_score
+                        best_is_1080p = is_1080p
+                    elif is_1080p == best_is_1080p and quality_score > best_quality_score:
+                        # Same 1080p status → prefer higher quality
+                        best_video = video
+                        best_quality_score = quality_score
+                        best_is_1080p = is_1080p
             
             # If no suitable video found, use the highest quality available
+            # (with 1080p preference)
             if best_video is None and video_files:
                 for video_type in video_files:
                     video = video_files[video_type]
                     w = int(video["width"])
                     h = int(video["height"])
                     quality_score = w * h
-                    if best_video is None or quality_score > best_quality_score:
+                    is_1080p = min(w, h) >= 1080
+                    if best_video is None:
                         best_video = video
                         best_quality_score = quality_score
+                        best_is_1080p = is_1080p
+                    elif is_1080p and not best_is_1080p:
+                        # New video is 1080p, current is not → prefer new
+                        best_video = video
+                        best_quality_score = quality_score
+                        best_is_1080p = is_1080p
+                    elif is_1080p == best_is_1080p and quality_score > best_quality_score:
+                        # Same 1080p status → prefer higher quality
+                        best_video = video
+                        best_quality_score = quality_score
+                        best_is_1080p = is_1080p
             
             # Filter out low quality videos
             if best_video:
@@ -637,6 +693,20 @@ def download_videos(
                         os.remove(save_path)
                     except Exception:
                         pass
+            
+            # Check if a downscaled version already exists (avoid re-downloading 4K)
+            if not (os.path.exists(save_path) and os.path.getsize(save_path) > 0):
+                from app.services.video_utils import get_downscaled_path_for_video
+                downscaled_path = get_downscaled_path_for_video(item.url)
+                if downscaled_path:
+                    logger.info(f"Using existing downscaled version instead of downloading: {downscaled_path}")
+                    # Create a symlink or copy reference - for now just use the downscaled path directly
+                    downloaded_paths.append(downscaled_path)
+                    cached_count += 1
+                    seconds = min(max_clip_duration, item.duration)
+                    total_duration += seconds
+                    download_count += 1
+                    continue  # skip adding to download queue
             
             if not (os.path.exists(save_path) and os.path.getsize(save_path) > 0):
                 # Add to download queue

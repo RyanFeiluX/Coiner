@@ -11,6 +11,7 @@ import io
 import contextlib
 import logging
 import math
+import hashlib
 import psutil
 from typing import List
 
@@ -1685,6 +1686,82 @@ def clear_brightness_cache():
 _downscale_cache: dict = {}
 _downscale_cache_lock = threading.Lock()
 
+# URL→downscaled path mapping for avoiding re-downloads
+_downscale_mapping: dict = {}
+_downscale_mapping_lock = threading.Lock()
+_downscale_mapping_path: str = ""
+
+
+def _get_downscale_mapping_path() -> str:
+    """Get or initialize the path to the downscale mapping file."""
+    global _downscale_mapping_path
+    if not _downscale_mapping_path:
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))))
+        cache_dir = os.path.join(project_root, "storage", "cache_downscaled")
+        os.makedirs(cache_dir, exist_ok=True)
+        _downscale_mapping_path = os.path.join(cache_dir, "mapping.json")
+    return _downscale_mapping_path
+
+
+def _load_downscale_mapping() -> dict:
+    """Load the downscale mapping from disk."""
+    global _downscale_mapping
+    with _downscale_mapping_lock:
+        if _downscale_mapping:
+            return _downscale_mapping
+    mapping_path = _get_downscale_mapping_path()
+    try:
+        if os.path.isfile(mapping_path):
+            import json
+            with open(mapping_path, "r", encoding="utf-8") as f:
+                _downscale_mapping = json.load(f)
+    except Exception:
+        _downscale_mapping = {}
+    return _downscale_mapping
+
+
+def _save_downscale_mapping():
+    """Save the downscale mapping to disk."""
+    mapping_path = _get_downscale_mapping_path()
+    try:
+        import json
+        with open(mapping_path, "w", encoding="utf-8") as f:
+            json.dump(_downscale_mapping, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.warning(f"Failed to save downscale mapping: {e}")
+
+
+def _record_downscale_mapping(video_base_name: str, downscaled_path: str):
+    """Record a video base name → downscaled path mapping."""
+    with _downscale_mapping_lock:
+        _downscale_mapping[video_base_name] = downscaled_path
+    _save_downscale_mapping()
+
+
+def get_downscaled_path_for_video(video_url: str) -> str:
+    """
+    Check if a video URL has a cached downscaled version.
+    
+    Args:
+        video_url: The original video URL
+    
+    Returns:
+        Path to downscaled file if exists and is valid, empty string otherwise
+    """
+    from app.utils import utils
+    url_without_query = video_url.split("?")[0]
+    url_hash = utils.md5(url_without_query)
+    video_base_name = f"vid-{url_hash}"
+    
+    mapping = _load_downscale_mapping()
+    with _downscale_mapping_lock:
+        downscaled_path = mapping.get(video_base_name, "")
+    
+    if downscaled_path and os.path.isfile(downscaled_path) and os.path.getsize(downscaled_path) > 0:
+        return downscaled_path
+    return ""
+
 
 def pre_downscale_video(source_path: str, target_w: int, target_h: int) -> str:
     """
@@ -1729,7 +1806,7 @@ def pre_downscale_video(source_path: str, target_w: int, target_h: int) -> str:
     os.makedirs(cache_dir, exist_ok=True)
 
     # Build cache file path
-    file_hash = str(abs(hash(source_path)))[:12]
+    file_hash = hashlib.md5(source_path.encode()).hexdigest()[:12]
     base = os.path.splitext(os.path.basename(source_path))[0]
     cached_path = os.path.join(cache_dir, f"{base}_{target_w}x{target_h}_{file_hash}.mp4")
 
@@ -1812,6 +1889,10 @@ def pre_downscale_video(source_path: str, target_w: int, target_h: int) -> str:
 
         with _downscale_cache_lock:
             _downscale_cache[cache_key] = cached_path
+
+        # Record mapping: video base name → downscaled path
+        base = os.path.splitext(os.path.basename(source_path))[0]
+        _record_downscale_mapping(base, cached_path)
 
         logger.info(f"Pre-downscale cached: {os.path.basename(cached_path)} "
                     f"({os.path.getsize(cached_path) / 1024 / 1024:.1f} MB)")
