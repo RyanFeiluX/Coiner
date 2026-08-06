@@ -1,6 +1,9 @@
 import os
 import random
 import math
+import hashlib
+import json
+import time
 from typing import List
 from typing import Optional
 from urllib.parse import urlencode
@@ -14,6 +17,54 @@ from app.models.schema import MaterialInfo, VideoAspect, VideoConcatMode
 from app.utils import utils
 from app.services.llm import add_english_translations
 from app.services.download_manager import download_video, initialize_download_system, get_download_status, download_queue
+
+# Search result cache TTL: 24 hours
+SEARCH_CACHE_TTL = 86400
+
+
+def _make_search_cache_key(search_term: str, provider: str, video_aspect, style_keyword: str) -> str:
+    raw = f"{search_term}:{provider}:{video_aspect.value}:{style_keyword}"
+    return hashlib.md5(raw.encode()).hexdigest()
+
+
+def _get_search_cache(search_term: str, provider: str, video_aspect, style_keyword: str):
+    cache_dir = utils.storage_dir("cache_search", create=True)
+    key = _make_search_cache_key(search_term, provider, video_aspect, style_keyword)
+    cache_path = os.path.join(cache_dir, f"{key}.json")
+    if not os.path.exists(cache_path):
+        return None
+    if time.time() - os.path.getmtime(cache_path) > SEARCH_CACHE_TTL:
+        try:
+            os.remove(cache_path)
+        except Exception:
+            pass
+        return None
+    try:
+        with open(cache_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _save_search_cache(search_term: str, provider: str, video_aspect, style_keyword: str, results: list):
+    cache_dir = utils.storage_dir("cache_search", create=True)
+    key = _make_search_cache_key(search_term, provider, video_aspect, style_keyword)
+    cache_path = os.path.join(cache_dir, f"{key}.json")
+    try:
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(results, f, ensure_ascii=False)
+    except Exception as e:
+        logger.warning(f"Failed to save search cache: {e}")
+
+
+def _restore_material_info(cached_data: list) -> List[MaterialInfo]:
+    items = []
+    for data in cached_data:
+        item = MaterialInfo()
+        for k, v in data.items():
+            setattr(item, k, v)
+        items.append(item)
+    return items
 
 # Style keyword mapping based on visual requirements
 STYLE_KEYWORDS = {
@@ -83,6 +134,12 @@ def search_videos_pexels(
     video_aspect: VideoAspect = VideoAspect.portrait,
     style_keyword: str = "",
 ) -> List[MaterialInfo]:
+    # Check search cache
+    cached = _get_search_cache(search_term, "pexels", video_aspect, style_keyword)
+    if cached is not None:
+        logger.info(f"Search cache hit: '{search_term}' from pexels")
+        return _restore_material_info(cached)
+
     aspect = VideoAspect(video_aspect)
     # Map aspect to Pexels API orientation parameter
     if aspect == VideoAspect.portrait or aspect == VideoAspect.portrait_3_4:
@@ -203,6 +260,9 @@ def search_videos_pexels(
                 video_items.append(item)
                 # logger.info(f"Selected video: {w}x{h}, target: {video_width}x{video_height}, scale_factor: {max_scale:.2f}x")
         
+        # Save search results to cache
+        _save_search_cache(search_term, "pexels", video_aspect, style_keyword,
+                           [item.__dict__ for item in video_items])
         return video_items
     except Exception as e:
         logger.error(f"search videos failed: {str(e)}")
@@ -216,6 +276,12 @@ def search_videos_pixabay(
     video_aspect: VideoAspect = VideoAspect.portrait,
     style_keyword: str = "",
 ) -> List[MaterialInfo]:
+    # Check search cache
+    cached = _get_search_cache(search_term, "pixabay", video_aspect, style_keyword)
+    if cached is not None:
+        logger.info(f"Search cache hit: '{search_term}' from pixabay")
+        return _restore_material_info(cached)
+
     aspect = VideoAspect(video_aspect)
 
     video_width, video_height = aspect.to_resolution()
@@ -311,6 +377,9 @@ def search_videos_pixabay(
                 video_items.append(item)
                 logger.info(f"selected video: {best_video['width']}x{best_video['height']}, target: {video_width}x{video_height}")
         
+        # Save search results to cache
+        _save_search_cache(search_term, "pixabay", video_aspect, style_keyword,
+                           [item.__dict__ for item in video_items])
         return video_items
     except Exception as e:
         logger.error(f"search videos failed: {str(e)}")
