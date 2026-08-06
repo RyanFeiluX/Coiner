@@ -60,6 +60,14 @@
                   <div class="info-item">
                     <span class="label">{{ taskIdText }}:</span>
                     <span>{{ task.task_id }}</span>
+                    <el-button
+                      link
+                      size="small"
+                      :title="t('Copy Task ID')"
+                      @click="copyToClipboard(task.task_id)"
+                    >
+                      <el-icon><CopyDocument /></el-icon>
+                    </el-button>
                   </div>
                   <div class="info-item" v-if="task.title_text">
                     <span class="label">{{ titleTextLabel }}:</span>
@@ -165,7 +173,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Refresh, Download, Delete, Close, Loading, StarFilled } from '@element-plus/icons-vue';
+import { Refresh, Download, Delete, Close, Loading, StarFilled, CopyDocument } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
 import { useI18nStore } from '../stores/i18n';
 import { useTasksStore } from '../stores/tasks';
 
@@ -299,6 +308,15 @@ const formatProgress = (percentage: number): string => {
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
   return date.toLocaleString();
+};
+
+const copyToClipboard = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    ElMessage.success(t('Copied'));
+  } catch (err) {
+    ElMessage.error(t('Copy failed'));
+  }
 };
 
 const handleDownload = (task: Task) => {
