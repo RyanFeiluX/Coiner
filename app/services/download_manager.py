@@ -16,6 +16,7 @@ class VideoDownloadQueue:
         self.workers = []
         self.completed_tasks = []
         self.failed_tasks = []
+        self.all_done_event = threading.Event()
     
     def start(self):
         """Start the download queue workers"""
@@ -27,6 +28,7 @@ class VideoDownloadQueue:
     
     def add_task(self, video_url, save_path, callback=None):
         """Add a download task to the queue"""
+        self.all_done_event.clear()
         task = {
             'video_url': video_url,
             'save_path': save_path,
@@ -63,6 +65,10 @@ class VideoDownloadQueue:
                     with self.lock:
                         self.active_downloads -= 1
                     self.queue.task_done()
+                    # Check if all tasks are done
+                    with self.lock:
+                        if self.queue.qsize() == 0 and self.active_downloads == 0:
+                            self.all_done_event.set()
             except queue.Empty:
                 continue
     
@@ -152,6 +158,10 @@ class VideoDownloadQueue:
             old_max = self.max_concurrent
             self.max_concurrent = new_max
             logger.info(f"Download concurrent limit adjusted: {old_max} -> {new_max}")
+
+    def wait_all_done(self, timeout=None):
+        """Wait for all downloads to complete"""
+        self.all_done_event.wait(timeout=timeout)
 
 
 class RateLimiter:

@@ -13,7 +13,7 @@ from app.config import config
 from app.models.schema import MaterialInfo, VideoAspect, VideoConcatMode
 from app.utils import utils
 from app.services.llm import add_english_translations
-from app.services.download_manager import download_video, initialize_download_system, get_download_status
+from app.services.download_manager import download_video, initialize_download_system, get_download_status, download_queue
 
 # Style keyword mapping based on visual requirements
 STYLE_KEYWORDS = {
@@ -569,18 +569,10 @@ def download_videos(
         except Exception as e:
             logger.error(f"Failed to add video to download queue: {utils.to_json(item)} => {str(e)}")
     
-    # Wait for downloads to complete (simple approach)
-    # In a production environment, you might want to use a more robust mechanism
+    # Wait for downloads to complete
     import time
-    start_time = time.time()
     timeout = 600  # 10 minutes timeout
-    
-    while len(downloaded_paths) < len(valid_video_items) and time.time() - start_time < timeout:
-        status = get_download_status()
-        logger.debug(f"Download status: {status}")
-        if status['active_downloads'] == 0 and status['queue_size'] == 0:
-            break
-        time.sleep(5)  # Check every 5 seconds
+    download_queue.wait_all_done(timeout=timeout)
     
     # Check if we need to fallback to alternative source due to high failure rate
     failure_rate = download_failures / total_download_attempts if total_download_attempts > 0 else 0
@@ -629,13 +621,8 @@ def download_videos(
                 logger.error(f"Failed to add fallback video: {str(e)}")
         
         # Wait for fallback downloads
-        fallback_start = time.time()
         fallback_timeout = 300  # 5 minutes for fallback
-        while len(downloaded_paths) < len(valid_video_items) + len(valid_video_items_fallback) and time.time() - fallback_start < fallback_timeout:
-            status = get_download_status()
-            if status['active_downloads'] == 0 and status['queue_size'] == 0:
-                break
-            time.sleep(5)
+        download_queue.wait_all_done(timeout=fallback_timeout)
     
     logger.success(f"Downloaded {len(downloaded_paths)} videos ({len(downloaded_paths) - cached_count} new + {cached_count} cached, failures: {download_failures}/{total_download_attempts})")
     return downloaded_paths
