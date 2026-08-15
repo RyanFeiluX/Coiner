@@ -263,6 +263,11 @@ export const apiService = {
     return response.data;
   },
 
+  updateTaskTitle: async (taskId: string, titleText: string): Promise<ApiResponse> => {
+    const response = await api.put(`/tasks/${taskId}/title`, { title_text: titleText });
+    return response.data;
+  },
+
   // Title related
   getTitleStyles: async (): Promise<ApiResponse> => {
     const response = await api.get('/title-styles');

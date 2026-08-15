@@ -127,6 +127,41 @@ def create_task(
             task_id=task_id, status_code=400, message=f"{request_id}: {str(e)}"
         )
 
+
+@router.put("/tasks/{task_id}/title", summary="Update task display title")
+def update_task_title(task_id: str, body: dict):
+    """Update the title text and display title of a pending task"""
+    from app.services import state as sm
+    from app.models import const
+    
+    title_text = body.get("title_text", "").strip()
+    
+    # Get existing task
+    existing_task = sm.state.get_task(task_id)
+    if not existing_task:
+        raise HttpException(task_id=task_id, status_code=404, message="Task not found")
+    
+    # Only allow updating pending tasks
+    if existing_task.get("state") != const.TASK_STATE_PENDING:
+        raise HttpException(
+            task_id=task_id, 
+            status_code=400, 
+            message="Only pending tasks can have their title updated"
+        )
+    
+    # Update both title_text and video_title
+    sm.state.update_task(
+        task_id,
+        state=existing_task["state"],
+        progress=existing_task.get("progress", 0),
+        title_text=title_text,
+        video_title=title_text
+    )
+    
+    updated_task = sm.state.get_task(task_id)
+    return utils.get_response(200, updated_task, message="success")
+
+
 from fastapi import Query
 
 @router.get("/tasks", response_model=TaskQueryResponse, summary="Get all tasks")
@@ -1017,9 +1052,17 @@ def recover_scene_integration(request: Request, body: dict):
     task_id = utils.get_uuid()
 
     # Derive display titles for the scene integration task
+    si_title_enabled = title_params.get("title_enabled", True)
     si_title_text = title_params.get("title_text", "").strip()
     si_video_title = ""
-    if task_id_or_path:
+    if not si_title_enabled:
+        # Title disabled - leave empty, frontend will show "No Title" placeholder
+        pass
+    elif si_title_text:
+        # Use user-specified title as the task panel display title
+        si_video_title = si_title_text
+    elif task_id_or_path:
+        # Fallback to original task's title
         original_task = sm.state.get_task(task_id_or_path)
         if original_task:
             si_video_title = original_task.get("video_title", "")

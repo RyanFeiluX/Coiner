@@ -69,9 +69,32 @@
                       <el-icon><CopyDocument /></el-icon>
                     </el-button>
                   </div>
-                  <div class="info-item" v-if="task.title_text">
+                  <div class="info-item" v-if="task.title_text !== undefined || canEditTitle(task)">
                     <span class="label">{{ titleTextLabel }}:</span>
-                    <span>{{ task.title_text }}</span>
+                    <template v-if="editingTitleTaskId === task.task_id">
+                      <el-input
+                        v-model="editingTitleValue"
+                        size="small"
+                        @keyup.enter="saveTitle(task)"
+                        @keyup.escape="cancelEditTitle"
+                        @blur="saveTitle(task)"
+                        class="title-edit-input"
+                      />
+                    </template>
+                    <template v-else>
+                      <span :class="{ 'no-title': !task.title_text }">
+                        {{ task.title_text || t('No Title') }}
+                      </span>
+                      <el-button
+                        v-if="canEditTitle(task)"
+                        link
+                        size="small"
+                        @click="startEditTitle(task)"
+                        :title="t('Edit Title')"
+                      >
+                        <el-icon><Edit /></el-icon>
+                      </el-button>
+                    </template>
                   </div>
                   <div class="info-item" v-if="task.task_type">
                     <span class="label">{{ taskTypeText }}:</span>
@@ -173,10 +196,11 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Refresh, Download, Delete, Close, Loading, StarFilled, CopyDocument } from '@element-plus/icons-vue';
+import { Refresh, Download, Delete, Close, Loading, StarFilled, CopyDocument, Edit } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useI18nStore } from '../stores/i18n';
 import { useTasksStore } from '../stores/tasks';
+import { apiService } from '../services/api';
 
 const i18nStore = useI18nStore();
 const t = i18nStore.t;
@@ -255,6 +279,43 @@ withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits(['refresh', 'delete', 'cancel']);
 
+// Title editing state
+const editingTitleTaskId = ref<string | null>(null);
+const editingTitleValue = ref('');
+
+const canEditTitle = (task: Task): boolean => {
+  return task.task_type === 'scene_integration' && task.status === 'pending';
+};
+
+const startEditTitle = (task: Task) => {
+  editingTitleTaskId.value = task.task_id;
+  editingTitleValue.value = task.title_text || '';
+};
+
+const cancelEditTitle = () => {
+  editingTitleTaskId.value = null;
+  editingTitleValue.value = '';
+};
+
+const saveTitle = async (task: Task) => {
+  if (!editingTitleValue.value.trim()) {
+    ElMessage.warning(t('Title cannot be empty'));
+    return;
+  }
+  try {
+    const response = await apiService.updateTaskTitle(task.task_id, editingTitleValue.value);
+    if (response.status === 200) {
+      task.title_text = editingTitleValue.value;
+      task.video_title = editingTitleValue.value;
+      ElMessage.success(t('Title updated'));
+    }
+  } catch (error) {
+    console.error('Failed to update title:', error);
+    ElMessage.error(t('Failed to update title'));
+  }
+  cancelEditTitle();
+};
+
 const activeNames = ref<string[]>([]);
 const prevActiveNames = ref<string[]>([]);
 
@@ -267,7 +328,7 @@ const onCollapseChange = (newNames: string | string[]) => {
 
 const getTaskTitle = (task: Task): string => {
   const taskNumber = task.sequence_number ? `#${task.sequence_number}` : '';
-  const displayTitle = task.video_title?.trim() || task.task_id;
+  const displayTitle = task.video_title?.trim() || t('No Title');
   return `${taskNumber} ${displayTitle} - ${getStatusText(task.status)}`;
 };
 
@@ -492,5 +553,20 @@ const shouldShowImproveButton = (task: Task): boolean => {
 /* 按钮过渡效果 */
 :deep(.el-button) {
   transition: all 0.3s ease;
+}
+
+/* 标题编辑输入框 */
+.title-edit-input {
+  width: 200px;
+}
+
+.title-edit-input :deep(.el-input__inner) {
+  font-size: 13px;
+}
+
+/* 无标题占位符样式 */
+.no-title {
+  color: #909399;
+  font-style: italic;
 }
 </style>
