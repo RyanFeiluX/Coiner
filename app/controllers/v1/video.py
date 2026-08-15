@@ -149,13 +149,20 @@ def update_task_title(task_id: str, body: dict):
             message="Only pending tasks can have their title updated"
         )
     
-    # Update both title_text and video_title
+    # If user provides a non-empty title, enable title; otherwise keep existing title_enabled state
+    title_enabled = existing_task.get("title_enabled", True)
+    if title_text:
+        title_enabled = True
+    
+    # Update title fields
+    video_title = title_text if title_enabled else ""
     sm.state.update_task(
         task_id,
         state=existing_task["state"],
         progress=existing_task.get("progress", 0),
+        title_enabled=title_enabled,
         title_text=title_text,
-        video_title=title_text
+        video_title=video_title
     )
     
     updated_task = sm.state.get_task(task_id)
@@ -1056,8 +1063,8 @@ def recover_scene_integration(request: Request, body: dict):
     si_title_text = title_params.get("title_text", "").strip()
     si_video_title = ""
     if not si_title_enabled:
-        # Title disabled - leave empty, frontend will show "No Title" placeholder
-        pass
+        # Title disabled - clear video_title so task label falls back to task_id
+        si_video_title = ""
     elif si_title_text:
         # Use user-specified title as the task panel display title
         si_video_title = si_title_text
@@ -1073,6 +1080,7 @@ def recover_scene_integration(request: Request, body: dict):
         state=const.TASK_STATE_PENDING,
         progress=0,
         task_type="scene_integration",
+        title_enabled=si_title_enabled,
         title_text=si_title_text,
         video_title=si_video_title,
     )

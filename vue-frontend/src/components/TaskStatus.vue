@@ -82,7 +82,10 @@
                       />
                     </template>
                     <template v-else>
-                      <span :class="{ 'no-title': !task.title_text }">
+                      <span v-if="task.title_enabled === false" class="title-disabled">
+                        {{ t('Title Disabled') }}
+                      </span>
+                      <span v-else :class="{ 'no-title': !task.title_text }">
                         {{ task.title_text || t('No Title') }}
                       </span>
                       <el-button
@@ -219,6 +222,7 @@ interface Task {
   start_time?: string;
   end_time?: string;
   sequence_number?: number;
+  title_enabled?: boolean;
   title_text?: string;
   video_title?: string;
   scene_loss_warning?: string;
@@ -328,7 +332,7 @@ const onCollapseChange = (newNames: string | string[]) => {
 
 const getTaskTitle = (task: Task): string => {
   const taskNumber = task.sequence_number ? `#${task.sequence_number}` : '';
-  const displayTitle = task.video_title?.trim() || t('No Title');
+  const displayTitle = task.video_title?.trim() || task.task_id;
   return `${taskNumber} ${displayTitle} - ${getStatusText(task.status)}`;
 };
 
@@ -568,5 +572,11 @@ const shouldShowImproveButton = (task: Task): boolean => {
 .no-title {
   color: #909399;
   font-style: italic;
+}
+
+/* 标题已禁用样式 */
+.title-disabled {
+  color: #909399;
+  text-decoration: line-through;
 }
 </style>
