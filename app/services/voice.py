@@ -5,6 +5,12 @@ from datetime import datetime, timedelta
 from typing import Union
 from xml.sax.saxutils import unescape
 
+# Ensure SelectorEventLoop on Windows for aiodns compatibility
+# aiodns (used by edge-tts) does not work with ProactorEventLoop on Windows
+import sys as _sys
+if _sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 import edge_tts
 import requests
 from edge_tts import SubMaker, submaker
