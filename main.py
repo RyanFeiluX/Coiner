@@ -7,6 +7,11 @@ if platform.system() == "Windows":
     import ctypes
     ctypes.windll.kernel32.SetConsoleTitleW("Coiner - Backend API (:8000)")
 
+    # Fix aiodns compatibility - use SelectorEventLoop on Windows
+    # aiodns (used by edge-tts) does not work with ProactorEventLoop
+    import asyncio
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 class ConnectionResetErrorFilter(logging.Filter):
     def filter(self, record):
         if record.name == "asyncio" and "ConnectionResetError" in record.getMessage():
