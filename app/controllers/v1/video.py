@@ -1063,20 +1063,20 @@ def recover_scene_integration(request: Request, body: dict):
     task_id = utils.get_uuid()
 
     # Derive display titles for the scene integration task
-    si_title_enabled = title_params.get("title_enabled", True)
+    # Fetch original task once for inheritance of video_title and title_enabled
+    original_task = sm.state.get_task(task_id_or_path) if task_id_or_path else None
+
+    # title_enabled: use explicit user choice, else inherit from original task, else default True
+    si_title_enabled = True
+    if original_task is not None:
+        si_title_enabled = original_task.get("title_enabled", True)
+    if "title_enabled" in title_params:
+        si_title_enabled = title_params["title_enabled"]
+
     si_title_text = title_params.get("title_text", "").strip()
-    si_video_title = ""
-    if not si_title_enabled:
-        # Title disabled - clear video_title so task label falls back to task_id
-        si_video_title = ""
-    elif si_title_text:
-        # Use user-specified title as the task panel display title
-        si_video_title = si_title_text
-    elif task_id_or_path:
-        # Fallback to original task's title
-        original_task = sm.state.get_task(task_id_or_path)
-        if original_task:
-            si_video_title = original_task.get("video_title", "")
+
+    # video_title always inherits from original task (video topic from script settings)
+    si_video_title = original_task.get("video_title", "") if original_task else ""
 
     # Register task immediately so it appears in task management
     sm.state.update_task(
@@ -1087,6 +1087,7 @@ def recover_scene_integration(request: Request, body: dict):
         title_enabled=si_title_enabled,
         title_text=si_title_text,
         video_title=si_video_title,
+        original_task_id=task_id_or_path,
     )
     
     # Submit to thread manager for proper concurrency control

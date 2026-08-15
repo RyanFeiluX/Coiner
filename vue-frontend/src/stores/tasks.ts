@@ -14,8 +14,10 @@ export interface Task {
   start_time?: string;
   end_time?: string;
   sequence_number?: number;
+  title_enabled?: boolean;
   title_text?: string;
   video_title?: string;
+  original_task_id?: string;
   scene_loss_warning?: string;
   failed_scene_indices?: number[];
 }

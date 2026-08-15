@@ -147,7 +147,7 @@
                     type="primary"
                     size="small"
                     class="recover-btn"
-                    @click="navigateToSceneIntegration(task.task_id)"
+                    @click="navigateToSceneIntegration(task)"
                   >
                     {{ t('Recover Lost Scenes') }}
                   </el-button>
@@ -182,7 +182,7 @@
                     :key="'improve-'+task.task_id"
                     type="success"
                     size="small"
-                    @click="navigateToSceneIntegration(task.task_id)"
+                    @click="navigateToSceneIntegration(task)"
                   >
                     {{ t('Improve Scenes') }}
                   </el-button>
@@ -225,6 +225,7 @@ interface Task {
   title_enabled?: boolean;
   title_text?: string;
   video_title?: string;
+  original_task_id?: string;
   scene_loss_warning?: string;
   failed_scene_indices?: number[];
 }
@@ -392,16 +393,30 @@ const handleDownload = (task: Task) => {
 };
 
 const router = useRouter();
-const navigateToSceneIntegration = (taskId: string) => {
+const navigateToSceneIntegration = (task: Task) => {
+  const taskId = task.original_task_id || task.task_id;
   router.push({ name: 'SceneIntegration', query: { original_task_id: taskId } });
 };
 
 const shouldShowImproveButton = (task: Task): boolean => {
-  const show = task.status === 'completed' &&
-               !!task.videos && task.videos.length > 0 &&
-               !task.scene_loss_warning;
-  console.log(`[TaskStatus] task_id=${task.task_id}, status=${task.status}, videos=${task.videos?.length}, scene_loss_warning=${task.scene_loss_warning}, showImprove=${show}`);
-  return show;
+  // Video generation tasks: show normally
+  if (task.task_type === 'video_generation') {
+    const show = task.status === 'completed' &&
+                 !!task.videos && task.videos.length > 0 &&
+                 !task.scene_loss_warning;
+    return show;
+  }
+  
+  // Scene integration tasks: check if original task exists
+  if (task.task_type === 'scene_integration') {
+    if (!task.original_task_id) return false;
+    const originalTask = tasksStore.getTaskById(task.original_task_id);
+    if (!originalTask) return false;
+    return task.status === 'completed' &&
+           !!task.videos && task.videos.length > 0;
+  }
+  
+  return false;
 };
 </script>
 
