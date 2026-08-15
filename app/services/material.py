@@ -162,8 +162,13 @@ def search_videos_pexels(
         full_search_term = f"{style_keyword} {search_term}"
         logger.info(f"Adding style keyword '{style_keyword}' to search term")
     
-    # Build URL
-    params = {"query": full_search_term, "per_page": 20, "orientation": video_orientation}
+    # Build URL - filter for large (HD) videos at API level
+    params = {
+        "query": full_search_term, 
+        "per_page": 20, 
+        "orientation": video_orientation,
+        "size": "large",  # Only return HD videos
+    }
     query_url = f"https://api.pexels.com/videos/search?{urlencode(params)}"
     logger.info(f"searching videos: {query_url}, with proxies: {config.proxy}")
 
@@ -188,68 +193,43 @@ def search_videos_pexels(
             if duration < minimum_duration:
                 continue
             video_files = v["video_files"]
-            # loop through each url to determine the best quality
-            # First try to find exact match
+            # Select video: prefer 1080p over 4K to avoid unnecessary downscaling
             best_video = None
-            best_quality_score = -1
-            best_is_1080p = False
             
+            # Priority 1: exact 1080p (1920x1080) - no downscaling needed
             for video in video_files:
                 w = int(video["width"])
                 h = int(video["height"])
-                
-                # Calculate quality score (prefer higher resolution)
-                quality_score = w * h
-                is_1080p = min(w, h) >= 1080  # Short side >= 1080
-                
-                # Check if this is an exact match
-                if w == video_width and h == video_height:
+                if w == 1920 and h == 1080:
                     best_video = video
-                    best_quality_score = quality_score
-                    best_is_1080p = is_1080p
-                    break  # Exact match found, use it
-                
-                # If no exact match yet, track the best quality video
-                # that is at least as large as target resolution
-                # Prefer 1080p videos over non-1080p videos
-                if w >= video_width and h >= video_height:
-                    if best_video is None:
-                        best_video = video
-                        best_quality_score = quality_score
-                        best_is_1080p = is_1080p
-                    elif is_1080p and not best_is_1080p:
-                        # New video is 1080p, current is not → prefer new
-                        best_video = video
-                        best_quality_score = quality_score
-                        best_is_1080p = is_1080p
-                    elif is_1080p == best_is_1080p and quality_score > best_quality_score:
-                        # Same 1080p status → prefer higher quality
-                        best_video = video
-                        best_quality_score = quality_score
-                        best_is_1080p = is_1080p
+                    break
+                elif w == 1080 and h == 1920:  # Portrait 1080p
+                    best_video = video
+                    break
             
-            # If no suitable video found, use the highest quality available
-            # (with 1080p preference)
-            if best_video is None and video_files:
+            # Priority 2: any video with short side >= 1080 (avoid 4K)
+            if best_video is None:
                 for video in video_files:
                     w = int(video["width"])
                     h = int(video["height"])
-                    quality_score = w * h
-                    is_1080p = min(w, h) >= 1080
-                    if best_video is None:
+                    short_side = min(w, h)
+                    if short_side >= 1080 and short_side < 2000:  # 1080p-1440p range
                         best_video = video
-                        best_quality_score = quality_score
-                        best_is_1080p = is_1080p
-                    elif is_1080p and not best_is_1080p:
-                        # New video is 1080p, current is not → prefer new
+                        break
+            
+            # Priority 3: any video with short side >= 1080 (including 4K as fallback)
+            if best_video is None:
+                for video in video_files:
+                    w = int(video["width"])
+                    h = int(video["height"])
+                    if min(w, h) >= 1080:
                         best_video = video
-                        best_quality_score = quality_score
-                        best_is_1080p = is_1080p
-                    elif is_1080p == best_is_1080p and quality_score > best_quality_score:
-                        # Same 1080p status → prefer higher quality
-                        best_video = video
-                        best_quality_score = quality_score
-                        best_is_1080p = is_1080p
+                        logger.info(f"Using 4K video as fallback: {w}x{h}")
+                        break
+            
+            # Priority 4: highest quality available
+            if best_video is None and video_files:
+                best_video = max(video_files, key=lambda v: int(v["width"]) * int(v["height"]))
             
             # Filter out low quality videos
             if best_video:
@@ -321,12 +301,14 @@ def search_videos_pixabay(
         full_search_term = f"{style_keyword} {search_term}"
         logger.info(f"Adding style keyword '{style_keyword}' to search term")
     
-    # Build URL
+    # Build URL - filter for 1080p+ at API level
     params = {
         "q": full_search_term,
         "video_type": "all",  # Accepted values: "all", "film", "animation"
         "per_page": 50,
         "key": api_key,
+        "min_width": 1920,   # Only return videos with width >= 1920
+        "min_height": 1080,  # Only return videos with height >= 1080
     }
     query_url = f"https://pixabay.com/api/videos/?{urlencode(params)}"
     logger.info(f"searching videos: {query_url}, with proxies: {config.proxy}")
@@ -348,70 +330,36 @@ def search_videos_pixabay(
             if duration < minimum_duration:
                 continue
             video_files = v["videos"]
-            # loop through each url to determine the best quality
-            # First try to find exact match
+            # Select video: prefer medium (1080p) over large (4K) to avoid unnecessary downscaling
             best_video = None
-            best_quality_score = -1
-            best_is_1080p = False
             
-            for video_type in video_files:
-                video = video_files[video_type]
-                w = int(video["width"])
-                h = int(video["height"])
-                
-                # Calculate quality score (prefer higher resolution)
-                quality_score = w * h
-                is_1080p = min(w, h) >= 1080  # Short side >= 1080
-                
-                # Check if this is an exact match
-                if w == video_width and h == video_height:
-                    best_video = video
-                    best_quality_score = quality_score
-                    best_is_1080p = is_1080p
-                    break  # Exact match found, use it
-                
-                # If no exact match yet, track the best quality video
-                # that is at least as large as target resolution
-                # Prefer 1080p videos over non-1080p videos
-                if w >= video_width and h >= video_height:
-                    if best_video is None:
-                        best_video = video
-                        best_quality_score = quality_score
-                        best_is_1080p = is_1080p
-                    elif is_1080p and not best_is_1080p:
-                        # New video is 1080p, current is not → prefer new
-                        best_video = video
-                        best_quality_score = quality_score
-                        best_is_1080p = is_1080p
-                    elif is_1080p == best_is_1080p and quality_score > best_quality_score:
-                        # Same 1080p status → prefer higher quality
-                        best_video = video
-                        best_quality_score = quality_score
-                        best_is_1080p = is_1080p
+            # Priority 1: medium (1920x1080) - exact 1080p, no downscaling needed
+            if "medium" in video_files:
+                medium = video_files["medium"]
+                if medium.get("url") and int(medium.get("width", 0)) >= 1920:
+                    best_video = medium
             
-            # If no suitable video found, use the highest quality available
-            # (with 1080p preference)
-            if best_video is None and video_files:
-                for video_type in video_files:
-                    video = video_files[video_type]
-                    w = int(video["width"])
-                    h = int(video["height"])
-                    quality_score = w * h
-                    is_1080p = min(w, h) >= 1080
-                    if best_video is None:
-                        best_video = video
-                        best_quality_score = quality_score
-                        best_is_1080p = is_1080p
-                    elif is_1080p and not best_is_1080p:
-                        # New video is 1080p, current is not → prefer new
-                        best_video = video
-                        best_quality_score = quality_score
-                        best_is_1080p = is_1080p
-                    elif is_1080p == best_is_1080p and quality_score > best_quality_score:
-                        # Same 1080p status → prefer higher quality
-                        best_video = video
-                        best_quality_score = quality_score
-                        best_is_1080p = is_1080p
+            # Priority 2: small (1280x720) if medium not available - still acceptable
+            if best_video is None and "small" in video_files:
+                small = video_files["small"]
+                if small.get("url") and int(small.get("width", 0)) >= 1280:
+                    best_video = small
+            
+            # Priority 3: large (4K) - only as fallback, will need downscaling
+            if best_video is None and "large" in video_files:
+                large = video_files["large"]
+                if large.get("url") and int(large.get("width", 0)) >= 1920:
+                    best_video = large
+                    logger.info(f"Using large (4K) video as fallback: {large['width']}x{large['height']}")
+            
+            # Priority 4: any available video with URL
+            if best_video is None:
+                for video_type in ["medium", "small", "large", "tiny"]:
+                    if video_type in video_files:
+                        video = video_files[video_type]
+                        if video.get("url"):
+                            best_video = video
+                            break
             
             # Filter out low quality videos
             if best_video:
