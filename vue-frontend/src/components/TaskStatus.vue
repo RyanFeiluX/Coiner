@@ -288,7 +288,7 @@ const editingTitleTaskId = ref<string | null>(null);
 const editingTitleValue = ref('');
 
 const canEditTitle = (task: Task): boolean => {
-  return task.task_type === 'scene_integration' && task.status === 'pending';
+  return task.status === 'pending';
 };
 
 const startEditTitle = (task: Task) => {

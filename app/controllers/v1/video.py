@@ -57,17 +57,20 @@ def create_audio(
     return create_task(request, body, stop_at="audio")
 
 
-def _extract_display_titles(body: Union[TaskVideoRequest, SubtitleRequest, AudioRequest]) -> tuple[str, str]:
-    """Extract title_text (Title Settings) and video_title (Script Settings) for task panel display."""
+def _extract_display_titles(body: Union[TaskVideoRequest, SubtitleRequest, AudioRequest]) -> tuple[bool, str, str]:
+    """Extract title_enabled, title_text and video_title for task panel display."""
+    title_enabled = True
     title_text = ""
     video_title = ""
 
+    if hasattr(body, "title_enabled") and body.title_enabled is not None:
+        title_enabled = body.title_enabled
     if hasattr(body, "title_text") and body.title_text:
         title_text = body.title_text.strip()
     if hasattr(body, "video_title") and body.video_title:
         video_title = body.video_title.strip()
 
-    return title_text, video_title
+    return title_enabled, title_text, video_title
 
 
 def create_task(
@@ -98,12 +101,13 @@ def create_task(
             logger.debug(f"[Task Creation] host_visible received: {body.host_visible}")
             logger.debug(f"[Task Creation] host_visible type: {type(body.host_visible)}")
 
-        title_text, video_title = _extract_display_titles(body)
+        title_enabled, title_text, video_title = _extract_display_titles(body)
         sm.state.update_task(
             task_id,
             state=const.TASK_STATE_PENDING,
             progress=0,
             task_type="video_generation",
+            title_enabled=title_enabled,
             title_text=title_text,
             video_title=video_title,
         )
