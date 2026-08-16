@@ -36,6 +36,7 @@ def scan_task_for_split(task_id_or_path: str, min_duration: float = 30, max_dura
         "scenes": [],
         "total_duration": 0,
         "suggested_segments": [],
+        "original_title_enabled": False,
     }
 
     if not os.path.exists(task_dir):
@@ -94,6 +95,34 @@ def scan_task_for_split(task_id_or_path: str, min_duration: float = 30, max_dura
 
     result["total_duration"] = round(total_duration, 2)
     result["suggested_segments"] = plan_segments(result["scenes"], min_duration, max_duration)
+
+    # Auto-generate titles for segments if original task has title_enabled
+    original_title_enabled = False
+    original_language = None
+    if os.path.exists(script_path):
+        try:
+            if not script_data:
+                with open(script_path, "r", encoding="utf-8") as f:
+                    script_data = json.loads(f.read())
+            original_title_enabled = script_data.get("params", {}).get("title_enabled", False)
+            original_language = script_data.get("params", {}).get("video_language")
+        except Exception:
+            pass
+
+    result["original_title_enabled"] = original_title_enabled
+
+    if original_title_enabled and result["suggested_segments"]:
+        try:
+            from app.services.scene_parser import generate_video_title
+            for seg in result["suggested_segments"]:
+                seg_script = seg.get("script_preview", "")
+                if seg_script:
+                    title = generate_video_title(seg_script, original_language)
+                    seg["title"] = title
+                else:
+                    seg["title"] = ""
+        except Exception as e:
+            logger.warning(f"Failed to generate segment titles: {e}")
 
     return result
 
@@ -322,6 +351,34 @@ def execute_split(
     if video_enhance_params and "silence_duration" in video_enhance_params:
         config_silence_duration = video_enhance_params["silence_duration"]
 
+    # Merge title params: provided > original > config defaults
+    effective_title = {
+        "title_enabled": False,
+        "title_duration": 3.0,
+        "title_font_name": "MicrosoftYaHeiBold.ttc",
+        "title_font_size": 72,
+        "title_text_color": "#FFFFFF",
+        "title_stroke_color": "#000000",
+        "title_stroke_width": 2.0,
+        "title_background_color": "transparent",
+        "title_position": "center",
+        "title_margin": 0.05,
+        "title_align": "center",
+        "title_animation": "none",
+        "title_animation_duration": 0.5,
+        "title_background_overlay": False,
+        "title_overlay_color": "rgba(0,0,0,0.5)",
+        "title_margin_left": 0.05,
+        "title_margin_right": 0.05,
+    }
+    for key in effective_title:
+        if title_params and key in title_params and title_params[key] is not None:
+            effective_title[key] = title_params[key]
+        elif key in original_params and original_params[key] is not None:
+            effective_title[key] = original_params[key]
+        elif key in title_config:
+            effective_title[key] = title_config[key]
+
     total_segments = len(segments)
     completed_segments = 0
     segment_results = []
@@ -398,24 +455,24 @@ def execute_split(
                 bgm_file=effective_bgm.get("bgm_file", ""),
                 bgm_volume=float(effective_bgm.get("bgm_volume", 0.2)),
                 output_bg_color=video_enhance_params.get("output_bg_color", "black") if video_enhance_params else "black",
-                title_enabled=title_params.get("title_enabled", False) if title_params else False,
-                title_text=title_params.get("title_text", "") if title_params else "",
-                title_duration=title_params.get("title_duration", 3.0) if title_params else 3.0,
-                title_font_name=title_params.get("title_font_name", "MicrosoftYaHeiBold.ttc") if title_params else "MicrosoftYaHeiBold.ttc",
-                title_font_size=title_params.get("title_font_size", 72) if title_params else 72,
-                title_text_color=title_params.get("title_text_color", "#FFFFFF") if title_params else "#FFFFFF",
-                title_stroke_color=title_params.get("title_stroke_color", "#000000") if title_params else "#000000",
-                title_stroke_width=title_params.get("title_stroke_width", 2.0) if title_params else 2.0,
-                title_background_color=title_params.get("title_background_color", "transparent") if title_params else "transparent",
-                title_position=title_params.get("title_position", "center") if title_params else "center",
-                title_margin=title_params.get("title_margin", 0.05) if title_params else 0.05,
-                title_align=title_params.get("title_align", "center") if title_params else "center",
-                title_animation=title_params.get("title_animation", "none") if title_params else "none",
-                title_animation_duration=title_params.get("title_animation_duration", 0.5) if title_params else 0.5,
-                title_background_overlay=title_params.get("title_background_overlay", False) if title_params else False,
-                title_overlay_color=title_params.get("title_overlay_color", "rgba(0,0,0,0.5)") if title_params else "rgba(0,0,0,0.5)",
-                title_margin_left=title_params.get("title_margin_left", 0.05) if title_params else 0.05,
-                title_margin_right=title_params.get("title_margin_right", 0.05) if title_params else 0.05,
+                title_enabled=effective_title.get("title_enabled", False),
+                title_text=segment.get("title", ""),
+                title_duration=effective_title.get("title_duration", 3.0),
+                title_font_name=effective_title.get("title_font_name", "MicrosoftYaHeiBold.ttc"),
+                title_font_size=effective_title.get("title_font_size", 72),
+                title_text_color=effective_title.get("title_text_color", "#FFFFFF"),
+                title_stroke_color=effective_title.get("title_stroke_color", "#000000"),
+                title_stroke_width=effective_title.get("title_stroke_width", 2.0),
+                title_background_color=effective_title.get("title_background_color", "transparent"),
+                title_position=effective_title.get("title_position", "center"),
+                title_margin=effective_title.get("title_margin", 0.05),
+                title_align=effective_title.get("title_align", "center"),
+                title_animation=effective_title.get("title_animation", "none"),
+                title_animation_duration=effective_title.get("title_animation_duration", 0.5),
+                title_background_overlay=effective_title.get("title_background_overlay", False),
+                title_overlay_color=effective_title.get("title_overlay_color", "rgba(0,0,0,0.5)"),
+                title_margin_left=effective_title.get("title_margin_left", 0.05),
+                title_margin_right=effective_title.get("title_margin_right", 0.05),
             )
 
             scene_results = [{"combined_video_path": vp} for vp in video_paths]

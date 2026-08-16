@@ -70,6 +70,19 @@
             </div>
           </div>
 
+          <!-- Title Config -->
+          <div class="title-config" v-if="scanResult">
+            <h3 class="section-title">{{ t('Title Settings') }}</h3>
+            <div class="config-row">
+              <div class="form-item config-item">
+                <div class="title-toggle">
+                  <el-switch v-model="titleEnabled" />
+                  <span class="toggle-label">{{ t('Enable Video Title') }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Segment Plan -->
           <div class="segment-plan">
             <div class="section-header">
@@ -93,6 +106,16 @@
                   <el-button size="small" type="danger" text @click="removeSegment(segIdx)">
                     {{ t('Delete') }}
                   </el-button>
+                </div>
+                <div v-if="titleEnabled" class="segment-title-edit">
+                  <el-input
+                    v-model="segment.title"
+                    :placeholder="t('Enter video title')"
+                    size="small"
+                    clearable
+                    maxlength="60"
+                    show-word-limit
+                  />
                 </div>
                 <div class="segment-scenes">
                   <div class="scene-chips">
@@ -191,6 +214,8 @@ const scanResult = ref<any>(null);
 // Config
 const minDuration = ref(30);
 const maxDuration = ref(90);
+// Title toggle
+const titleEnabled = ref(false);
 // Segments
 const segments = ref<any[]>([]);
 // Scanning state
@@ -240,6 +265,7 @@ const loadFromLocalStorage = () => {
       taskInput.value = parsed.taskInput || '';
       minDuration.value = parsed.minDuration || 30;
       maxDuration.value = parsed.maxDuration || 90;
+      titleEnabled.value = parsed.titleEnabled ?? false;
     } catch (e) {
       console.error('Failed to load video splitter settings:', e);
     }
@@ -251,6 +277,7 @@ const saveToLocalStorage = () => {
     taskInput: taskInput.value,
     minDuration: minDuration.value,
     maxDuration: maxDuration.value,
+    titleEnabled: titleEnabled.value,
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 };
@@ -258,6 +285,7 @@ const saveToLocalStorage = () => {
 watch(taskInput, () => saveToLocalStorage());
 watch(minDuration, () => saveToLocalStorage());
 watch(maxDuration, () => saveToLocalStorage());
+watch(titleEnabled, () => saveToLocalStorage());
 
 onMounted(() => {
   loadFromLocalStorage();
@@ -283,10 +311,12 @@ const scanTask = async () => {
     if (response.status === 200 && response.data) {
       scanResult.value = response.data;
       // Auto-apply suggested segments
+      titleEnabled.value = response.data.original_title_enabled ?? false;
       segments.value = (response.data.suggested_segments || []).map((seg: any) => ({
         scene_nums: [...seg.scene_nums],
         duration: seg.duration,
         script_preview: seg.script_preview || '',
+        title: seg.title || '',
       }));
     } else {
       scanResult.value = null;
@@ -374,6 +404,7 @@ const executeSplit = async () => {
       segments.value,
       minDuration.value,
       maxDuration.value,
+      titleEnabled.value,
     );
 
     if (response.status === 200 && response.data && response.data.task_id) {
@@ -615,6 +646,30 @@ const downloadVideo = (path: string) => {
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
+}
+
+.title-config {
+  margin-bottom: 16px;
+}
+
+.title-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toggle-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.segment-title-edit {
+  margin-bottom: 8px;
+}
+
+.segment-title-edit :deep(.el-input) {
+  width: 100%;
 }
 
 .segment-script {

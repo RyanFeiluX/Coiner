@@ -316,12 +316,13 @@ export const apiService = {
     return response.data;
   },
 
-  executeVideoSplit: async (taskId: string, segments: any[], minDuration: number = 30, maxDuration: number = 90): Promise<ApiResponse> => {
+  executeVideoSplit: async (taskId: string, segments: any[], minDuration: number = 30, maxDuration: number = 90, titleEnabled: boolean = false): Promise<ApiResponse> => {
     const response = await api.post('/video-split/execute', {
       task_id: taskId,
       segments,
       min_duration: minDuration,
       max_duration: maxDuration,
+      title_enabled: titleEnabled,
     });
     return response.data;
   },
