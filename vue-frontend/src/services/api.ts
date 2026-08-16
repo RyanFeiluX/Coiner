@@ -304,6 +304,27 @@ export const apiService = {
     const response = await api.post('/cloned-voices/import', { json_data: jsonData });
     return response.data;
   },
+
+  // Video split related
+  scanVideoSplit: async (taskId: string, minDuration: number = 30, maxDuration: number = 90): Promise<ApiResponse> => {
+    const response = await api.post('/video-split/scan', { task_id: taskId, min_duration: minDuration, max_duration: maxDuration });
+    return response.data;
+  },
+
+  planVideoSplit: async (scenes: any[], minDuration: number = 30, maxDuration: number = 90): Promise<ApiResponse> => {
+    const response = await api.post('/video-split/plan', { scenes, min_duration: minDuration, max_duration: maxDuration });
+    return response.data;
+  },
+
+  executeVideoSplit: async (taskId: string, segments: any[], minDuration: number = 30, maxDuration: number = 90): Promise<ApiResponse> => {
+    const response = await api.post('/video-split/execute', {
+      task_id: taskId,
+      segments,
+      min_duration: minDuration,
+      max_duration: maxDuration,
+    });
+    return response.data;
+  },
   
 };
 

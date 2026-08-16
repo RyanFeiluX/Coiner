@@ -15,6 +15,7 @@ Coiner 提供了一套完整的 RESTful API 接口，用于视频生成、配置
 - [健康检查](#健康检查)
 - [任务管理](#任务管理)
 - [场景集成](#场景集成--扫描)
+- [视频分割](#视频分割--扫描)
 - [脚本生成](#脚本生成)
 - [配置管理](#配置管理)
 - [语音服务](#语音服务)
@@ -884,7 +885,106 @@ Coiner 提供了一套完整的 RESTful API 接口，用于视频生成、配置
 
 任务创建后，通过 `GET /api/v1/tasks/{task_id}` 轮询进度。
 
-### 10. 下载视频
+### 10. 视频分割 — 扫描
+
+扫描任务目录，返回场景信息和自动分段建议。
+
+**端点**: `POST /api/v1/video-split/scan`
+
+**摘要**: Scan task for video splitting
+
+**请求体**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| task_id | string | 是 | 源任务 ID 或目录路径 |
+| min_duration | float | 否 | 最小分段时长（秒），默认 30 |
+| max_duration | float | 否 | 最大分段时长（秒），默认 90 |
+
+**响应示例**:
+```json
+{
+  "status": 200,
+  "data": {
+    "task_id": "xxx",
+    "scenes": [
+      { "scene_num": 1, "duration": 15.2, "script_preview": "今天我们来聊聊..." },
+      { "scene_num": 2, "duration": 20.1, "script_preview": "首先，什么是..." }
+    ],
+    "total_duration": 180.5,
+    "suggested_segments": [
+      { "scene_nums": [1, 2, 3], "duration": 45.3, "script_preview": "..." },
+      { "scene_nums": [4, 5], "duration": 52.1, "script_preview": "..." }
+    ]
+  }
+}
+```
+
+### 11. 视频分割 — 规划分段
+
+根据场景列表和时长约束规划分段方案。
+
+**端点**: `POST /api/v1/video-split/plan`
+
+**摘要**: Plan segments from scenes
+
+**请求体**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| scenes | array | 是 | 场景列表，每个包含 scene_num 和 duration |
+| min_duration | float | 否 | 最小分段时长（秒），默认 30 |
+| max_duration | float | 否 | 最大分段时长（秒），默认 90 |
+
+**响应示例**:
+```json
+{
+  "status": 200,
+  "data": {
+    "segments": [
+      { "scene_nums": [1, 2, 3], "duration": 45.3 },
+      { "scene_nums": [4, 5], "duration": 52.1 }
+    ],
+    "total_segments": 2
+  }
+}
+```
+
+### 12. 视频分割 — 执行
+
+执行视频分割，将源任务的场景视频拆分为多个短视频。
+
+**端点**: `POST /api/v1/video-split/execute`
+
+**摘要**: Execute video split
+
+**请求体**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| task_id | string | 是 | 源任务 ID 或目录路径 |
+| segments | array | 是 | 分段方案，每项包含 scene_nums 列表 |
+| min_duration | float | 否 | 最小时长（秒） |
+| max_duration | float | 否 | 最大时长（秒） |
+| subtitle_* | - | 否 | 字幕参数（同场景集成） |
+| bgm_* | - | 否 | BGM 参数（同场景集成） |
+| title_* | - | 否 | 标题参数（同场景集成） |
+
+**响应示例**:
+```json
+{
+  "status": 200,
+  "data": {
+    "task_id": "new-uuid-for-split-task",
+    "task_type": "video_split",
+    "original_task_id": "source-task-id"
+  }
+}
+```
+
+任务创建后，通过 `GET /api/v1/tasks/{task_id}` 轮询进度。完成后，`videos` 字段包含所有短视频的路径。
+
+### 13. 下载视频
 
 下载视频文件。
 

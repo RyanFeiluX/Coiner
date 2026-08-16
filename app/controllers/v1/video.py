@@ -132,6 +132,159 @@ def create_task(
         )
 
 
+@router.post("/video-split/scan", summary="Scan task for video splitting")
+def scan_video_split(request: Request, body: dict):
+    """Scan a task directory and return scene info with suggested segments"""
+    task_id_or_path = body.get("task_id") or body.get("task_path")
+    if not task_id_or_path:
+        raise HttpException(task_id="", status_code=400, message="Task ID or path is required")
+
+    min_duration = float(body.get("min_duration", 30))
+    max_duration = float(body.get("max_duration", 90))
+
+    from app.services.video_splitter import scan_task_for_split
+
+    try:
+        result = scan_task_for_split(task_id_or_path, min_duration, max_duration)
+        return utils.get_response(200, result)
+    except Exception as e:
+        logger.error(f"Error scanning for video split: {e}")
+        raise HttpException(task_id=task_id_or_path, status_code=500, message=f"Failed to scan task: {str(e)}")
+
+
+@router.post("/video-split/plan", summary="Plan segments from scenes")
+def plan_video_split(request: Request, body: dict):
+    """Plan segments based on scenes and duration constraints"""
+    scenes = body.get("scenes", [])
+    min_duration = float(body.get("min_duration", 30))
+    max_duration = float(body.get("max_duration", 90))
+
+    from app.services.video_splitter import plan_segments
+
+    try:
+        segments = plan_segments(scenes, min_duration, max_duration)
+        return utils.get_response(200, {
+            "segments": segments,
+            "total_segments": len(segments),
+        })
+    except Exception as e:
+        logger.error(f"Error planning video split: {e}")
+        raise HttpException(task_id="", status_code=500, message=f"Failed to plan segments: {str(e)}")
+
+
+@router.post("/video-split/execute", summary="Execute video split")
+def execute_video_split(request: Request, body: dict):
+    """Execute video split - creates short videos from source task scenes"""
+    import time as _time
+    task_create_time = _time.time()
+
+    task_id_or_path = body.get("task_id") or body.get("task_path")
+    segments = body.get("segments", [])
+
+    if not task_id_or_path:
+        raise HttpException(task_id="", status_code=400, message="Task ID or path is required")
+    if not segments:
+        raise HttpException(task_id="", status_code=400, message="Segments are required")
+
+    min_duration = float(body.get("min_duration", 30))
+    max_duration = float(body.get("max_duration", 90))
+
+    # Extract subtitle/BGM/title/video_enhance params (same pattern as scene integration)
+    subtitle_params = {k: v for k, v in {
+        'subtitle_enabled': body.get('subtitle_enabled'),
+        'font_name': body.get('font_name'),
+        'font_size': body.get('font_size'),
+        'text_fore_color': body.get('text_fore_color'),
+        'text_background_color': body.get('text_background_color'),
+        'stroke_color': body.get('stroke_color'),
+        'stroke_width': body.get('stroke_width'),
+        'subtitle_position': body.get('subtitle_position'),
+        'custom_position': body.get('custom_position'),
+    }.items() if v is not None}
+
+    bgm_params = {k: v for k, v in {
+        'bgm_type': body.get('bgm_type'),
+        'bgm_file': body.get('bgm_file'),
+        'bgm_volume': body.get('bgm_volume'),
+    }.items() if v is not None}
+
+    title_params = {k: v for k, v in {
+        'title_enabled': body.get('title_enabled'),
+        'title_text': body.get('title_text'),
+        'title_duration': body.get('title_duration'),
+        'title_font_name': body.get('title_font_name'),
+        'title_font_size': body.get('title_font_size'),
+        'title_text_color': body.get('title_text_color'),
+        'title_stroke_color': body.get('title_stroke_color'),
+        'title_stroke_width': body.get('title_stroke_width'),
+        'title_background_color': body.get('title_background_color'),
+        'title_position': body.get('title_position'),
+        'title_margin': body.get('title_margin'),
+        'title_align': body.get('title_align'),
+        'title_animation': body.get('title_animation'),
+        'title_animation_duration': body.get('title_animation_duration'),
+        'title_background_overlay': body.get('title_background_overlay'),
+        'title_overlay_color': body.get('title_overlay_color'),
+        'title_margin_left': body.get('title_margin_left'),
+        'title_margin_right': body.get('title_margin_right'),
+    }.items() if v is not None}
+
+    video_enhance_params = {k: v for k, v in {
+        'output_bg_color': body.get('output_bg_color'),
+        'silence_duration': body.get('silence_duration'),
+    }.items() if v is not None}
+
+    # Resolve original task for display info
+    original_task = sm.state.get_task(task_id_or_path) if task_id_or_path else None
+
+    # Generate unique task_id for the split task
+    task_id = utils.get_uuid()
+
+    # Register task immediately
+    sm.state.update_task(
+        task_id,
+        state=const.TASK_STATE_PENDING,
+        progress=0,
+        task_type="video_split",
+        title_enabled=True,
+        title_text="",
+        video_title=original_task.get("video_title", "") if original_task else "",
+        original_task_id=task_id_or_path,
+    )
+
+    # Submit to thread manager
+    from app.services.video_splitter import execute_split
+    from app.services.task import thread_manager
+
+    _, queue_status = thread_manager.submit_task(
+        task_id,
+        execute_split,
+        task_id_or_path,
+        task_id,
+        segments,
+        min_duration,
+        max_duration,
+        subtitle_params=subtitle_params,
+        bgm_params=bgm_params,
+        title_params=title_params,
+        video_enhance_params=video_enhance_params,
+        task_create_time=task_create_time,
+    )
+
+    # Get the task with task_type from state
+    created_task = sm.state.get_task(task_id)
+
+    # Provide appropriate message based on queue status
+    if queue_status == "queued":
+        message = "Parallel running task capacity used up and your task will be queued for next slot"
+        logger.info(f"Video split task {task_id} queued: {message}")
+    else:
+        message = "success"
+        logger.success(f"Video split task created: {utils.to_json(created_task)}")
+
+    return utils.get_response(200, created_task, message=message)
+
+
 @router.put("/tasks/{task_id}/title", summary="Update task display title")
 def update_task_title(task_id: str, body: dict):
     """Update the title text and display title of a pending task"""

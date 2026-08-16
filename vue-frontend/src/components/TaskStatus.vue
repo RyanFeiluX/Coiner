@@ -186,6 +186,15 @@
                   >
                     {{ t('Improve Scenes') }}
                   </el-button>
+                  <el-button
+                    v-if="task.task_type === 'video_generation' && task.status === 'completed' && task.videos && task.videos.length > 0"
+                    :key="'split-'+task.task_id"
+                    type="warning"
+                    size="small"
+                    @click="navigateToVideoSplitter(task)"
+                  >
+                    {{ t('Split Video') }}
+                  </el-button>
                 </div>
               </div>
             </el-collapse-item>
@@ -362,7 +371,8 @@ const getStatusType = (status: string): string => {
 const getTaskTypeText = (taskType: string): string => {
   const taskTypeMap: Record<string, string> = {
     video_generation: t('Video Generation'),
-    scene_integration: t('Scene Integration')
+    scene_integration: t('Scene Integration'),
+    video_split: t('Video Split')
   };
   return taskTypeMap[taskType] || taskType;
 };
@@ -396,6 +406,11 @@ const router = useRouter();
 const navigateToSceneIntegration = (task: Task) => {
   const taskId = task.original_task_id || task.task_id;
   router.push({ name: 'SceneIntegration', query: { original_task_id: taskId } });
+};
+
+const navigateToVideoSplitter = (task: Task) => {
+  const taskId = task.original_task_id || task.task_id;
+  router.push({ name: 'VideoSplitter', query: { source_task_id: taskId } });
 };
 
 const shouldShowImproveButton = (task: Task): boolean => {

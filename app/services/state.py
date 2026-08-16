@@ -234,7 +234,7 @@ class RedisState(BaseState):
 
 # Global task running state
 _is_task_running = False
-_task_type = None  # Can be 'video_generation' or 'scene_integration'
+_task_type = None  # Can be 'video_generation', 'scene_integration', or 'video_split'
 _task_id = None  # Current running task ID
 
 # Global state
