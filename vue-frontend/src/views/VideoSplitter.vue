@@ -519,22 +519,36 @@ const downloadSingle = (result: any) => {
 
 // Download multiple files as ZIP
 const downloadAsZip = async (files: any[]) => {
+  console.log('[Download] downloadAsZip called, files:', files.length);
   try {
     const filePaths = files.map((f: any) => getTaskRelativePath(f.path));
     console.log('[Download] ZIP files:', filePaths);
+    ElMessage.info(t('Preparing download...'));
     const blob = await apiService.downloadZip(filePaths);
     console.log('[Download] ZIP blob size:', blob.size);
+    ElMessage.success(t('Download ready'));
+    // Use <a download> instead of window.open to avoid popup blocker
     const blobUrl = URL.createObjectURL(blob);
-    window.open(blobUrl, '_blank');
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = 'segments.zip';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(blobUrl);
+      document.body.removeChild(a);
+    }, 5000);
   } catch (e: any) {
-    console.error('[Download] ZIP download failed:', e);
+    console.error('[Download] ZIP download failed:', e?.code, e?.message, e?.response?.status, e?.response?.data?.constructor?.name);
     ElMessage.error(t('Download failed'));
   }
 };
 
 // Download selected
 const downloadSelected = async () => {
+  console.log('[Download] downloadSelected called, count:', selectedResults.value.length);
+  ElMessage.info(t('Preparing download...'));
   const files = selectedResults.value;
   if (files.length === 0) return;
   if (files.length === 1) {
@@ -546,6 +560,8 @@ const downloadSelected = async () => {
 
 // Download all
 const downloadAll = async () => {
+  console.log('[Download] downloadAll called, count:', splitResults.value.length);
+  ElMessage.info(t('Preparing download...'));
   const files = splitResults.value;
   if (files.length === 0) return;
   if (files.length === 1) {

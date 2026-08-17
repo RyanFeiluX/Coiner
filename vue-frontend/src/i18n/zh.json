@@ -446,6 +446,8 @@
         "Download Video": "下载视频",
         "Download All Segments": "下载全部片段",
         "Download failed": "下载失败",
+        "Preparing download...": "正在准备下载...",
+        "Download ready": "下载就绪",
         "Enter filename": "输入文件名",
         "Task Statistics": "任务统计",
         "Total Tasks": "总任务数",

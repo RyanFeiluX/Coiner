@@ -13,7 +13,8 @@ const api = axios.create({
 // Add request interceptor for debugging
 api.interceptors.request.use(
   (config) => {
-    console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, config.data);
+    const dataStr = typeof config.data === 'string' ? config.data.substring(0, 200) : JSON.stringify(config.data)?.substring(0, 200);
+    console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, dataStr);
     return config;
   },
   (error) => {
@@ -25,11 +26,11 @@ api.interceptors.request.use(
 // Add response interceptor for debugging
 api.interceptors.response.use(
   (response) => {
-    console.log(`[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`, response.status);
+    console.log(`[API] ${response.config.method?.toUpperCase()} ${response.config.url} -> ${response.status}`, response.data?.constructor?.name);
     return response;
   },
   (error) => {
-    console.error('[API Response Error]', error.response?.status, error.response?.data || error.message);
+    console.error(`[API] ${error.config?.method?.toUpperCase()} ${error.config?.url} -> ERROR`, error.code, error.message, error.response?.status, error.response?.data?.constructor?.name);
     return Promise.reject(error);
   }
 );

@@ -527,6 +527,8 @@
         "Download Video": "Download Video",
         "Download All Segments": "Download All Segments",
         "Download failed": "Download failed",
+        "Preparing download...": "Preparing download...",
+        "Download ready": "Download ready",
         "Enter filename": "Enter filename",
         "Pending": "Pending",
         "Running": "Running",

@@ -405,13 +405,24 @@ const handleDownload = async (task: Task) => {
       try {
         const files = task.videos.map((url: string) => url.replace(/.*\/tasks\//, ''));
         console.log('[Download] ZIP files:', files);
+        ElMessage.info(t('Preparing download...'));
         const blob = await apiService.downloadZip(files);
         console.log('[Download] ZIP blob size:', blob.size);
+        ElMessage.success(t('Download ready'));
+        // Use <a download> instead of window.open to avoid popup blocker
         const blobUrl = URL.createObjectURL(blob);
-        window.open(blobUrl, '_blank');
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = 'segments.zip';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+          document.body.removeChild(a);
+        }, 5000);
       } catch (e: any) {
-        console.error('[Download] ZIP download failed:', e);
+        console.error('[Download] ZIP download failed:', e?.code, e?.message, e?.response?.status, e?.response?.data?.constructor?.name);
         const msg = e?.response?.data?.message || t('Download failed');
         ElMessage.error(msg);
       }

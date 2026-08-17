@@ -8,7 +8,7 @@ from typing import Union
 
 from fastapi import BackgroundTasks, Depends, Path, Request, UploadFile
 from fastapi.params import File
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from loguru import logger
 
 from app.config import config
@@ -694,33 +694,50 @@ async def download_zip(request: Request):
     :param request: Request body with {"files": ["task_id/path/file.mp4", ...]}
     :return: ZIP file stream
     """
+    import asyncio
+    logger.info("[download-zip] Request received")
     body = await request.json()
     file_paths = body.get("files", [])
+    logger.info(f"[download-zip] Files requested: {len(file_paths)}, paths: {file_paths[:3]}...")
 
     if not file_paths:
+        logger.warning("[download-zip] No files specified")
         raise HttpException(task_id="", status_code=400, message="No files specified")
 
     tasks_dir = utils.task_dir()
-    zip_buffer = io.BytesIO()
-    added_count = 0
+    logger.info(f"[download-zip] tasks_dir: {tasks_dir}")
 
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        for file_path in file_paths:
-            full_path = os.path.join(tasks_dir, file_path)
-            if os.path.exists(full_path):
-                arcname = os.path.basename(file_path)
-                zf.write(full_path, arcname)
-                added_count += 1
+    def _build_zip():
+        buf = io.BytesIO()
+        count = 0
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as zf:
+            for file_path in file_paths:
+                full_path = os.path.join(tasks_dir, file_path)
+                exists = os.path.exists(full_path)
+                logger.info(f"[download-zip]   file: {file_path} -> exists={exists}")
+                if exists:
+                    zf.write(full_path, os.path.basename(file_path))
+                    count += 1
+        return buf, count
+
+    logger.info("[download-zip] Building ZIP in thread pool...")
+    zip_buffer, added_count = await asyncio.to_thread(_build_zip)
+    logger.info(f"[download-zip] ZIP built, {added_count}/{len(file_paths)} files added, size={zip_buffer.getbuffer().nbytes} bytes")
 
     if added_count == 0:
+        logger.warning("[download-zip] No valid files found")
         raise HttpException(task_id="", status_code=404, message="No valid files found")
 
-    zip_buffer.seek(0)
+    zip_data = zip_buffer.getvalue()
+    logger.info(f"[download-zip] Sending response, {len(zip_data)} bytes")
 
-    return StreamingResponse(
-        zip_buffer,
+    return Response(
+        content=zip_data,
         media_type="application/zip",
-        headers={"Content-Disposition": "attachment; filename=videos.zip"},
+        headers={
+            "Content-Disposition": "attachment; filename=segments.zip",
+            "Content-Length": str(len(zip_data)),
+        },
     )
 
 
