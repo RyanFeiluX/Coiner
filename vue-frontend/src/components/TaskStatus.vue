@@ -103,6 +103,14 @@
                     <span class="label">{{ taskTypeText }}:</span>
                     <el-tag type="info">{{ getTaskTypeText(task.task_type) }}</el-tag>
                   </div>
+                  <div class="info-item" v-if="task.scene_count !== undefined">
+                    <span class="label">{{ sceneCountText }}:</span>
+                    <span>{{ task.scene_count }}</span>
+                  </div>
+                  <div class="info-item" v-if="task.video_duration !== undefined">
+                    <span class="label">{{ videoDurationText }}:</span>
+                    <span>{{ formatVideoDuration(task.video_duration) }}</span>
+                  </div>
                   <div class="info-item" v-if="task.progress !== undefined">
                     <span class="label">{{ progressText }}:</span>
                     <transition name="fade">
@@ -228,6 +236,8 @@ interface Task {
   original_task_id?: string;
   scene_loss_warning?: string;
   failed_scene_indices?: number[];
+  scene_count?: number;
+  video_duration?: number;
 }
 
 interface Props {
@@ -254,6 +264,8 @@ interface Props {
   sequenceNumberText?: string;
   taskIdText?: string;
   titleTextLabel?: string;
+  sceneCountText?: string;
+  videoDurationText?: string;
 }
 
 withDefaults(defineProps<Props>(), {
@@ -279,7 +291,9 @@ withDefaults(defineProps<Props>(), {
   cancelText: 'Cancel',
   sequenceNumberText: 'Task #',
   taskIdText: 'Task ID',
-  titleTextLabel: 'Title Text'
+  titleTextLabel: 'Title Text',
+  sceneCountText: 'Scene Count',
+  videoDurationText: 'Video Duration'
 });
 
 const emit = defineEmits(['refresh', 'delete', 'cancel']);
@@ -369,6 +383,16 @@ const getTaskTypeText = (taskType: string): string => {
 
 const formatProgress = (percentage: number): string => {
   return `${percentage}%`;
+};
+
+const formatVideoDuration = (seconds: number): string => {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
 const formatDate = (dateString: string): string => {

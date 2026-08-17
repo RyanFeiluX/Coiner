@@ -818,7 +818,7 @@ def combine_all_scenes(task_id, params, scene_results):
         scene_results: List of scene result dictionaries
 
     Returns:
-        Final video path (temp file without BGM, will be processed by process_final_video)
+        Tuple of (final_video_path, total_video_duration) where total_video_duration is in seconds.
     """
     logger.info("\n\n## combining all scenes into final video")
 
@@ -836,7 +836,7 @@ def combine_all_scenes(task_id, params, scene_results):
 
     if not scene_paths:
         logger.error("no scene clips available for final combination")
-        return None
+        return None, 0
 
     temp_video_path = path.join(utils.task_dir(task_id), "temp_combined_scenes.mp4")
 
@@ -863,8 +863,9 @@ def combine_all_scenes(task_id, params, scene_results):
                     f"combined scenes created (fast-path): {temp_video_path} "
                     f"(duration: {temp_clip.duration:.2f}s)"
                 )
+                duration = temp_clip.duration
                 temp_clip.close()
-                return temp_video_path
+                return temp_video_path, duration
         except Exception as e:
             logger.warning(f"fast-path output verification failed ({e}); falling back")
             fast_path_ok = False
@@ -885,7 +886,7 @@ def combine_all_scenes(task_id, params, scene_results):
 
     if not scene_clips:
         logger.error("no scene clips could be loaded for final combination")
-        return None
+        return None, 0
 
     logger.info(f"combining {len(scene_clips)} scene clips")
     logger.info(f"total video duration: {total_video_duration:.2f}s")
@@ -911,29 +912,29 @@ def combine_all_scenes(task_id, params, scene_results):
                     temp_clip.close()
                     for clip in processed_clips:
                         clip.close()
-                    return None
+                    return None, 0
                 logger.success(f"combined scenes created: {temp_video_path} (duration: {temp_clip.duration:.2f}s)")
                 temp_clip.close()
             except Exception as e:
                 logger.error(f"Failed to verify combined video: {e}")
                 for clip in processed_clips:
                     clip.close()
-                return None
+                return None, 0
 
             for clip in processed_clips:
                 clip.close()
-            return temp_video_path
+            return temp_video_path, total_video_duration
         else:
             logger.error("failed to finalize video")
             for clip in processed_clips:
                 clip.close()
-            return None
+            return None, 0
 
     except Exception as e:
         logger.error(f"failed to combine scenes: {e}")
         for clip in processed_clips:
             clip.close()
-        return None
+        return None, 0
 
 
 def start_async(task_id, params: VideoParams, stop_at: str = "video", task_create_time: float = None):
@@ -1396,7 +1397,7 @@ def start_multi_scene(task_id, params: VideoParams, stop_at: str = "video", task
             logger.info(f"Added silence prefix scene: {silence_video_path} ({config_silence_duration}s)")
     
     scene_synthesis_start_time = time.time()
-    final_video_path = combine_all_scenes(task_id, params, scene_results)
+    final_video_path, total_video_duration = combine_all_scenes(task_id, params, scene_results)
     if not final_video_path:
         logger.error("Multi-scene: failed to combine all scenes, returning None")
         sm.state.update_task(task_id, state=const.TASK_STATE_FAILED)
@@ -1471,6 +1472,8 @@ def start_multi_scene(task_id, params: VideoParams, stop_at: str = "video", task
         "terms": scene_terms_list,
         "scenes": scenes,
         "scene_results": scene_results,
+        "scene_count": len(scenes),
+        "video_duration": total_video_duration,
     }
     kwargs["scene_loss_warning"] = scene_loss_warning
     if scene_loss_warning:

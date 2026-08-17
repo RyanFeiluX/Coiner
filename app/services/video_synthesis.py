@@ -878,7 +878,18 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
             if output_path and os.path.exists(output_path):
                 logger.success(f"Final video generated: {output_path}")
                 
-                sm.state.update_task(task_id, state=const.TASK_STATE_COMPLETE, progress=100, videos=[output_path])
+                scene_count = len(valid_scenes)
+                video_duration = 0
+                try:
+                    from moviepy.editor import VideoFileClip
+                    clip = VideoFileClip(output_path)
+                    video_duration = clip.duration
+                    clip.close()
+                except Exception:
+                    pass
+
+                sm.state.update_task(task_id, state=const.TASK_STATE_COMPLETE, progress=100,
+                                     videos=[output_path], scene_count=scene_count, video_duration=video_duration)
                 set_task_completed()
                 return output_path
             else:

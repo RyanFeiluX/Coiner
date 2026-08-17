@@ -41,6 +41,8 @@
             :sequence-number-text="t('Task #')"
             :task-id-text="t('Task ID')"
             :title-text-label="t('Title Text')"
+            :scene-count-text="t('Scene Count')"
+            :video-duration-text="t('Video Duration')"
             :start-time-text="t('Start Time')"
             :end-time-text="t('End Time')"
             @refresh="refreshTasks"

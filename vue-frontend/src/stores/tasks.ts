@@ -20,6 +20,8 @@ export interface Task {
   original_task_id?: string;
   scene_loss_warning?: string;
   failed_scene_indices?: number[];
+  scene_count?: number;
+  video_duration?: number;
 }
 
 export const useTasksStore = defineStore('tasks', {
