@@ -479,7 +479,7 @@ def execute_split(
 
             # Combine scene videos
             combined_video_path = os.path.join(short_videos_dir, f"temp_segment_{seg_idx + 1}.mp4")
-            combined_video_path = combine_all_scenes(
+            combined_video_path, _segment_duration = combine_all_scenes(
                 task_id=task_id,
                 params=params,
                 scene_results=scene_results,

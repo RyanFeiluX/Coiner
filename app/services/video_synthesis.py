@@ -820,7 +820,7 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
             # Import combine_all_scenes from task module
             from app.services.task import combine_all_scenes
             scene_synthesis_start_time = time.time()
-            combined_video_path = combine_all_scenes(
+            combined_video_path, _scene_duration = combine_all_scenes(
                 task_id=task_id,
                 params=params,
                 scene_results=scene_results
