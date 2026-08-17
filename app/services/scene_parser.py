@@ -378,18 +378,26 @@ def extract_keywords_from_script(script: str) -> str:
     return ""
 
 
+_LANG_CODE_TO_NAME = {
+    "zh": "Chinese", "en": "English", "de": "German",
+    "pt": "Portuguese", "ru": "Russian", "tr": "Turkish", "vi": "Vietnamese",
+}
+
 def generate_video_title(video_script: str, language: str = None) -> str:
     """
     Generate an attractive and surprising video title from the entire video script.
     
     Args:
         video_script: The complete video script text
-        language: Language for the title (e.g., "Chinese", "English")
+        language: Language for the title (e.g., "Chinese", "English", or code like "zh", "en")
     
     Returns:
         An attractive and surprising video title (max 16 characters for Chinese)
     """
     import app.services.llm as llm_service
+    
+    if language and language in _LANG_CODE_TO_NAME:
+        language = _LANG_CODE_TO_NAME[language]
     
     if not video_script or not video_script.strip():
         return ""

@@ -45,6 +45,8 @@ materials, video subtitles, and video background music before synthesizing a hig
 - [x] Supports **background music**, either random or specified music files, with adjustable `background music volume`
 - [x] Video material sources are **high-definition** and **royalty-free**, and you can also use your own **local materials**
 - [x] Supports integration with various models such as **OpenAI**, **Moonshot**, **Azure**, **gpt4free**, **one-api**, **Qwen**, **Google Gemini**, **Ollama**, **DeepSeek**, **ERNIE**, **Pollinations**, **Cloudflare**, **ModelScope** and more
+- [x] Supports **video splitting**, automatically splitting long videos into multiple short videos (30-90 seconds) based on scenes for social media publishing
+- [x] Supports **scene integration**, re-combining selected scenes from existing scene files into a video
 
 ## Video Demos 📺
 

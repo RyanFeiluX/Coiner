@@ -55,6 +55,10 @@
               <el-icon><Collection /></el-icon>
               <span>{{ t('Scene Integration') }}</span>
             </el-menu-item>
+            <el-menu-item index="/split">
+              <el-icon><Scissor /></el-icon>
+              <span>{{ t('Video Split') }}</span>
+            </el-menu-item>
             <el-menu-item index="/task">
               <el-icon><Timer /></el-icon>
               <span>{{ t('Task Management') }}</span>
@@ -75,7 +79,7 @@
             </router-view>
           </div>
           
-          <div class="app-actions" v-if="$route.path !== '/task' && $route.path !== '/logs' && $route.path !== '/scene'">
+          <div class="app-actions" v-if="$route.path !== '/task' && $route.path !== '/logs' && $route.path !== '/scene' && $route.path !== '/split'">
             <el-button type="danger" size="large" class="generate-video-btn" @click="generateVideo" :loading="isGenerating">
               <el-icon><VideoPlay /></el-icon>
               {{ isGenerating ? t('Generating Video') : t('Generate Video') }}
@@ -94,7 +98,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { VideoCamera, Document, Microphone, ChatLineSquare, Collection, Timer, VideoPlay, Setting, Memo } from '@element-plus/icons-vue';
+import { VideoCamera, Document, Microphone, ChatLineSquare, Collection, Timer, VideoPlay, Setting, Memo, Scissor } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useI18nStore } from './stores/i18n';
 import { useTasksStore } from './stores/tasks';

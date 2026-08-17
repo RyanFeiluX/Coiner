@@ -165,7 +165,7 @@
                   <transition name="fade">
                     <el-button v-if="task.status === 'completed' && task.videos && task.videos.length > 0" :key="'download-'+task.task_id" type="primary" size="small" @click="handleDownload(task)">
                       <el-icon><Download /></el-icon>
-                      {{ downloadText }}
+                      {{ task.task_type === 'video_split' && task.videos.length > 1 ? t('Download All Segments') : downloadText }}
                     </el-button>
                   </transition>
                   
@@ -193,6 +193,15 @@
                     @click="navigateToSceneIntegration(task)"
                   >
                     {{ t('Improve Scenes') }}
+                  </el-button>
+                  <el-button
+                    v-if="task.task_type === 'video_generation' && task.status === 'completed' && task.videos && task.videos.length > 0"
+                    :key="'split-'+task.task_id"
+                    type="warning"
+                    size="small"
+                    @click="navigateToVideoSplitter(task)"
+                  >
+                    {{ t('Split Video') }}
                   </el-button>
                 </div>
               </div>
@@ -376,7 +385,8 @@ const getStatusType = (status: string): string => {
 const getTaskTypeText = (taskType: string): string => {
   const taskTypeMap: Record<string, string> = {
     video_generation: t('Video Generation'),
-    scene_integration: t('Scene Integration')
+    scene_integration: t('Scene Integration'),
+    video_split: t('Video Split')
   };
   return taskTypeMap[taskType] || taskType;
 };
@@ -409,9 +419,40 @@ const copyToClipboard = async (text: string) => {
   }
 };
 
-const handleDownload = (task: Task) => {
+const handleDownload = async (task: Task) => {
+  console.log('[Download] handleDownload called', { task_type: task.task_type, videos_count: task.videos?.length });
   if (task.videos && task.videos.length > 0) {
     tasksStore.markTaskViewed(task.task_id);
+
+    // For video_split with multiple segments, download as ZIP
+    if (task.task_type === 'video_split' && task.videos.length > 1) {
+      try {
+        const files = task.videos.map((url: string) => url.replace(/.*\/tasks\//, ''));
+        console.log('[Download] ZIP files:', files);
+        ElMessage.info(t('Preparing download...'));
+        const blob = await apiService.downloadZip(files);
+        console.log('[Download] ZIP blob size:', blob.size);
+        ElMessage.success(t('Download ready'));
+        // Use <a download> instead of window.open to avoid popup blocker
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = 'segments.zip';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+          document.body.removeChild(a);
+        }, 5000);
+      } catch (e: any) {
+        console.error('[Download] ZIP download failed:', e?.code, e?.message, e?.response?.status, e?.response?.data?.constructor?.name);
+        const msg = e?.response?.data?.message || t('Download failed');
+        ElMessage.error(msg);
+      }
+      return;
+    }
+
     window.open(task.videos[0], '_blank');
   }
 };
@@ -420,6 +461,11 @@ const router = useRouter();
 const navigateToSceneIntegration = (task: Task) => {
   const taskId = task.original_task_id || task.task_id;
   router.push({ name: 'SceneIntegration', query: { original_task_id: taskId } });
+};
+
+const navigateToVideoSplitter = (task: Task) => {
+  const taskId = task.original_task_id || task.task_id;
+  router.push({ name: 'VideoSplitter', query: { source_task_id: taskId } });
 };
 
 const shouldShowImproveButton = (task: Task): boolean => {

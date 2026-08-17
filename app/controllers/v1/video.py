@@ -1,12 +1,14 @@
 import glob
+import io
 import os
 import pathlib
 import shutil
+import zipfile
 from typing import Union
 
 from fastapi import BackgroundTasks, Depends, Path, Request, UploadFile
 from fastapi.params import File
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from loguru import logger
 
 from app.config import config
@@ -130,6 +132,159 @@ def create_task(
         raise HttpException(
             task_id=task_id, status_code=400, message=f"{request_id}: {str(e)}"
         )
+
+
+@router.post("/video-split/scan", summary="Scan task for video splitting")
+def scan_video_split(request: Request, body: dict):
+    """Scan a task directory and return scene info with suggested segments"""
+    task_id_or_path = body.get("task_id") or body.get("task_path")
+    if not task_id_or_path:
+        raise HttpException(task_id="", status_code=400, message="Task ID or path is required")
+
+    min_duration = float(body.get("min_duration", 30))
+    max_duration = float(body.get("max_duration", 90))
+
+    from app.services.video_splitter import scan_task_for_split
+
+    try:
+        result = scan_task_for_split(task_id_or_path, min_duration, max_duration)
+        return utils.get_response(200, result)
+    except Exception as e:
+        logger.error(f"Error scanning for video split: {e}")
+        raise HttpException(task_id=task_id_or_path, status_code=500, message=f"Failed to scan task: {str(e)}")
+
+
+@router.post("/video-split/plan", summary="Plan segments from scenes")
+def plan_video_split(request: Request, body: dict):
+    """Plan segments based on scenes and duration constraints"""
+    scenes = body.get("scenes", [])
+    min_duration = float(body.get("min_duration", 30))
+    max_duration = float(body.get("max_duration", 90))
+
+    from app.services.video_splitter import plan_segments
+
+    try:
+        segments = plan_segments(scenes, min_duration, max_duration)
+        return utils.get_response(200, {
+            "segments": segments,
+            "total_segments": len(segments),
+        })
+    except Exception as e:
+        logger.error(f"Error planning video split: {e}")
+        raise HttpException(task_id="", status_code=500, message=f"Failed to plan segments: {str(e)}")
+
+
+@router.post("/video-split/execute", summary="Execute video split")
+def execute_video_split(request: Request, body: dict):
+    """Execute video split - creates short videos from source task scenes"""
+    import time as _time
+    task_create_time = _time.time()
+
+    task_id_or_path = body.get("task_id") or body.get("task_path")
+    segments = body.get("segments", [])
+
+    if not task_id_or_path:
+        raise HttpException(task_id="", status_code=400, message="Task ID or path is required")
+    if not segments:
+        raise HttpException(task_id="", status_code=400, message="Segments are required")
+
+    min_duration = float(body.get("min_duration", 30))
+    max_duration = float(body.get("max_duration", 90))
+
+    # Extract subtitle/BGM/title/video_enhance params (same pattern as scene integration)
+    subtitle_params = {k: v for k, v in {
+        'subtitle_enabled': body.get('subtitle_enabled'),
+        'font_name': body.get('font_name'),
+        'font_size': body.get('font_size'),
+        'text_fore_color': body.get('text_fore_color'),
+        'text_background_color': body.get('text_background_color'),
+        'stroke_color': body.get('stroke_color'),
+        'stroke_width': body.get('stroke_width'),
+        'subtitle_position': body.get('subtitle_position'),
+        'custom_position': body.get('custom_position'),
+    }.items() if v is not None}
+
+    bgm_params = {k: v for k, v in {
+        'bgm_type': body.get('bgm_type'),
+        'bgm_file': body.get('bgm_file'),
+        'bgm_volume': body.get('bgm_volume'),
+    }.items() if v is not None}
+
+    title_params = {k: v for k, v in {
+        'title_enabled': body.get('title_enabled'),
+        'title_text': body.get('title_text'),
+        'title_duration': body.get('title_duration'),
+        'title_font_name': body.get('title_font_name'),
+        'title_font_size': body.get('title_font_size'),
+        'title_text_color': body.get('title_text_color'),
+        'title_stroke_color': body.get('title_stroke_color'),
+        'title_stroke_width': body.get('title_stroke_width'),
+        'title_background_color': body.get('title_background_color'),
+        'title_position': body.get('title_position'),
+        'title_margin': body.get('title_margin'),
+        'title_align': body.get('title_align'),
+        'title_animation': body.get('title_animation'),
+        'title_animation_duration': body.get('title_animation_duration'),
+        'title_background_overlay': body.get('title_background_overlay'),
+        'title_overlay_color': body.get('title_overlay_color'),
+        'title_margin_left': body.get('title_margin_left'),
+        'title_margin_right': body.get('title_margin_right'),
+    }.items() if v is not None}
+
+    video_enhance_params = {k: v for k, v in {
+        'output_bg_color': body.get('output_bg_color'),
+        'silence_duration': body.get('silence_duration'),
+    }.items() if v is not None}
+
+    # Resolve original task for display info
+    original_task = sm.state.get_task(task_id_or_path) if task_id_or_path else None
+
+    # Generate unique task_id for the split task
+    task_id = utils.get_uuid()
+
+    # Register task immediately
+    sm.state.update_task(
+        task_id,
+        state=const.TASK_STATE_PENDING,
+        progress=0,
+        task_type="video_split",
+        title_enabled=True,
+        title_text="",
+        video_title=original_task.get("video_title", "") if original_task else "",
+        original_task_id=task_id_or_path,
+    )
+
+    # Submit to thread manager
+    from app.services.video_splitter import execute_split
+    from app.services.task import thread_manager
+
+    _, queue_status = thread_manager.submit_task(
+        task_id,
+        execute_split,
+        task_id_or_path,
+        task_id,
+        segments,
+        min_duration,
+        max_duration,
+        subtitle_params=subtitle_params,
+        bgm_params=bgm_params,
+        title_params=title_params,
+        video_enhance_params=video_enhance_params,
+        task_create_time=task_create_time,
+    )
+
+    # Get the task with task_type from state
+    created_task = sm.state.get_task(task_id)
+
+    # Provide appropriate message based on queue status
+    if queue_status == "queued":
+        message = "Parallel running task capacity used up and your task will be queued for next slot"
+        logger.info(f"Video split task {task_id} queued: {message}")
+    else:
+        message = "success"
+        logger.success(f"Video split task created: {utils.to_json(created_task)}")
+
+    return utils.get_response(200, created_task, message=message)
 
 
 @router.put("/tasks/{task_id}/title", summary="Update task display title")
@@ -529,6 +684,60 @@ async def download_video(_: Request, file_path: str):
         headers=headers,
         filename=f"{filename}{extension}",
         media_type=f"video/{extension[1:]}",
+    )
+
+
+@router.post("/download-zip", summary="Download multiple files as ZIP")
+async def download_zip(request: Request):
+    """
+    Package multiple files into a ZIP archive for download.
+    :param request: Request body with {"files": ["task_id/path/file.mp4", ...]}
+    :return: ZIP file stream
+    """
+    import asyncio
+    logger.info("[download-zip] Request received")
+    body = await request.json()
+    file_paths = body.get("files", [])
+    logger.info(f"[download-zip] Files requested: {len(file_paths)}, paths: {file_paths[:3]}...")
+
+    if not file_paths:
+        logger.warning("[download-zip] No files specified")
+        raise HttpException(task_id="", status_code=400, message="No files specified")
+
+    tasks_dir = utils.task_dir()
+    logger.info(f"[download-zip] tasks_dir: {tasks_dir}")
+
+    def _build_zip():
+        buf = io.BytesIO()
+        count = 0
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as zf:
+            for file_path in file_paths:
+                full_path = os.path.join(tasks_dir, file_path)
+                exists = os.path.exists(full_path)
+                logger.info(f"[download-zip]   file: {file_path} -> exists={exists}")
+                if exists:
+                    zf.write(full_path, os.path.basename(file_path))
+                    count += 1
+        return buf, count
+
+    logger.info("[download-zip] Building ZIP in thread pool...")
+    zip_buffer, added_count = await asyncio.to_thread(_build_zip)
+    logger.info(f"[download-zip] ZIP built, {added_count}/{len(file_paths)} files added, size={zip_buffer.getbuffer().nbytes} bytes")
+
+    if added_count == 0:
+        logger.warning("[download-zip] No valid files found")
+        raise HttpException(task_id="", status_code=404, message="No valid files found")
+
+    zip_data = zip_buffer.getvalue()
+    logger.info(f"[download-zip] Sending response, {len(zip_data)} bytes")
+
+    return Response(
+        content=zip_data,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": "attachment; filename=segments.zip",
+            "Content-Length": str(len(zip_data)),
+        },
     )
 
 

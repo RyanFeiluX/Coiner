@@ -5,6 +5,7 @@ import AudioSettings from '../views/AudioSettings.vue';
 import SubtitleSettings from '../views/SubtitleSettings.vue';
 import TitleSettings from '../views/TitleSettings.vue';
 import SceneIntegration from '../views/SceneIntegration.vue';
+import VideoSplitter from '../views/VideoSplitter.vue';
 import TaskManagement from '../views/TaskManagement.vue';
 import LogsView from '../views/LogsView.vue';
 
@@ -42,6 +43,11 @@ const routes: Array<RouteRecordRaw> = [
     path: '/scene',
     name: 'SceneIntegration',
     component: SceneIntegration
+  },
+  {
+    path: '/split',
+    name: 'VideoSplitter',
+    component: VideoSplitter
   },
   {
     path: '/task',
