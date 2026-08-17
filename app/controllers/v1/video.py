@@ -1,7 +1,9 @@
 import glob
+import io
 import os
 import pathlib
 import shutil
+import zipfile
 from typing import Union
 
 from fastapi import BackgroundTasks, Depends, Path, Request, UploadFile
@@ -682,6 +684,43 @@ async def download_video(_: Request, file_path: str):
         headers=headers,
         filename=f"{filename}{extension}",
         media_type=f"video/{extension[1:]}",
+    )
+
+
+@router.post("/download-zip", summary="Download multiple files as ZIP")
+async def download_zip(request: Request):
+    """
+    Package multiple files into a ZIP archive for download.
+    :param request: Request body with {"files": ["task_id/path/file.mp4", ...]}
+    :return: ZIP file stream
+    """
+    body = await request.json()
+    file_paths = body.get("files", [])
+
+    if not file_paths:
+        raise HttpException(task_id="", status_code=400, message="No files specified")
+
+    tasks_dir = utils.task_dir()
+    zip_buffer = io.BytesIO()
+    added_count = 0
+
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for file_path in file_paths:
+            full_path = os.path.join(tasks_dir, file_path)
+            if os.path.exists(full_path):
+                arcname = os.path.basename(file_path)
+                zf.write(full_path, arcname)
+                added_count += 1
+
+    if added_count == 0:
+        raise HttpException(task_id="", status_code=404, message="No valid files found")
+
+    zip_buffer.seek(0)
+
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=videos.zip"},
     )
 
 

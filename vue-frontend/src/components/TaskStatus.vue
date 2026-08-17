@@ -157,7 +157,7 @@
                   <transition name="fade">
                     <el-button v-if="task.status === 'completed' && task.videos && task.videos.length > 0" :key="'download-'+task.task_id" type="primary" size="small" @click="handleDownload(task)">
                       <el-icon><Download /></el-icon>
-                      {{ downloadText }}
+                      {{ task.task_type === 'video_split' && task.videos.length > 1 ? t('Download All Segments') : downloadText }}
                     </el-button>
                   </transition>
                   
@@ -395,9 +395,29 @@ const copyToClipboard = async (text: string) => {
   }
 };
 
-const handleDownload = (task: Task) => {
+const handleDownload = async (task: Task) => {
+  console.log('[Download] handleDownload called', { task_type: task.task_type, videos_count: task.videos?.length });
   if (task.videos && task.videos.length > 0) {
     tasksStore.markTaskViewed(task.task_id);
+
+    // For video_split with multiple segments, download as ZIP
+    if (task.task_type === 'video_split' && task.videos.length > 1) {
+      try {
+        const files = task.videos.map((url: string) => url.replace(/.*\/tasks\//, ''));
+        console.log('[Download] ZIP files:', files);
+        const blob = await apiService.downloadZip(files);
+        console.log('[Download] ZIP blob size:', blob.size);
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+      } catch (e: any) {
+        console.error('[Download] ZIP download failed:', e);
+        const msg = e?.response?.data?.message || t('Download failed');
+        ElMessage.error(msg);
+      }
+      return;
+    }
+
     window.open(task.videos[0], '_blank');
   }
 };

@@ -163,12 +163,24 @@
 
           <!-- Split Results -->
           <div v-if="splitResults.length > 0" class="split-results">
-            <h3 class="section-title">{{ t('Generated Short Videos') }}</h3>
+            <div class="section-header">
+              <h3 class="section-title">{{ t('Generated Short Videos') }}</h3>
+              <el-checkbox v-model="selectAll" :indeterminate="isIndeterminate">{{ t('Select All') }}</el-checkbox>
+            </div>
             <div v-for="(result, idx) in splitResults" :key="idx" class="result-item">
+              <el-checkbox v-model="result.selected" />
               <span class="result-name">{{ result.name }}</span>
               <span class="result-duration">{{ result.duration }}</span>
-              <el-button type="primary" size="small" @click="downloadVideo(result.path)">
+              <el-button type="primary" size="small" @click="downloadSingle(result)">
                 {{ t('Download') }}
+              </el-button>
+            </div>
+            <div class="download-actions">
+              <el-button type="primary" :disabled="selectedResults.length === 0" @click="downloadSelected">
+                {{ t('Download Selected') }} ({{ selectedResults.length }})
+              </el-button>
+              <el-button @click="downloadAll">
+                {{ t('Download All') }}
               </el-button>
             </div>
           </div>
@@ -193,12 +205,14 @@
         <el-button type="primary" @click="confirmAddScene" :disabled="!sceneToAdd">{{ t('Confirm') }}</el-button>
       </template>
     </el-dialog>
+
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import { ElMessage } from 'element-plus';
 import { useI18nStore } from '../stores/i18n';
 import { apiService } from '../services/api';
 
@@ -435,7 +449,7 @@ const startPolling = () => {
           progress.value = task.progress;
         }
 
-        if (task.state === 'complete' || task.state === 2 || task.state === 1) {
+        if (task.status === 'completed') {
           progress.value = 100;
           status.value = t('Video split completed');
           isCompleted.value = true;
@@ -444,11 +458,12 @@ const startPolling = () => {
               name: `segment_${idx + 1}.mp4`,
               path: path,
               duration: segments.value[idx] ? `${segments.value[idx].duration}s` : '',
+              selected: false,
             }));
           }
           stopPolling();
           isRunning.value = false;
-        } else if (task.state === 'failed' || task.state === 3) {
+        } else if (task.status === 'failed') {
           status.value = t('Video split failed');
           isCompleted.value = false;
           stopPolling();
@@ -476,11 +491,68 @@ const stopPolling = () => {
   }
 };
 
-// Download video
-const downloadVideo = (path: string) => {
-  if (path) {
-    window.open(path, '_blank');
+// Selected results
+const selectedResults = computed(() => splitResults.value.filter((r: any) => r.selected));
+
+const selectAll = computed({
+  get: () => splitResults.value.length > 0 && splitResults.value.every((r: any) => r.selected),
+  set: (val: boolean) => {
+    splitResults.value.forEach((r: any) => { r.selected = val; });
+  },
+});
+
+const isIndeterminate = computed(() => {
+  const total = splitResults.value.length;
+  const selected = selectedResults.value.length;
+  return selected > 0 && selected < total;
+});
+
+// Extract task-relative path from URL for ZIP API
+const getTaskRelativePath = (path: string): string => {
+  return path.replace(/.*\/tasks\//, '');
+};
+
+// Single download: open in new tab
+const downloadSingle = (result: any) => {
+  window.open(result.path, '_blank');
+};
+
+// Download multiple files as ZIP
+const downloadAsZip = async (files: any[]) => {
+  try {
+    const filePaths = files.map((f: any) => getTaskRelativePath(f.path));
+    console.log('[Download] ZIP files:', filePaths);
+    const blob = await apiService.downloadZip(filePaths);
+    console.log('[Download] ZIP blob size:', blob.size);
+    const blobUrl = URL.createObjectURL(blob);
+    window.open(blobUrl, '_blank');
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+  } catch (e: any) {
+    console.error('[Download] ZIP download failed:', e);
+    ElMessage.error(t('Download failed'));
   }
+};
+
+// Download selected
+const downloadSelected = async () => {
+  const files = selectedResults.value;
+  if (files.length === 0) return;
+  if (files.length === 1) {
+    downloadSingle(files[0]);
+    return;
+  }
+  await downloadAsZip(files);
+};
+
+// Download all
+const downloadAll = async () => {
+  const files = splitResults.value;
+  if (files.length === 0) return;
+  if (files.length === 1) {
+    downloadSingle(files[0]);
+    return;
+  }
+  await downloadAsZip(files);
 };
 </script>
 
@@ -698,8 +770,8 @@ const downloadVideo = (path: string) => {
 
 .result-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 12px;
   padding: 10px;
   border: 1px solid #e0e0e0;
   border-radius: 4px;
@@ -710,14 +782,24 @@ const downloadVideo = (path: string) => {
 .result-name {
   font-weight: 500;
   font-size: 14px;
+  flex: 1;
 }
 
 .result-duration {
   color: #909399;
   font-size: 13px;
+  margin-right: auto;
 }
 
 .dialog-content {
   padding: 10px 0;
+}
+
+.download-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e0e0e0;
 }
 </style>

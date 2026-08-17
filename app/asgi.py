@@ -118,6 +118,8 @@ def shutdown_event():
 @app.on_event("startup")
 def startup_event():
     logger.info("startup event")
+    logger.info(f"Static mount task_dir: {task_dir} (exists: {os.path.exists(task_dir)})")
+    logger.info(f"Static mount public_dir: {public_dir} (exists: {os.path.exists(public_dir)})")
     locallens.start_monitor()
     utils.cleanup_stale_previews()
     utils.cleanup_stale_local_videos()

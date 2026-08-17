@@ -326,6 +326,14 @@ export const apiService = {
     });
     return response.data;
   },
+
+  downloadZip: async (files: string[]): Promise<Blob> => {
+    const response = await api.post('/download-zip', { files }, {
+      responseType: 'arraybuffer',
+      headers: { 'Accept': 'application/zip' },
+    });
+    return new Blob([response.data], { type: 'application/zip' });
+  },
   
 };
 
