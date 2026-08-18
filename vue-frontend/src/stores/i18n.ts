@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 
 // Language type definition
-export type Language = 'zh' | 'en' | 'de' | 'pt' | 'ru' | 'tr' | 'vi';
+export type Language = 'zh' | 'en';
 
 // Translation resources interface
 interface TranslationResources {
@@ -50,7 +50,7 @@ export const useI18nStore = defineStore('i18n', {
       
       try {
         // Load all language files
-        const languages: Language[] = ['zh', 'en', 'de', 'pt', 'ru', 'tr', 'vi'];
+        const languages: Language[] = ['zh', 'en'];
         const resources: TranslationResources = {};
         
         for (const lang of languages) {
@@ -78,8 +78,10 @@ export const useI18nStore = defineStore('i18n', {
     
     loadLanguageFromLocalStorage() {
       const savedLang = localStorage.getItem('coiner-language') as Language;
-      if (savedLang) {
+      if (savedLang && ['zh', 'en'].includes(savedLang)) {
         this.currentLanguage = savedLang;
+      } else {
+        this.currentLanguage = 'zh';
       }
     },
     
