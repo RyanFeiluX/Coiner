@@ -326,6 +326,7 @@ const cancelEditTitle = () => {
 };
 
 const saveTitle = async (task: Task) => {
+  if (editingTitleTaskId.value !== task.task_id) return;
   if (!editingTitleValue.value.trim()) {
     ElMessage.warning(t('Title cannot be empty'));
     return;
