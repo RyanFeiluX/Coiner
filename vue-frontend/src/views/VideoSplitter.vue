@@ -436,6 +436,40 @@ const executeSplit = async () => {
   }
 };
 
+// Format detail object to translated string
+const formatDetail = (detail: any): string => {
+  if (!detail) return '';
+  if (typeof detail === 'string') return detail;
+
+  const { key, seg_idx, total_segments, scene_start, scene_end, duration, completed_segments } = detail;
+  const segInfo = seg_idx && total_segments ? `[${seg_idx}/${total_segments}] ` : '';
+  const sceneInfo = scene_start && scene_end ? `${t('Scenes')} ${scene_start}-${scene_end}` : '';
+  const durationInfo = duration ? ` (${Math.round(duration)}s)` : '';
+
+  switch (key) {
+    case 'SplitProgress_CollectingVideos':
+      return `${segInfo}${sceneInfo}${durationInfo} - ${t('Collecting videos...')}`;
+    case 'SplitProgress_CombiningScenes':
+      return `${segInfo}${sceneInfo}${durationInfo} - ${t('Combining scenes...')}`;
+    case 'SplitProgress_MergingSubtitles':
+      return `${segInfo}${sceneInfo}${durationInfo} - ${t('Merging subtitles...')}`;
+    case 'SplitProgress_ProcessingVideo':
+      return `${segInfo}${sceneInfo}${durationInfo} - ${t('Processing video...')}`;
+    case 'SplitProgress_Encoding':
+      return `${segInfo}${sceneInfo}${durationInfo} - ${t('Encoding...')}`;
+    case 'SplitProgress_BurningSubtitles':
+      return `${segInfo}${sceneInfo}${durationInfo} - ${t('Burning subtitles...')}`;
+    case 'SplitProgress_AddingBGM':
+      return `${segInfo}${sceneInfo}${durationInfo} - ${t('Adding BGM...')}`;
+    case 'SplitProgress_AddingTitle':
+      return `${segInfo}${sceneInfo}${durationInfo} - ${t('Adding title...')}`;
+    case 'SplitProgress_Completed':
+      return `${t('Done')}: ${completed_segments}/${total_segments} ${t('segments completed')}`;
+    default:
+      return `${segInfo}${sceneInfo}${durationInfo}`;
+  }
+};
+
 // Start polling
 const startPolling = () => {
   stopPolling();
@@ -449,9 +483,13 @@ const startPolling = () => {
           progress.value = task.progress;
         }
 
+        if (task.detail) {
+          status.value = formatDetail(task.detail);
+        }
+
         if (task.status === 'completed') {
           progress.value = 100;
-          status.value = t('Video split completed');
+          status.value = task.detail ? formatDetail(task.detail) : t('Video split completed');
           isCompleted.value = true;
           if (task.videos && task.videos.length > 0) {
             splitResults.value = task.videos.map((path: string, idx: number) => ({
@@ -468,8 +506,6 @@ const startPolling = () => {
           isCompleted.value = false;
           stopPolling();
           isRunning.value = false;
-        } else {
-          status.value = t('Split in progress...');
         }
       }
     } catch (error: any) {

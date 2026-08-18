@@ -619,6 +619,17 @@
         "Web Search Settings": "<strong>网络搜索设置</strong>",
         "Tavily API Key": "Tavily API Key",
         "Script Options": "文案选项",
-        "Enable Video Title": "启用视频标题"
+        "Enable Video Title": "启用视频标题",
+        "Scenes": "场景",
+        "Collecting videos...": "收集视频中...",
+        "Combining scenes...": "合并场景中...",
+        "Merging subtitles...": "合并字幕中...",
+        "Processing video...": "处理视频中...",
+        "Encoding...": "编码中...",
+        "Burning subtitles...": "烧录字幕中...",
+        "Adding BGM...": "添加背景音乐中...",
+        "Adding title...": "添加标题中...",
+        "Done": "完成",
+        "segments completed": "个片段已完成"
     }
 }

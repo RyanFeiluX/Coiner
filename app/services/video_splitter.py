@@ -383,6 +383,12 @@ def execute_split(
     completed_segments = 0
     segment_results = []
 
+    # Calculate duration-based progress weights (0-90%)
+    total_duration = sum(seg.get("duration", 0) for seg in segments)
+    if total_duration == 0:
+        total_duration = total_segments  # fallback: equal weight per segment
+    cumulative_duration = 0.0
+
     for seg_idx, segment in enumerate(segments):
         if check_cancelled and check_cancelled():
             logger.info("Task cancelled during split execution")
@@ -392,11 +398,23 @@ def execute_split(
 
         scene_nums = segment["scene_nums"]
         segment_duration = segment.get("duration", 0)
+        segment_weight = segment_duration / total_duration
+        seg_base_progress = int((cumulative_duration / total_duration) * 90)
         logger.info(f"Processing segment {seg_idx + 1}/{total_segments}: scenes {scene_nums} ({segment_duration:.1f}s)")
 
-        if progress_callback:
-            progress = int((seg_idx / total_segments) * 90)
-            progress_callback(progress, f"Processing segment {seg_idx + 1}/{total_segments}...")
+        sm.state.update_task(
+            task_id,
+            state=const.TASK_STATE_PROCESSING,
+            progress=seg_base_progress,
+            detail={
+                "key": "SplitProgress_CollectingVideos",
+                "seg_idx": seg_idx + 1,
+                "total_segments": total_segments,
+                "scene_start": scene_nums[0],
+                "scene_end": scene_nums[-1],
+                "duration": segment_duration,
+            },
+        )
 
         # Collect video paths for this segment
         video_paths = []
@@ -477,7 +495,20 @@ def execute_split(
 
             scene_results = [{"combined_video_path": vp} for vp in video_paths]
 
-            # Combine scene videos
+            # Combine scene videos (0%~40% of this segment's weight)
+            sm.state.update_task(
+                task_id,
+                state=const.TASK_STATE_PROCESSING,
+                progress=seg_base_progress + int(segment_weight * 0.05 * 90),
+                detail={
+                    "key": "SplitProgress_CombiningScenes",
+                    "seg_idx": seg_idx + 1,
+                    "total_segments": total_segments,
+                    "scene_start": scene_nums[0],
+                    "scene_end": scene_nums[-1],
+                    "duration": segment_duration,
+                },
+            )
             combined_video_path = os.path.join(short_videos_dir, f"temp_segment_{seg_idx + 1}.mp4")
             combined_video_path, _segment_duration = combine_all_scenes(
                 task_id=task_id,
@@ -489,9 +520,22 @@ def execute_split(
                 logger.warning(f"Segment {seg_idx + 1}: failed to combine scenes, skipping")
                 continue
 
-            # Merge subtitles for this segment
+            # Merge subtitles for this segment (40%~50% of this segment's weight)
             merged_subtitle = None
             if scene_subtitle_results:
+                sm.state.update_task(
+                    task_id,
+                    state=const.TASK_STATE_PROCESSING,
+                    progress=seg_base_progress + int(segment_weight * 0.45 * 90),
+                    detail={
+                        "key": "SplitProgress_MergingSubtitles",
+                        "seg_idx": seg_idx + 1,
+                        "total_segments": total_segments,
+                        "scene_start": scene_nums[0],
+                        "scene_end": scene_nums[-1],
+                        "duration": segment_duration,
+                    },
+                )
                 try:
                     from app.services.subtitle import merge_scene_subtitles
                     merged_subtitle = merge_scene_subtitles(
@@ -502,9 +546,37 @@ def execute_split(
                 except Exception as e:
                     logger.warning(f"Segment {seg_idx + 1}: subtitle merge failed: {e}")
 
-            # Process final video (BGM, title, subtitles, encoding)
+            # Process final video (BGM, title, subtitles, encoding) (50%~100% of this segment's weight)
             from app.services.video_target import process_final_video
             output_path = os.path.join(short_videos_dir, f"segment_{seg_idx + 1}.mp4")
+
+            def _segment_progress_callback(sub_progress, sub_message):
+                """Map process_final_video's 0-100 progress to this segment's weight."""
+                mapped = seg_base_progress + int(segment_weight * (0.50 + sub_progress / 100 * 0.50) * 90)
+                # Map sub_message to translation key
+                if "encoding" in sub_message.lower() or "writing" in sub_message.lower():
+                    detail_key = "SplitProgress_Encoding"
+                elif "subtitle" in sub_message.lower():
+                    detail_key = "SplitProgress_BurningSubtitles"
+                elif "bgm" in sub_message.lower() or "audio" in sub_message.lower():
+                    detail_key = "SplitProgress_AddingBGM"
+                elif "title" in sub_message.lower():
+                    detail_key = "SplitProgress_AddingTitle"
+                else:
+                    detail_key = "SplitProgress_ProcessingVideo"
+                sm.state.update_task(
+                    task_id,
+                    state=const.TASK_STATE_PROCESSING,
+                    progress=mapped,
+                    detail={
+                        "key": detail_key,
+                        "seg_idx": seg_idx + 1,
+                        "total_segments": total_segments,
+                        "scene_start": scene_nums[0],
+                        "scene_end": scene_nums[-1],
+                        "duration": segment_duration,
+                    },
+                )
 
             final_path = process_final_video(
                 task_id=task_id,
@@ -514,7 +586,7 @@ def execute_split(
                 subtitle_file=merged_subtitle,
                 audio_file=audio_file,
                 output_file=output_path,
-                progress_callback=None,
+                progress_callback=_segment_progress_callback,
                 task_create_time=task_create_time,
                 task_start_time=start_time,
                 skip_subtitles=False if merged_subtitle else True,
@@ -533,6 +605,8 @@ def execute_split(
             else:
                 logger.warning(f"Segment {seg_idx + 1}: final video generation failed")
 
+            cumulative_duration += segment_duration
+
             # Cleanup temp combined file
             temp_combined = os.path.join(short_videos_dir, f"temp_segment_{seg_idx + 1}.mp4")
             if os.path.exists(temp_combined):
@@ -547,10 +621,6 @@ def execute_split(
             logger.error(traceback.format_exc())
             continue
 
-    # Update task progress to 100%
-    if progress_callback:
-        progress_callback(100, f"Split completed: {completed_segments}/{total_segments} segments")
-
     # Save results to split_config.json
     split_config["results"] = segment_results
     with open(config_path, "w", encoding="utf-8") as f:
@@ -559,13 +629,20 @@ def execute_split(
     # Collect output video paths for task state
     output_videos = [r["output_path"] for r in segment_results]
 
+    # Update task progress to 100%
     sm.state.update_task(
         task_id,
         state=const.TASK_STATE_COMPLETE,
         progress=100,
+        detail={
+            "key": "SplitProgress_Completed",
+            "completed_segments": completed_segments,
+            "total_segments": total_segments,
+        },
         videos=output_videos,
         original_task_id=source_task_id,
     )
+
     set_task_completed()
 
     # Log duration

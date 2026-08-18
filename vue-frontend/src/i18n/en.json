@@ -617,6 +617,17 @@
         "Web Search Settings": "<strong>Web Search Settings</strong>",
         "Tavily API Key": "Tavily API Key",
         "Script Options": "Script Options",
-        "Enable Video Title": "Enable Video Title"
+        "Enable Video Title": "Enable Video Title",
+        "Scenes": "Scenes",
+        "Collecting videos...": "Collecting videos...",
+        "Combining scenes...": "Combining scenes...",
+        "Merging subtitles...": "Merging subtitles...",
+        "Processing video...": "Processing video...",
+        "Encoding...": "Encoding...",
+        "Burning subtitles...": "Burning subtitles...",
+        "Adding BGM...": "Adding BGM...",
+        "Adding title...": "Adding title...",
+        "Done": "Done",
+        "segments completed": "segments completed"
     }
 }
