@@ -881,7 +881,7 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
                 scene_count = len(valid_scenes)
                 video_duration = 0
                 try:
-                    from moviepy.editor import VideoFileClip
+                    from moviepy import VideoFileClip
                     clip = VideoFileClip(output_path)
                     video_duration = clip.duration
                     clip.close()
