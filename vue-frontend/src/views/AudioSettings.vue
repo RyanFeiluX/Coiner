@@ -18,6 +18,7 @@
             <el-option :label="t('Google Gemini TTS')" value="gemini-tts" />
             <el-option :label="t('Coze TTS')" value="coze-tts" />
             <el-option :label="t('Qwen TTS')" value="qwen-tts" />
+            <el-option :label="t('Aliyun Bailian Token Plan')" value="bailian-token-plan" />
           </el-select>
         </div>
 
@@ -301,6 +302,13 @@ const voiceList = computed<Voice[]>(() => {
         });
       }
     } else if (v.startsWith('qwen|')) {
+      const parts = v.split('|');
+      if (parts.length >= 3) {
+        const voiceNameGender = parts[2];
+        const label = voiceNameGender.replace('Female', t('Female')).replace('Male', t('Male'));
+        voices.push({ label, value: v });
+      }
+    } else if (v.startsWith('bailiantokenplan|')) {
       const parts = v.split('|');
       if (parts.length >= 3) {
         const voiceNameGender = parts[2];

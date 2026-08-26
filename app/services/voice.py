@@ -36,6 +36,7 @@ _voice_cache = {
     'siliconflow': {'voices': [], 'timestamp': None},
     'gemini': {'voices': [], 'timestamp': None},
     'qwen': {'voices': [], 'timestamp': None, 'api_key': None},
+    'bailian_token_plan': {'voices': [], 'timestamp': None, 'api_key': None},
     'azure': {'voices': [], 'voices_v2': [], 'timestamp': None}
 }
 
@@ -411,6 +412,74 @@ def get_qwen_voices(force_refresh=False) -> list[str]:
             'api_key': api_key
         }
         return voices
+
+
+def get_bailian_token_plan_voices(force_refresh=False) -> list[str]:
+    """
+    获取阿里百炼Token Plan TTS的声音列表（复用Qwen默认声音列表）
+
+    Args:
+        force_refresh: 是否强制刷新缓存
+
+    Returns:
+        声音列表，格式为: "bailiantokenplan|voice_id|voice_name-gender||"
+    """
+    global _voice_cache
+
+    api_key = config.bailian_token_plan.get("api_key", "")
+    cache_entry = _voice_cache['bailian_token_plan']
+
+    current_time = datetime.now().timestamp()
+    if not force_refresh and cache_entry['voices'] and cache_entry['timestamp']:
+        cache_age = current_time - cache_entry['timestamp']
+        if cache_age < CACHE_DURATION and cache_entry['api_key'] == api_key:
+            logger.info(f"Using cached Token Plan voices (age: {cache_age:.1f}s)")
+            return cache_entry['voices']
+
+    logger.info("Loading Token Plan voices from hardcoded list")
+
+    # 复用Qwen TTS官方默认中文声音列表
+    voices_with_id_gender = [
+        ("Cherry", "芊悦", "Female"),
+        ("Serena", "苏瑶", "Female"),
+        ("Ethan", "晨煦", "Male"),
+        ("Chelsie", "千雪", "Female"),
+        ("Momo", "茉兔", "Female"),
+        ("Vivian", "十三", "Female"),
+        ("Moon", "月白", "Male"),
+        ("Maia", "四月", "Female"),
+        ("Kai", "凯", "Male"),
+        ("Nofish", "不吃鱼", "Male"),
+        ("Bella", "萌宝", "Female"),
+        ("Jennifer", "詹妮弗", "Female"),
+        ("Ryan", "甜茶", "Male"),
+        ("Katerina", "卡捷琳娜", "Female"),
+        ("Aiden", "艾登", "Male"),
+        ("Eldric Sage", "沧明子", "Male"),
+        ("Mia", "乖小妹", "Female"),
+        ("Mochi", "沙小弥", "Male"),
+        ("Bellona", "燕铮莺", "Female"),
+        ("Vincent", "田叔", "Male"),
+        ("Bunny", "萌小姬", "Female"),
+        ("Neil", "阿闻", "Male"),
+        ("Elias", "墨讲师", "Female"),
+        ("Arthur", "徐大爷", "Male"),
+        ("Nini", "邻家妹妹", "Female"),
+        ("Seren", "小婉", "Female"),
+    ]
+
+    voices = []
+    for voice_id, voice_name, gender in voices_with_id_gender:
+        voices.append(f"bailiantokenplan|{voice_id}|{voice_name}-{gender}||")
+
+    _voice_cache['bailian_token_plan'] = {
+        'voices': voices,
+        'timestamp': current_time,
+        'api_key': api_key
+    }
+    logger.info(f"Token Plan voices cached: {len(voices)} voices")
+
+    return voices
 
 
 def get_coze_voices(force_refresh=False) -> list[str]:
@@ -1723,6 +1792,11 @@ def is_qwen_voice(voice_name: str):
     return voice_name.startswith("qwen|")
 
 
+def is_bailian_token_plan_voice(voice_name: str):
+    """检查是否是阿里百炼Token Plan TTS的声音"""
+    return voice_name.startswith("bailiantokenplan|")
+
+
 def tts(
     text: str,
     voice_name: str,
@@ -1802,6 +1876,16 @@ def tts(
         else:
             logger.error(f"Invalid qwen voice name format: {voice_name}")
             result = None
+    elif is_bailian_token_plan_voice(voice_name):
+        # 从voice_name中提取voice_id
+        # 格式: bailiantokenplan|voice_id|voice_name-gender||
+        parts = voice_name.split("|")
+        if len(parts) >= 2:
+            voice_id = parts[1]
+            result = qwen_tts(text, voice_id, voice_rate, voice_file, voice_volume, "", "", is_preview, "", provider="bailian_token_plan")
+        else:
+            logger.error(f"Invalid token plan voice name format: {voice_name}")
+            result = None
     else:
         # Default to Azure TTS v1 (Edge TTS)
         logger.info(f"[TTS] Using Azure TTS v1 for voice: {voice_name}")
@@ -1815,6 +1899,7 @@ def tts(
         is_coze_voice(voice_name) or
         is_siliconflow_voice(voice_name) or
         is_qwen_voice(voice_name) or
+        is_bailian_token_plan_voice(voice_name) or
         not (is_azure_v2_voice(voice_name) or is_gemini_voice(voice_name))
     )
 
@@ -2467,10 +2552,11 @@ def qwen_tts(
     preview_text: str = "",
     is_preview: bool = False,
     target_model: str = "",
+    provider: str = "qwen",
 ) -> Union[SubMaker, None]:
     """
-    使用Qwen TTS生成语音
-    
+    使用Qwen TTS生成语音（provider支持"qwen"和"bailian_token_plan"）
+
     Args:
         text: 要转换的文本
         voice_id: 语音ID，如 "7426720361732915209", "7426720361732915210" 等
@@ -2479,7 +2565,8 @@ def qwen_tts(
         voice_volume: 音频音量
         preview_audio: 预览音频URL（用于试听）
         preview_text: 预览文本（用于匹配试听）
-        
+        provider: 供应商，可选"qwen"或"bailian_token_plan"
+
     Returns:
         SubMaker对象或None
     """
@@ -2510,15 +2597,19 @@ def qwen_tts(
             except Exception as e:
                 logger.error(f"Error downloading preview audio: {str(e)}")
         
-        # 配置Qwen API (使用HTTP API)
-        api_key = config.qwen.get("api_key", "")
-        base_url = "https://dashscope.aliyuncs.com/api/v1"  # 硬编码Qwen API端点
+        # 配置Qwen API (使用HTTP API)，支持qwen和bailian_token_plan两种provider
+        if provider == "bailian_token_plan":
+            api_key = config.bailian_token_plan.get("api_key", "")
+            base_url = config.bailian_token_plan.get("base_url", "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1")
+        else:
+            api_key = config.qwen.get("api_key", "")
+            base_url = "https://dashscope.aliyuncs.com/api/v1"  # 硬编码Qwen API端点
         
         if not api_key:
             logger.warning("Qwen API key is not set, using text-to-speech fallback")
             return None
         
-        logger.debug(f"Using Qwen TTS with base_url: {base_url}")
+        logger.debug(f"Using Qwen TTS ({provider}) with base_url: {base_url}")
         
         # Text segmentation processing - Qwen API limit is typically 5000 characters
         max_segment_length = 5000
@@ -2562,7 +2653,10 @@ def qwen_tts(
                 }
                 
                 # 使用target_model（克隆声音）或从配置读取默认模型
-                default_model = config.qwen.get("model_name", "qwen3-tts-flash")
+                if provider == "bailian_token_plan":
+                    default_model = config.bailian_token_plan.get("model_name", "qwen-audio-3.0-tts-plus")
+                else:
+                    default_model = config.qwen.get("model_name", "qwen3-tts-flash")
                 model = target_model if target_model else default_model
                 
                 payload = {

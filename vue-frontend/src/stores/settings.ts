@@ -68,6 +68,9 @@ interface AudioSettings {
   qwenApiKey: string;
   qwenModelName: string;
   geminiApiKey: string;
+  bailianTokenPlanApiKey: string;
+  bailianTokenPlanModelName: string;
+  bailianTokenPlanBaseUrl: string;
   tavilyApiKey: string;
   voiceEmotion: string;
   speechVolume: string;
@@ -208,6 +211,9 @@ export const useSettingsStore = defineStore('settings', {
       qwenApiKey: '',
       qwenModelName: 'qwen3-tts-flash',
       geminiApiKey: '',
+      bailianTokenPlanApiKey: '',
+      bailianTokenPlanModelName: 'qwen-audio-3.0-tts-plus',
+      bailianTokenPlanBaseUrl: 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
       tavilyApiKey: '',
       voiceEmotion: '',
       speechVolume: '1.0',
@@ -868,6 +874,22 @@ export const useSettingsStore = defineStore('settings', {
           if (data.gemini && data.gemini.api_key) {
             this.audio.geminiApiKey = data.gemini.api_key;
             console.log('[SettingsStore] Updated geminiApiKey from config:', this.audio.geminiApiKey);
+          }
+
+          // Load bailian_token_plan config
+          if (data.bailian_token_plan) {
+            if (data.bailian_token_plan.api_key) {
+              this.audio.bailianTokenPlanApiKey = data.bailian_token_plan.api_key;
+              console.log('[SettingsStore] Updated bailianTokenPlanApiKey from config:', this.audio.bailianTokenPlanApiKey);
+            }
+            if (data.bailian_token_plan.model_name) {
+              this.audio.bailianTokenPlanModelName = data.bailian_token_plan.model_name;
+              console.log('[SettingsStore] Updated bailianTokenPlanModelName from config:', this.audio.bailianTokenPlanModelName);
+            }
+            if (data.bailian_token_plan.base_url) {
+              this.audio.bailianTokenPlanBaseUrl = data.bailian_token_plan.base_url;
+              console.log('[SettingsStore] Updated bailianTokenPlanBaseUrl from config:', this.audio.bailianTokenPlanBaseUrl);
+            }
           }
 
           // Load tavily config

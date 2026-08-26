@@ -31,6 +31,8 @@ def get_voices(request: Request, tts_server: str = "azure-tts-v1", force_refresh
             voices = voice.get_coze_voices(force_refresh=force_refresh)
         elif tts_server == "qwen-tts":
             voices = voice.get_qwen_voices(force_refresh=force_refresh)
+        elif tts_server == "bailian-token-plan":
+            voices = voice.get_bailian_token_plan_voices(force_refresh=force_refresh)
         elif tts_server == "azure-tts-v1":
             standard, _v2 = voice.get_azure_voices(force_refresh=force_refresh)
             voices = standard
@@ -154,6 +156,11 @@ def get_config(request: Request):
                 "api_key": config.qwen.get("api_key", ""),
                 "model_name": config.qwen.get("model_name", "qwen3-tts-flash"),
             },
+            "bailian_token_plan": {
+                "api_key": config.bailian_token_plan.get("api_key", ""),
+                "model_name": config.bailian_token_plan.get("model_name", "qwen-audio-3.0-tts-plus"),
+                "base_url": config.bailian_token_plan.get("base_url", "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"),
+            },
             "gemini": {
                 "api_key": config.app.get("gemini_api_key", ""),
             },
@@ -203,6 +210,10 @@ def update_config(request: Request, cfg: dict):
         if "qwen" in cfg:
             for key, value in cfg["qwen"].items():
                 config.qwen[key] = value
+
+        if "bailian_token_plan" in cfg:
+            for key, value in cfg["bailian_token_plan"].items():
+                config.bailian_token_plan[key] = value
 
         if "gemini" in cfg:
             for key, value in cfg["gemini"].items():
