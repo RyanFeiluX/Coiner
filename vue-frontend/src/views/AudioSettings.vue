@@ -155,17 +155,6 @@
 
         <div v-if="form.ttsServer === 'qwen-tts'" class="qwen-settings-panel">
           <div class="form-item">
-            <label class="form-label">{{ t('Qwen API Key') }}</label>
-            <el-input
-              v-model="form.qwenApiKey"
-              :placeholder="t('Enter API Key')"
-              type="password"
-              show-password
-              class="form-input"
-            />
-          </div>
-
-          <div class="form-item">
             <el-alert
               :title="t('Qwen TTS Settings:')"
               type="info"

@@ -162,6 +162,17 @@
 
         <el-tab-pane :label="t('TTS Model Settings')" name="tts-model">
           <el-form :model="form" label-width="150px">
+            <el-form-item>
+              <template #label>
+                <span>{{ t('Qwen API Key') }} <span style="color: red;">*</span></span>
+              </template>
+              <el-input
+                v-model="form.qwenApiKey"
+                :placeholder="t('Enter API Key')"
+                type="password"
+                show-password
+              />
+            </el-form-item>
             <el-form-item :label="t('Qwen TTS Model')">
               <div style="display: flex; align-items: center; gap: 8px; width: 100%">
                 <el-select v-model="form.qwenModelName" style="flex: 1">
@@ -385,6 +396,7 @@ const loadSettingsToForm = () => {
   
   // Load Qwen TTS Model Name
   form.qwenModelName = settingsStore.audio.qwenModelName || 'qwen3-tts-flash';
+  form.qwenApiKey = settingsStore.audio.qwenApiKey || '';
 };
 
 const form = reactive({
@@ -401,7 +413,8 @@ const form = reactive({
   silenceDuration: 0.3,
   hostVisible: true,
   tavilyApiKey: '',
-  qwenModelName: 'qwen3-tts-flash'
+  qwenModelName: 'qwen3-tts-flash',
+  qwenApiKey: ''
 });
 
 // Cloned voices data
@@ -729,6 +742,7 @@ const saveSettings = async () => {
     
     // Save Qwen TTS Model Name
     settingsStore.updateAudioSetting('qwenModelName', form.qwenModelName);
+    settingsStore.updateAudioSetting('qwenApiKey', form.qwenApiKey);
 
     // Build app config based on LLM provider
     const appConfig: Record<string, any> = {
@@ -774,6 +788,7 @@ const saveSettings = async () => {
         api_key: form.tavilyApiKey
       },
       qwen: {
+        api_key: form.qwenApiKey,
         model_name: form.qwenModelName
       }
     }));
