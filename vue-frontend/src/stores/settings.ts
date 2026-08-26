@@ -67,6 +67,7 @@ interface AudioSettings {
   cozeApiKey: string;
   qwenApiKey: string;
   qwenModelName: string;
+  geminiApiKey: string;
   tavilyApiKey: string;
   voiceEmotion: string;
   speechVolume: string;
@@ -206,6 +207,7 @@ export const useSettingsStore = defineStore('settings', {
       cozeApiKey: '',
       qwenApiKey: '',
       qwenModelName: 'qwen3-tts-flash',
+      geminiApiKey: '',
       tavilyApiKey: '',
       voiceEmotion: '',
       speechVolume: '1.0',
@@ -860,6 +862,12 @@ export const useSettingsStore = defineStore('settings', {
               this.audio.qwenModelName = data.qwen.model_name;
               console.log('[SettingsStore] Updated qwenModelName from config:', this.audio.qwenModelName);
             }
+          }
+
+          // Load gemini config
+          if (data.gemini && data.gemini.api_key) {
+            this.audio.geminiApiKey = data.gemini.api_key;
+            console.log('[SettingsStore] Updated geminiApiKey from config:', this.audio.geminiApiKey);
           }
 
           // Load tavily config

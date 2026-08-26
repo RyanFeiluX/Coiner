@@ -154,6 +154,9 @@ def get_config(request: Request):
                 "api_key": config.qwen.get("api_key", ""),
                 "model_name": config.qwen.get("model_name", "qwen3-tts-flash"),
             },
+            "gemini": {
+                "api_key": config.app.get("gemini_api_key", ""),
+            },
             "tavily": {
                 "api_key": config.tavily.get("api_key", ""),
             },
@@ -200,6 +203,11 @@ def update_config(request: Request, cfg: dict):
         if "qwen" in cfg:
             for key, value in cfg["qwen"].items():
                 config.qwen[key] = value
+
+        if "gemini" in cfg:
+            for key, value in cfg["gemini"].items():
+                if key == "api_key":
+                    config.app["gemini_api_key"] = value
 
         if "tavily" in cfg:
             for key, value in cfg["tavily"].items():

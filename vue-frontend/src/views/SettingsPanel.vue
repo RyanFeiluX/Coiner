@@ -161,65 +161,110 @@
         </el-tab-pane>
 
         <el-tab-pane :label="t('TTS Model Settings')" name="tts-model">
-          <el-form :model="form" label-width="150px">
-            <el-form-item>
-              <template #label>
-                <span>{{ t('Qwen API Key') }} <span style="color: red;">*</span></span>
-              </template>
-              <el-input
-                v-model="form.qwenApiKey"
-                :placeholder="t('Enter API Key')"
-                type="password"
-                show-password
-              />
-            </el-form-item>
-            <el-form-item :label="t('Qwen TTS Model')">
-              <div style="display: flex; align-items: center; gap: 8px; width: 100%">
-                <el-select v-model="form.qwenModelName" style="flex: 1">
-                  <el-option-group :label="t('Qwen3-TTS-Flash')">
-                    <el-option label="qwen3-tts-flash (Stable)" value="qwen3-tts-flash" />
-                    <el-option label="qwen3-tts-flash-2025-11-27" value="qwen3-tts-flash-2025-11-27" />
-                    <el-option label="qwen3-tts-flash-2025-09-18" value="qwen3-tts-flash-2025-09-18" />
-                  </el-option-group>
-                  <el-option-group :label="t('Qwen3-TTS-Instruct-Flash')">
-                    <el-option label="qwen3-tts-instruct-flash (Stable)" value="qwen3-tts-instruct-flash" />
-                    <el-option label="qwen3-tts-instruct-flash-2026-01-26" value="qwen3-tts-instruct-flash-2026-01-26" />
-                  </el-option-group>
-                  <el-option-group :label="t('Qwen3-TTS-VD')">
-                    <el-option label="qwen3-tts-vd-2026-01-26" value="qwen3-tts-vd-2026-01-26" />
-                  </el-option-group>
-                  <el-option-group :label="t('Qwen3-TTS-VC')">
-                    <el-option label="qwen3-tts-vc-2026-01-22" value="qwen3-tts-vc-2026-01-22" />
-                  </el-option-group>
-                  <el-option-group :label="t('Qwen-TTS')">
-                    <el-option label="qwen-tts (Stable)" value="qwen-tts" />
-                    <el-option label="qwen-tts-latest" value="qwen-tts-latest" />
-                    <el-option label="qwen-tts-2025-05-22" value="qwen-tts-2025-05-22" />
-                    <el-option label="qwen-tts-2025-04-10" value="qwen-tts-2025-04-10" />
-                  </el-option-group>
-                </el-select>
-                <el-popover
-                  placement="right"
-                  :width="400"
-                  trigger="click"
-                >
-                  <template #reference>
-                    <el-button :icon="InfoFilled" circle />
-                  </template>
-                  <div>
-                    <p style="font-weight: bold; margin-bottom: 8px;">{{ t('Qwen TTS Model Info') }}</p>
-                    <ul style="margin: 0; padding-left: 20px;">
-                      <li>{{ t('Qwen3-TTS-Flash Info') }}</li>
-                      <li>{{ t('Qwen3-TTS-Instruct-Flash Info') }}</li>
-                      <li>{{ t('Qwen3-TTS-VD Info') }}</li>
-                      <li>{{ t('Qwen3-TTS-VC Info') }}</li>
-                      <li>{{ t('Qwen-TTS Info') }}</li>
-                    </ul>
-                  </div>
-                </el-popover>
-              </div>
+          <el-form :model="form" label-width="120px">
+            <el-form-item :label="t('TTS Provider')">
+              <el-select v-model="form.ttsProvider" style="width: 100%">
+                <el-option :label="t('Azure TTS V2')" value="azure-tts-v2" />
+                <el-option :label="t('SiliconFlow TTS')" value="siliconflow" />
+                <el-option :label="t('Google Gemini TTS')" value="gemini-tts" />
+                <el-option :label="t('Coze TTS')" value="coze-tts" />
+                <el-option :label="t('Qwen TTS')" value="qwen-tts" />
+              </el-select>
             </el-form-item>
           </el-form>
+
+          <!-- Azure TTS V2 -->
+          <div v-if="form.ttsProvider === 'azure-tts-v2'" class="tts-provider-config">
+            <el-form :model="form" label-width="120px">
+              <el-form-item :label="t('Speech Region')">
+                <el-input v-model="form.azureSpeechRegion" placeholder="eastasia" />
+              </el-form-item>
+              <el-form-item :label="t('Speech Key')">
+                <el-input v-model="form.azureSpeechKey" type="password" show-password />
+              </el-form-item>
+            </el-form>
+          </div>
+
+          <!-- SiliconFlow TTS -->
+          <div v-if="form.ttsProvider === 'siliconflow'" class="tts-provider-config">
+            <el-form :model="form" label-width="120px">
+              <el-form-item :label="t('SiliconFlow API Key')">
+                <el-input v-model="form.siliconflowApiKey" type="password" show-password />
+              </el-form-item>
+            </el-form>
+          </div>
+
+          <!-- Google Gemini TTS -->
+          <div v-if="form.ttsProvider === 'gemini-tts'" class="tts-provider-config">
+            <el-form :model="form" label-width="120px">
+              <el-form-item :label="t('Gemini API Key')">
+                <el-input v-model="form.geminiApiKey" type="password" show-password />
+              </el-form-item>
+            </el-form>
+          </div>
+
+          <!-- Coze TTS -->
+          <div v-if="form.ttsProvider === 'coze-tts'" class="tts-provider-config">
+            <el-form :model="form" label-width="120px">
+              <el-form-item :label="t('Coze API Key')">
+                <el-input v-model="form.cozeApiKey" type="password" show-password />
+              </el-form-item>
+            </el-form>
+          </div>
+
+          <!-- Qwen TTS -->
+          <div v-if="form.ttsProvider === 'qwen-tts'" class="tts-provider-config">
+            <el-form :model="form" label-width="120px">
+              <el-form-item>
+                <template #label>
+                  <span>{{ t('Qwen API Key') }} <span style="color: red;">*</span></span>
+                </template>
+                <el-input v-model="form.qwenApiKey" type="password" show-password />
+              </el-form-item>
+              <el-form-item :label="t('Qwen TTS Model')">
+                <div style="display: flex; align-items: center; gap: 8px; width: 100%">
+                  <el-select v-model="form.qwenModelName" style="flex: 1">
+                    <el-option-group :label="t('Qwen3-TTS-Flash')">
+                      <el-option label="qwen3-tts-flash (Stable)" value="qwen3-tts-flash" />
+                      <el-option label="qwen3-tts-flash-2025-11-27" value="qwen3-tts-flash-2025-11-27" />
+                      <el-option label="qwen3-tts-flash-2025-09-18" value="qwen3-tts-flash-2025-09-18" />
+                    </el-option-group>
+                    <el-option-group :label="t('Qwen3-TTS-Instruct-Flash')">
+                      <el-option label="qwen3-tts-instruct-flash (Stable)" value="qwen3-tts-instruct-flash" />
+                      <el-option label="qwen3-tts-instruct-flash-2026-01-26" value="qwen3-tts-instruct-flash-2026-01-26" />
+                    </el-option-group>
+                    <el-option-group :label="t('Qwen3-TTS-VD')">
+                      <el-option label="qwen3-tts-vd-2026-01-26" value="qwen3-tts-vd-2026-01-26" />
+                    </el-option-group>
+                    <el-option-group :label="t('Qwen3-TTS-VC')">
+                      <el-option label="qwen3-tts-vc-2026-01-22" value="qwen3-tts-vc-2026-01-22" />
+                    </el-option-group>
+                    <el-option-group :label="t('Qwen-TTS')">
+                      <el-option label="qwen-tts (Stable)" value="qwen-tts" />
+                      <el-option label="qwen-tts-latest" value="qwen-tts-latest" />
+                      <el-option label="qwen-tts-2025-05-22" value="qwen-tts-2025-05-22" />
+                      <el-option label="qwen-tts-2025-04-10" value="qwen-tts-2025-04-10" />
+                    </el-option-group>
+                  </el-select>
+                  <el-popover placement="right" :width="400" trigger="click">
+                    <template #reference>
+                      <el-button :icon="InfoFilled" circle />
+                    </template>
+                    <div>
+                      <p style="font-weight: bold; margin-bottom: 8px;">{{ t('Qwen TTS Model Info') }}</p>
+                      <ul style="margin: 0; padding-left: 20px;">
+                        <li>{{ t('Qwen3-TTS-Flash Info') }}</li>
+                        <li>{{ t('Qwen3-TTS-Instruct-Flash Info') }}</li>
+                        <li>{{ t('Qwen3-TTS-VD Info') }}</li>
+                        <li>{{ t('Qwen3-TTS-VC Info') }}</li>
+                        <li>{{ t('Qwen-TTS Info') }}</li>
+                      </ul>
+                    </div>
+                  </el-popover>
+                </div>
+              </el-form-item>
+            </el-form>
+          </div>
         </el-tab-pane>
 
         <el-tab-pane :label="t('Cloned Voices Setting')" name="cloned-voices">
@@ -394,9 +439,15 @@ const loadSettingsToForm = () => {
   // Load Tavily API Key
   form.tavilyApiKey = settingsStore.audio.tavilyApiKey || '';
   
-  // Load Qwen TTS Model Name
-  form.qwenModelName = settingsStore.audio.qwenModelName || 'qwen3-tts-flash';
+  // Load TTS Provider config
+  form.ttsProvider = settingsStore.audio.ttsServer || 'qwen-tts';
+  form.azureSpeechRegion = settingsStore.audio.speechRegion || '';
+  form.azureSpeechKey = settingsStore.audio.speechKey || '';
+  form.siliconflowApiKey = settingsStore.audio.siliconflowApiKey || '';
+  form.geminiApiKey = settingsStore.audio.geminiApiKey || '';
+  form.cozeApiKey = settingsStore.audio.cozeApiKey || '';
   form.qwenApiKey = settingsStore.audio.qwenApiKey || '';
+  form.qwenModelName = settingsStore.audio.qwenModelName || 'qwen3-tts-flash';
 };
 
 const form = reactive({
@@ -413,6 +464,12 @@ const form = reactive({
   silenceDuration: 0.3,
   hostVisible: true,
   tavilyApiKey: '',
+  ttsProvider: 'qwen-tts',
+  azureSpeechRegion: '',
+  azureSpeechKey: '',
+  siliconflowApiKey: '',
+  geminiApiKey: '',
+  cozeApiKey: '',
   qwenModelName: 'qwen3-tts-flash',
   qwenApiKey: ''
 });
@@ -740,9 +797,15 @@ const saveSettings = async () => {
     // Save Tavily API Key
     settingsStore.updateAudioSetting('tavilyApiKey', form.tavilyApiKey);
     
-    // Save Qwen TTS Model Name
-    settingsStore.updateAudioSetting('qwenModelName', form.qwenModelName);
+    // Save TTS Provider config
+    settingsStore.updateAudioSetting('ttsServer', form.ttsProvider);
+    settingsStore.updateAudioSetting('speechRegion', form.azureSpeechRegion);
+    settingsStore.updateAudioSetting('speechKey', form.azureSpeechKey);
+    settingsStore.updateAudioSetting('siliconflowApiKey', form.siliconflowApiKey);
+    settingsStore.updateAudioSetting('geminiApiKey', form.geminiApiKey);
+    settingsStore.updateAudioSetting('cozeApiKey', form.cozeApiKey);
     settingsStore.updateAudioSetting('qwenApiKey', form.qwenApiKey);
+    settingsStore.updateAudioSetting('qwenModelName', form.qwenModelName);
 
     // Build app config based on LLM provider
     const appConfig: Record<string, any> = {
@@ -784,12 +847,25 @@ const saveSettings = async () => {
       whisper: {
         device: form.whisperDevice
       },
-      tavily: {
-        api_key: form.tavilyApiKey
+      azure: {
+        speech_region: form.azureSpeechRegion,
+        speech_key: form.azureSpeechKey
+      },
+      siliconflow: {
+        api_key: form.siliconflowApiKey
+      },
+      gemini: {
+        api_key: form.geminiApiKey
+      },
+      coze: {
+        api_key: form.cozeApiKey
       },
       qwen: {
         api_key: form.qwenApiKey,
         model_name: form.qwenModelName
+      },
+      tavily: {
+        api_key: form.tavilyApiKey
       }
     }));
 
@@ -911,5 +987,12 @@ onMounted(async () => {
   display: flex;
   gap: 8px;
   margin-bottom: 16px;
+}
+
+.tts-provider-config {
+  margin-top: 16px;
+  padding: 16px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
 }
 </style>

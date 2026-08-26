@@ -78,40 +78,7 @@
 
         <audio v-if="audioUrl" :src="audioUrl" controls class="audio-preview"></audio>
 
-        <div v-if="form.ttsServer === 'azure-tts-v2'" class="azure-v2-settings">
-          <div class="form-item">
-            <label class="form-label">{{ t('Service Region') }} <span style="color: blue;">{{ t('(Required, ') }}<a href="https://portal.azure.com/#view/Microsoft_Azure_ProjectOxford/CognitiveServicesHub/~/SpeechServices" target="_blank">{{ t('click to get') }}</a>{{ t(')') }}</span></label>
-            <el-input
-              v-model="form.speechRegion"
-              :placeholder="t('Enter service region')"
-              class="form-input"
-            />
-          </div>
-
-          <div class="form-item">
-            <label class="form-label">{{ t('API Key') }} <span style="color: blue;">{{ t('(Required, either key 1 or key 2 ') }}<a href="https://portal.azure.com/#view/Microsoft_Azure_ProjectOxford/CognitiveServicesHub/~/SpeechServices" target="_blank">{{ t('click to get') }}</a>{{ t(')') }}</span></label>
-            <el-input
-              v-model="form.speechKey"
-              :placeholder="t('Enter API Key')"
-              type="password"
-              show-password
-              class="form-input"
-            />
-          </div>
-        </div>
-
         <div v-if="form.ttsServer === 'siliconflow'" class="siliconflow-settings">
-          <div class="form-item">
-            <label class="form-label">{{ t('SiliconFlow API Key') }} <a href="https://cloud.siliconflow.cn/account/ak" target="_blank">{{ t('click to get') }}</a></label>
-            <el-input
-              v-model="form.siliconflowApiKey"
-              :placeholder="t('Enter API key')"
-              type="password"
-              show-password
-              class="form-input"
-            />
-          </div>
-
           <div class="form-item">
             <el-alert
               :title="t('SiliconFlow TTS Settings:')"
@@ -127,17 +94,6 @@
         </div>
 
         <div v-if="form.ttsServer === 'coze-tts'" class="coze-settings-panel">
-          <div class="form-item">
-            <label class="form-label">{{ t('Coze API Key') }}</label>
-            <el-input
-              v-model="form.cozeApiKey"
-              :placeholder="t('Enter API Key')"
-              type="password"
-              show-password
-              class="form-input"
-            />
-          </div>
-
           <div class="form-item">
             <el-alert
               :title="t('Coze TTS Settings:')"
