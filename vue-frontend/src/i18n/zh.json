@@ -156,6 +156,7 @@
         "Voice ID": "音色 ID",
         "Gender": "性别",
         "Model": "模型",
+        "Base URL": "Base URL",
         "Actions": "操作",
         "No cloned voices configured": "暂无克隆音色配置。点击“添加音色”或“导入 JSON”添加。",
         "Add Cloned Voice": "添加克隆音色",

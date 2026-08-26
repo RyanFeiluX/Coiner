@@ -196,6 +196,7 @@
         "Voice ID": "Voice ID",
         "Gender": "Gender",
         "Model": "Model",
+        "Base URL": "Base URL",
         "Actions": "Actions",
         "No cloned voices configured": "No cloned voices configured. Click 'Add Voice' or 'Import JSON' to add.",
         "Add Cloned Voice": "Add Cloned Voice",

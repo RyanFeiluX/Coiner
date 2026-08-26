@@ -172,6 +172,8 @@
               :closable="false"
             >
               <ul>
+                <li>{{ t('Model') }}: qwen3-tts-flash</li>
+                <li>{{ t('Base URL') }}: https://dashscope.aliyuncs.com/api/v1</li>
                 <li>{{ t('Speech rate range [0.5, 2.0], default value is 1.0') }}</li>
                 <li>{{ t('Volume range [0.1, 2.0], default value is 1.0') }}</li>
                 <li>{{ t('Get API Key from Aliyun DashScope') }} <a href="https://help.aliyun.com/zh/model-studio/tts-model/" target="_blank">https://help.aliyun.com/zh/model-studio/tts-model/</a></li>
