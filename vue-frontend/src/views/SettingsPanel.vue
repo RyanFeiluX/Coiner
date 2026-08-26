@@ -773,12 +773,11 @@ onMounted(async () => {
 
 .settings-tabs :deep(.el-tabs__content) {
   padding: 16px 8px;
-  max-height: 450px;
-  overflow-y: auto;
 }
 
 .settings-tabs :deep(.el-tab-pane) {
-  min-height: 60px;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .mt-4 {
