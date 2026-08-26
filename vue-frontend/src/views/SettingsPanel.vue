@@ -6,247 +6,220 @@
       width="800px"
       destroy-on-close
     >
-      <el-card :body-style="{ padding: '20px' }" class="mt-4">
-        <template #header>
-          <span v-html="t('LLM Settings')"></span>
-        </template>
-        
-        <el-form :model="form" label-width="150px">
-          <el-form-item :label="t('LLM Provider')">
-            <el-select v-model="form.llmProvider" @change="handleLLMProviderChange">
-              <el-option v-for="provider in llmProviders" :key="provider.value" :label="provider.label" :value="provider.value" />
-            </el-select>
-          </el-form-item>
-        </el-form>
-        
-        <div v-if="llmTips" class="llm-tips">
-          <el-alert
-            :title="llmTips.title"
-            :type="llmTips.type"
-            :closable="false"
-            show-icon
-          >
-            <div v-html="llmTips.content"></div>
-          </el-alert>
-        </div>
-        
-        <el-form :model="form" label-width="150px">
+      <el-tabs v-model="activeTab" class="settings-tabs">
+        <el-tab-pane :label="t('LLM Settings')" name="llm">
+          <el-form :model="form" label-width="150px">
+            <el-form-item :label="t('LLM Provider')">
+              <el-select v-model="form.llmProvider" @change="handleLLMProviderChange">
+                <el-option v-for="provider in llmProviders" :key="provider.value" :label="provider.label" :value="provider.value" />
+              </el-select>
+            </el-form-item>
+          </el-form>
           
-          <el-form-item>
-            <template #label>
-              <span>{{ t('API Key') }} <span style="color: red;">*</span></span>
-            </template>
-            <el-input v-model="form.llmApiKey" type="password" />
-          </el-form-item>
+          <div v-if="llmTips" class="llm-tips">
+            <el-alert
+              :title="llmTips.title"
+              :type="llmTips.type"
+              :closable="false"
+              show-icon
+            >
+              <div v-html="llmTips.content"></div>
+            </el-alert>
+          </div>
           
-          <el-form-item :label="t('Base Url')">
-            <el-input v-model="form.llmBaseUrl" />
-          </el-form-item>
-          
-          <el-form-item v-if="form.llmProvider !== 'ernie'">
-            <template #label>
-              <el-tooltip :content="t('Model Name Tooltip')" placement="top">
-                <span>{{ t('Model Name') }}</span>
-              </el-tooltip>
-            </template>
-            <el-input v-model="form.llmModelName" />
-          </el-form-item>
-          
-          <el-form-item :label="t('Secret Key')" v-if="form.llmProvider === 'ernie'">
-            <el-input v-model="form.llmSecretKey" type="password" />
-          </el-form-item>
-          
-          <el-form-item :label="t('Account ID')" v-if="form.llmProvider === 'cloudflare'">
-            <el-input v-model="form.llmAccountId" />
-          </el-form-item>
-        </el-form>
-      </el-card>
-      
-      <el-card :body-style="{ padding: '20px' }" class="mt-4">
-        <template #header>
-          <span v-html="t('Video Source Settings')"></span>
-        </template>
-        
-        <el-form :model="form" label-position="top">
-          <el-form-item>
-            <template #label>
-              <span v-html="t('Pexels API Key')"></span>
-            </template>
-            <div v-for="(_, index) in form.pexelsApiKeys" :key="index" class="api-key-input-group">
-              <el-input v-model="form.pexelsApiKeys[index]" type="password">
-                <template #append>
-                  <el-button 
-                    v-if="form.pexelsApiKeys.length > 1" 
-                    type="danger" 
-                    circle 
-                    @click="removePexelsApiKey(index)"
-                  >
-                    <el-icon><Delete /></el-icon>
-                  </el-button>
-                </template>
-              </el-input>
-            </div>
-            <el-button type="primary" plain @click="addPexelsApiKey" class="mt-2">
-              <el-icon><Plus /></el-icon>
-              {{ t('Add') }}
-            </el-button>
-          </el-form-item>
-          
-          <el-form-item>
-            <template #label>
-              <span v-html="t('Pixabay API Key')"></span>
-            </template>
-            <div v-for="(_, index) in form.pixabayApiKeys" :key="index" class="api-key-input-group">
-              <el-input v-model="form.pixabayApiKeys[index]" type="password">
-                <template #append>
-                  <el-button 
-                    v-if="form.pixabayApiKeys.length > 1" 
-                    type="danger" 
-                    circle 
-                    @click="removePixabayApiKey(index)"
-                  >
-                    <el-icon><Delete /></el-icon>
-                  </el-button>
-                </template>
-              </el-input>
-            </div>
-            <el-button type="primary" plain @click="addPixabayApiKey" class="mt-2">
-              <el-icon><Plus /></el-icon>
-              {{ t('Add') }}
-            </el-button>
-          </el-form-item>
-        </el-form>
-      </el-card>
-      
-      <el-card :body-style="{ padding: '20px' }" class="mt-4">
-        <template #header>
-          <span v-html="t('Whisper Settings')"></span>
-        </template>
-        
-        <el-form :model="form" label-width="150px">
-          <el-form-item :label="t('Whisper Device')">
-            <el-select v-model="form.whisperDevice">
-              <el-option :label="t('CPU')" value="CPU" />
-              <el-option :label="t('GPU')" value="GPU" />
-              <el-option :label="t('Auto')" value="auto" />
-            </el-select>
-          </el-form-item>
-        </el-form>
-      </el-card>
-      
-      <el-card :body-style="{ padding: '20px' }" class="mt-4">
-        <template #header>
-          <span v-html="t('Video Encoder Settings')"></span>
-        </template>
-        
-        <el-form :model="form" label-width="150px">
-          <el-form-item :label="t('Video Encoder')">
-            <el-select v-model="form.videoEncoder">
-              <el-option :label="t('CPU')" value="CPU" />
-              <el-option :label="t('GPU')" value="GPU" />
-            </el-select>
-          </el-form-item>
-        </el-form>
-      </el-card>
-      
-      <el-card :body-style="{ padding: '20px' }" class="mt-4">
-        <template #header>
-          <span v-html="t('Video Synthesis')"></span>
-        </template>
-        
-        <el-form :model="form" label-width="150px">
-          <el-form-item :label="t('Silence Prefix')">
-            <el-slider
-              v-model="form.silenceDuration"
-              :min="0.0"
-              :max="5.0"
-              :step="0.1"
-              :show-input="true"
-              :input-size="'small'"
-            />
-          </el-form-item>
-          
-          <el-form-item :label="t('Host Visible')">
-            <el-switch v-model="form.hostVisible" :active-text="t('Visible')" :inactive-text="t('Hidden')" />
-          </el-form-item>
-        </el-form>
-      </el-card>
-      
-      <el-card :body-style="{ padding: '20px' }" class="mt-4">
-        <template #header>
-          <span v-html="t('Web Search Settings')"></span>
-        </template>
-        
-        <el-form :model="form" label-width="150px">
-          <el-form-item :label="t('Tavily API Key')">
-            <el-input v-model="form.tavilyApiKey" type="password" placeholder="tmpl_xxx" />
-          </el-form-item>
-        </el-form>
-      </el-card>
-      
-      <el-card :body-style="{ padding: '20px' }" class="mt-4">
-        <template #header>
-          <span v-html="t('Cloned Voices Setting')"></span>
-        </template>
-        
-        <div class="voice-actions mt-4">
-          <el-button 
-            type="primary" 
-            plain 
-            size="small" 
-            @click="showAddVoiceModal = true"
-          >
-            <el-icon><Plus /></el-icon>
-            {{ t('Add Voice') }}
-          </el-button>
-          <label class="el-button el-button--success el-button--plain el-button--small ml-2">
-            <el-icon><Upload /></el-icon>
-            {{ t('Import JSON') }}
-            <input 
-              type="file" 
-              accept=".json" 
-              class="voice-file-upload"
-              @change="handleFileUpload"
-            />
-          </label>
-        </div>
-        
-        <div v-if="clonedVoices.length === 0" class="empty-state">
-          <el-empty 
-            :description="t('No cloned voices configured')"
-          />
-        </div>
-        
-        <el-table 
-          v-else 
-          :data="clonedVoices" 
-          border 
-          class="mt-4"
-          :max-height="300"
-        >
-          <el-table-column :label="t('Display Name')" prop="displayName" />
-          <el-table-column :label="t('Voice ID')" prop="voiceId" width="300" />
-          <el-table-column :label="t('Gender')" prop="gender" />
-          <el-table-column :label="t('Model')" prop="model" width="200" />
-          <el-table-column :label="t('Actions')" width="120">
-            <template #default="scope">
-              <el-button 
-                size="small" 
-                @click="editVoice(scope.row)"
-              >
-                <el-icon><Edit /></el-icon>
+          <el-form :model="form" label-width="150px">
+            <el-form-item>
+              <template #label>
+                <span>{{ t('API Key') }} <span style="color: red;">*</span></span>
+              </template>
+              <el-input v-model="form.llmApiKey" type="password" />
+            </el-form-item>
+            
+            <el-form-item :label="t('Base Url')">
+              <el-input v-model="form.llmBaseUrl" />
+            </el-form-item>
+            
+            <el-form-item v-if="form.llmProvider !== 'ernie'">
+              <template #label>
+                <el-tooltip :content="t('Model Name Tooltip')" placement="top">
+                  <span>{{ t('Model Name') }}</span>
+                </el-tooltip>
+              </template>
+              <el-input v-model="form.llmModelName" />
+            </el-form-item>
+            
+            <el-form-item :label="t('Secret Key')" v-if="form.llmProvider === 'ernie'">
+              <el-input v-model="form.llmSecretKey" type="password" />
+            </el-form-item>
+            
+            <el-form-item :label="t('Account ID')" v-if="form.llmProvider === 'cloudflare'">
+              <el-input v-model="form.llmAccountId" />
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+
+        <el-tab-pane :label="t('Video Source Settings')" name="video-source">
+          <el-form :model="form" label-position="top">
+            <el-form-item>
+              <template #label>
+                <span v-html="t('Pexels API Key')"></span>
+              </template>
+              <div v-for="(_, index) in form.pexelsApiKeys" :key="index" class="api-key-input-group">
+                <el-input v-model="form.pexelsApiKeys[index]" type="password">
+                  <template #append>
+                    <el-button 
+                      v-if="form.pexelsApiKeys.length > 1" 
+                      type="danger" 
+                      circle 
+                      @click="removePexelsApiKey(index)"
+                    >
+                      <el-icon><Delete /></el-icon>
+                    </el-button>
+                  </template>
+                </el-input>
+              </div>
+              <el-button type="primary" plain @click="addPexelsApiKey" class="mt-2">
+                <el-icon><Plus /></el-icon>
+                {{ t('Add') }}
               </el-button>
-              <el-button 
-                size="small" 
-                type="danger" 
-                @click="deleteVoice(scope.row.voiceId)"
-              >
-                <el-icon><Delete /></el-icon>
+            </el-form-item>
+            
+            <el-form-item>
+              <template #label>
+                <span v-html="t('Pixabay API Key')"></span>
+              </template>
+              <div v-for="(_, index) in form.pixabayApiKeys" :key="index" class="api-key-input-group">
+                <el-input v-model="form.pixabayApiKeys[index]" type="password">
+                  <template #append>
+                    <el-button 
+                      v-if="form.pixabayApiKeys.length > 1" 
+                      type="danger" 
+                      circle 
+                      @click="removePixabayApiKey(index)"
+                    >
+                      <el-icon><Delete /></el-icon>
+                    </el-button>
+                  </template>
+                </el-input>
+              </div>
+              <el-button type="primary" plain @click="addPixabayApiKey" class="mt-2">
+                <el-icon><Plus /></el-icon>
+                {{ t('Add') }}
               </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+
+        <el-tab-pane :label="t('Whisper Settings')" name="whisper">
+          <el-form :model="form" label-width="150px">
+            <el-form-item :label="t('Whisper Device')">
+              <el-select v-model="form.whisperDevice">
+                <el-option :label="t('CPU')" value="CPU" />
+                <el-option :label="t('GPU')" value="GPU" />
+                <el-option :label="t('Auto')" value="auto" />
+              </el-select>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+
+        <el-tab-pane :label="t('Video Encoder Settings')" name="video-encoder">
+          <el-form :model="form" label-width="150px">
+            <el-form-item :label="t('Video Encoder')">
+              <el-select v-model="form.videoEncoder">
+                <el-option :label="t('CPU')" value="CPU" />
+                <el-option :label="t('GPU')" value="GPU" />
+              </el-select>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+
+        <el-tab-pane :label="t('Video Synthesis')" name="video-synthesis">
+          <el-form :model="form" label-width="150px">
+            <el-form-item :label="t('Silence Prefix')">
+              <el-slider
+                v-model="form.silenceDuration"
+                :min="0.0"
+                :max="5.0"
+                :step="0.1"
+                :show-input="true"
+                :input-size="'small'"
+              />
+            </el-form-item>
+            
+            <el-form-item :label="t('Host Visible')">
+              <el-switch v-model="form.hostVisible" :active-text="t('Visible')" :inactive-text="t('Hidden')" />
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+
+        <el-tab-pane :label="t('Web Search Settings')" name="web-search">
+          <el-form :model="form" label-width="150px">
+            <el-form-item :label="t('Tavily API Key')">
+              <el-input v-model="form.tavilyApiKey" type="password" placeholder="tmpl_xxx" />
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+
+        <el-tab-pane :label="t('Cloned Voices Setting')" name="cloned-voices">
+          <div class="voice-actions">
+            <el-button 
+              type="primary" 
+              plain 
+              size="small" 
+              @click="showAddVoiceModal = true"
+            >
+              <el-icon><Plus /></el-icon>
+              {{ t('Add Voice') }}
+            </el-button>
+            <label class="el-button el-button--success el-button--plain el-button--small ml-2">
+              <el-icon><Upload /></el-icon>
+              {{ t('Import JSON') }}
+              <input 
+                type="file" 
+                accept=".json" 
+                class="voice-file-upload"
+                @change="handleFileUpload"
+              />
+            </label>
+          </div>
+          
+          <div v-if="clonedVoices.length === 0" class="empty-state">
+            <el-empty 
+              :description="t('No cloned voices configured')"
+            />
+          </div>
+          
+          <el-table 
+            v-else 
+            :data="clonedVoices" 
+            border 
+            class="mt-4"
+            :max-height="300"
+          >
+            <el-table-column :label="t('Display Name')" prop="displayName" />
+            <el-table-column :label="t('Voice ID')" prop="voiceId" width="300" />
+            <el-table-column :label="t('Gender')" prop="gender" />
+            <el-table-column :label="t('Model')" prop="model" width="200" />
+            <el-table-column :label="t('Actions')" width="120">
+              <template #default="scope">
+                <el-button 
+                  size="small" 
+                  @click="editVoice(scope.row)"
+                >
+                  <el-icon><Edit /></el-icon>
+                </el-button>
+                <el-button 
+                  size="small" 
+                  type="danger" 
+                  @click="deleteVoice(scope.row.voiceId)"
+                >
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
+      </el-tabs>
       
       <!-- Add/Edit Voice Modal -->
       <el-dialog 
@@ -324,6 +297,8 @@ const i18nStore = useI18nStore();
 const t = i18nStore.t;
 
 const settingsStore = useSettingsStore();
+
+const activeTab = ref('llm');
 
 // Load settings into form
 const loadSettingsToForm = () => {
@@ -792,6 +767,20 @@ onMounted(async () => {
   width: 100%;
 }
 
+.settings-tabs {
+  margin-top: 8px;
+}
+
+.settings-tabs :deep(.el-tabs__content) {
+  padding: 16px 8px;
+  max-height: 450px;
+  overflow-y: auto;
+}
+
+.settings-tabs :deep(.el-tab-pane) {
+  min-height: 60px;
+}
+
 .mt-4 {
   margin-top: 16px;
 }
@@ -820,13 +809,11 @@ onMounted(async () => {
   width: 100%;
 }
 
-/* Style for input fields to match ui-setting.png */
 .el-input__inner {
   background-color: #f5f5f5;
   border-color: #d9d9d9;
 }
 
-/* Style for LLM tips to match the blue box background */
 .llm-tips {
   margin: 16px 0;
 }
@@ -834,13 +821,6 @@ onMounted(async () => {
 .llm-tips .el-alert {
   background-color: #e6f7ff;
   border-color: #91d5ff;
-  border-radius: 4px;
-}
-
-/* Style for LLM provider recommendation to match the yellow box background */
-.mb-4 {
-  background-color: #fff7e6;
-  border-color: #ffd591;
   border-radius: 4px;
 }
 
@@ -855,5 +835,6 @@ onMounted(async () => {
 .voice-actions {
   display: flex;
   gap: 8px;
+  margin-bottom: 16px;
 }
 </style>
