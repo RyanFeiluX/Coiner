@@ -2561,8 +2561,9 @@ def qwen_tts(
                     "Content-Type": "application/json",
                 }
                 
-                # 使用target_model（克隆声音）或默认模型
-                model = target_model if target_model else "qwen3-tts-flash"
+                # 使用target_model（克隆声音）或从配置读取默认模型
+                default_model = config.qwen.get("model_name", "qwen3-tts-flash")
+                model = target_model if target_model else default_model
                 
                 payload = {
                     "model": model,

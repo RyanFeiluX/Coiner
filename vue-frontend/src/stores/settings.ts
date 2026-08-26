@@ -66,6 +66,7 @@ interface AudioSettings {
   siliconflowApiKey: string;
   cozeApiKey: string;
   qwenApiKey: string;
+  qwenModelName: string;
   tavilyApiKey: string;
   voiceEmotion: string;
   speechVolume: string;
@@ -204,6 +205,7 @@ export const useSettingsStore = defineStore('settings', {
       siliconflowApiKey: '',
       cozeApiKey: '',
       qwenApiKey: '',
+      qwenModelName: 'qwen3-tts-flash',
       tavilyApiKey: '',
       voiceEmotion: '',
       speechVolume: '1.0',
@@ -849,9 +851,15 @@ export const useSettingsStore = defineStore('settings', {
           }
           
           // Load qwen config
-          if (data.qwen && data.qwen.api_key) {
-            this.audio.qwenApiKey = data.qwen.api_key;
-            console.log('[SettingsStore] Updated qwenApiKey from config:', this.audio.qwenApiKey);
+          if (data.qwen) {
+            if (data.qwen.api_key) {
+              this.audio.qwenApiKey = data.qwen.api_key;
+              console.log('[SettingsStore] Updated qwenApiKey from config:', this.audio.qwenApiKey);
+            }
+            if (data.qwen.model_name) {
+              this.audio.qwenModelName = data.qwen.model_name;
+              console.log('[SettingsStore] Updated qwenModelName from config:', this.audio.qwenModelName);
+            }
           }
 
           // Load tavily config

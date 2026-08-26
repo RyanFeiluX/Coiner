@@ -160,6 +160,57 @@
           </el-form>
         </el-tab-pane>
 
+        <el-tab-pane :label="t('TTS Model Settings')" name="tts-model">
+          <el-form :model="form" label-width="150px">
+            <el-form-item :label="t('Qwen TTS Model')">
+              <div style="display: flex; align-items: center; gap: 8px; width: 100%">
+                <el-select v-model="form.qwenModelName" style="flex: 1">
+                  <el-option-group :label="t('Qwen3-TTS-Flash')">
+                    <el-option label="qwen3-tts-flash (Stable)" value="qwen3-tts-flash" />
+                    <el-option label="qwen3-tts-flash-2025-11-27" value="qwen3-tts-flash-2025-11-27" />
+                    <el-option label="qwen3-tts-flash-2025-09-18" value="qwen3-tts-flash-2025-09-18" />
+                  </el-option-group>
+                  <el-option-group :label="t('Qwen3-TTS-Instruct-Flash')">
+                    <el-option label="qwen3-tts-instruct-flash (Stable)" value="qwen3-tts-instruct-flash" />
+                    <el-option label="qwen3-tts-instruct-flash-2026-01-26" value="qwen3-tts-instruct-flash-2026-01-26" />
+                  </el-option-group>
+                  <el-option-group :label="t('Qwen3-TTS-VD')">
+                    <el-option label="qwen3-tts-vd-2026-01-26" value="qwen3-tts-vd-2026-01-26" />
+                  </el-option-group>
+                  <el-option-group :label="t('Qwen3-TTS-VC')">
+                    <el-option label="qwen3-tts-vc-2026-01-22" value="qwen3-tts-vc-2026-01-22" />
+                  </el-option-group>
+                  <el-option-group :label="t('Qwen-TTS')">
+                    <el-option label="qwen-tts (Stable)" value="qwen-tts" />
+                    <el-option label="qwen-tts-latest" value="qwen-tts-latest" />
+                    <el-option label="qwen-tts-2025-05-22" value="qwen-tts-2025-05-22" />
+                    <el-option label="qwen-tts-2025-04-10" value="qwen-tts-2025-04-10" />
+                  </el-option-group>
+                </el-select>
+                <el-popover
+                  placement="right"
+                  :width="400"
+                  trigger="click"
+                >
+                  <template #reference>
+                    <el-button :icon="InfoFilled" circle />
+                  </template>
+                  <div>
+                    <p style="font-weight: bold; margin-bottom: 8px;">{{ t('Qwen TTS Model Info') }}</p>
+                    <ul style="margin: 0; padding-left: 20px;">
+                      <li>{{ t('Qwen3-TTS-Flash Info') }}</li>
+                      <li>{{ t('Qwen3-TTS-Instruct-Flash Info') }}</li>
+                      <li>{{ t('Qwen3-TTS-VD Info') }}</li>
+                      <li>{{ t('Qwen3-TTS-VC Info') }}</li>
+                      <li>{{ t('Qwen-TTS Info') }}</li>
+                    </ul>
+                  </div>
+                </el-popover>
+              </div>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+
         <el-tab-pane :label="t('Cloned Voices Setting')" name="cloned-voices">
           <div class="voice-actions">
             <el-button 
@@ -275,7 +326,7 @@
 import { reactive, ref, computed, onMounted, watch } from 'vue';
 import { useSettingsStore } from '../stores/settings';
 import { useI18nStore } from '../stores/i18n';
-import { Delete, Plus, Edit, Upload } from '@element-plus/icons-vue';
+import { Delete, Plus, Edit, Upload, InfoFilled } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { apiService } from '../services/api';
 
@@ -331,6 +382,9 @@ const loadSettingsToForm = () => {
   
   // Load Tavily API Key
   form.tavilyApiKey = settingsStore.audio.tavilyApiKey || '';
+  
+  // Load Qwen TTS Model Name
+  form.qwenModelName = settingsStore.audio.qwenModelName || 'qwen3-tts-flash';
 };
 
 const form = reactive({
@@ -346,7 +400,8 @@ const form = reactive({
   videoEncoder: 'CPU',
   silenceDuration: 0.3,
   hostVisible: true,
-  tavilyApiKey: ''
+  tavilyApiKey: '',
+  qwenModelName: 'qwen3-tts-flash'
 });
 
 // Cloned voices data
@@ -671,6 +726,9 @@ const saveSettings = async () => {
     
     // Save Tavily API Key
     settingsStore.updateAudioSetting('tavilyApiKey', form.tavilyApiKey);
+    
+    // Save Qwen TTS Model Name
+    settingsStore.updateAudioSetting('qwenModelName', form.qwenModelName);
 
     // Build app config based on LLM provider
     const appConfig: Record<string, any> = {
@@ -714,6 +772,9 @@ const saveSettings = async () => {
       },
       tavily: {
         api_key: form.tavilyApiKey
+      },
+      qwen: {
+        model_name: form.qwenModelName
       }
     }));
 

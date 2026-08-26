@@ -152,6 +152,7 @@ def get_config(request: Request):
             },
             "qwen": {
                 "api_key": config.qwen.get("api_key", ""),
+                "model_name": config.qwen.get("model_name", "qwen3-tts-flash"),
             },
             "tavily": {
                 "api_key": config.tavily.get("api_key", ""),
