@@ -272,8 +272,6 @@
         "Volume: Uses Speech Volume setting, default 1.0 maps to gain 0": "音量：使用朗读音量设置，默认值1.0对应增益0",
         "Hide Log": "隐藏日志",
         "LLM Settings": "<strong>大模型设置</strong>",
-        "LLM Provider Recommendation": "推荐给中国用户",
-        "LLM Provider Recommendation Content": "推荐使用 <strong style=\"color: #ff4d4f;\">DeepSeek</strong> 或 <strong style=\"color: #ff4d4f;\">Moonshot</strong> 作为大模型提供商<br/>- 在中国无需 VPN 即可直接访问<br/>- 注册即有免费额度，基本够用",
         "Settings": "设置",
         "Backend Online": "后端在线",
         "Backend Offline": "后端离线",

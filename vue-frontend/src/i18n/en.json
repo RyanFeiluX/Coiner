@@ -312,8 +312,6 @@
         "Volume: Uses Speech Volume setting, default 1.0 maps to gain 0": "Volume: Uses Speech Volume setting, default 1.0 maps to gain 0",
         "Hide Log": "Hide Log",
         "LLM Settings": "<strong>LLM Settings</strong>",
-        "LLM Provider Recommendation": "Recommendation for Chinese Users",
-        "LLM Provider Recommendation Content": "We recommend using <strong style=\"color: #ff4d4f;\">DeepSeek</strong> or <strong style=\"color: #ff4d4f;\">Moonshot</strong> as your LLM provider<br/>- Accessible directly in China without VPN<br/>- Free credits upon registration, generally sufficient for use",
         "Settings": "Settings",
         "Backend Online": "Backend Online",
         "Backend Offline": "Backend Offline",

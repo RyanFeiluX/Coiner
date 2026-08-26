@@ -19,16 +19,6 @@
           </el-form-item>
         </el-form>
         
-        <el-alert
-          :title="t('LLM Provider Recommendation')"
-          type="info"
-          :closable="false"
-          show-icon
-          class="mb-4"
-        >
-          <p v-html="t('LLM Provider Recommendation Content')"></p>
-        </el-alert>
-        
         <div v-if="llmTips" class="llm-tips">
           <el-alert
             :title="llmTips.title"
