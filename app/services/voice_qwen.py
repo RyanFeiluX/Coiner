@@ -22,6 +22,26 @@ _voice_cache = {
 # 缓存有效期（秒）
 CACHE_DURATION = 3600  # 1小时
 
+# Qwen-Audio-TTS 情感控制标签 (仅 qwen-audio-3.0-tts-plus / qwen-audio-3.0-tts-flash 支持)
+# 格式: {emotion_key: (text_tag, display_name)}
+# 通过在 text 参数中嵌入标签控制语音情感，标签作用于其后所有文本直到下一个标签
+BAILIAN_EMOTION_TAGS = {
+    "excited":       ("[excited]",       "兴奋"),
+    "sad":           ("[sad]",           "悲伤"),
+    "angry":         ("[angry]",         "愤怒"),
+    "curious":       ("[curious]",       "好奇"),
+    "serious":       ("[serious]",       "严肃"),
+    "empathetic":    ("[empathetic]",    "共情"),
+    "whispers":      ("[whispers]",      "耳语"),
+    "mischievously": ("[mischievously]", "调皮"),
+    "bored":         ("[bored]",         "无聊"),
+    "tired":         ("[tired]",         "疲惫"),
+    "crying":        ("[crying]",        "哭泣"),
+    "panicked":      ("[panicked]",      "恐慌"),
+    "laughing":      ("[laughing]",      "大笑"),
+    "sighing":       ("[sighing]",       "叹息"),
+}
+
 def load_cloned_voices_from_files() -> list:
     """
     从本地JSON文件加载克隆的声音列表
@@ -320,7 +340,7 @@ def get_bailian_token_plan_voices(force_refresh=False) -> list[str]:
         force_refresh: 是否强制刷新缓存
 
     Returns:
-        声音列表，格式为: "BailianTokenPlan|voice_id|voice_name-gender||"
+        声音列表，格式为: "BailianTokenPlan|voice_id|voice_name-gender|||emotions"
     """
     global _voice_cache
 
@@ -342,9 +362,13 @@ def get_bailian_token_plan_voices(force_refresh=False) -> list[str]:
         ("longanlufeng", "龙安鲁风", "Male"),
     ]
 
+    # 将支持的情感列表编码到voice_name末尾，格式与Coze一致: parts[5]
+    # (parts[3]=preview_audio, parts[4]=preview_text 保留为空占位)
+    emotion_str = ",".join(f"{k}-{v[1]}" for k, v in BAILIAN_EMOTION_TAGS.items())
+
     voices = []
     for voice_id, voice_name, gender in voices_with_id_gender:
-        voices.append(f"BailianTokenPlan|{voice_id}|{voice_name}-{gender}||")
+        voices.append(f"BailianTokenPlan|{voice_id}|{voice_name}-{gender}|||{emotion_str}")
 
     _voice_cache['bailian_token_plan'] = {
         'voices': voices,
@@ -374,6 +398,7 @@ def qwen_tts(
     is_preview: bool = False,
     target_model: str = "",
     provider: str = "qwen",
+    emotion: str = "",
 ) -> Union[SubMaker, None]:
     """
     使用Qwen TTS生成语音（provider支持"qwen"和"bailian_token_plan"）
@@ -387,6 +412,7 @@ def qwen_tts(
         preview_audio: 预览音频URL（用于试听）
         preview_text: 预览文本（用于匹配试听）
         provider: 供应商，可选"qwen"或"bailian_token_plan"
+        emotion: 语音情感（bailian_token_plan时通过BAILIAN_EMOTION_TAGS映射为文本标签嵌入）
 
     Returns:
         SubMaker对象或None
@@ -476,16 +502,23 @@ def qwen_tts(
                     }
                     default_model = config.bailian_token_plan.get("model_name", "qwen-audio-3.0-tts-plus")
                     model = target_model if target_model else default_model
+                    # 情感标签注入: 将选中的emotion映射为Qwen-Audio-TTS文本标签
+                    # 标签作用于其后所有文本，按segment注入确保每段都有情感控制
+                    segment_text = segment
+                    if emotion and emotion in BAILIAN_EMOTION_TAGS:
+                        emotion_tag = BAILIAN_EMOTION_TAGS[emotion][0]
+                        segment_text = f"{emotion_tag}{segment}"
+                        logger.debug(f"Token Plan TTS emotion: {emotion} -> {emotion_tag}")
                     payload = {
                         "model": model,
                         "input": {
-                            "text": segment,
+                            "text": segment_text,
                             "voice": voice_id,
                             "format": "mp3",
                             "sample_rate": 24000
                         }
                     }
-                    logger.debug(f"Token Plan TTS segment {i+1}: model={model}, text_len={len(segment)}")
+                    logger.debug(f"Token Plan TTS segment {i+1}: model={model}, text_len={len(segment_text)}")
                     response = requests.post(url, json=payload, headers=headers, timeout=60)
                     logger.debug(f"Token Plan TTS API response status: {response.status_code}")
                     

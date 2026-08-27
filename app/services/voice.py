@@ -194,11 +194,11 @@ def tts(
             result = None
     elif is_bailian_token_plan_voice(voice_name):
         # 从voice_name中提取voice_id
-        # 格式: BailianTokenPlan|voice_id|voice_name-gender||
+        # 格式: BailianTokenPlan|voice_id|voice_name-gender|||emotions
         parts = voice_name.split("|")
         if len(parts) >= 2:
             voice_id = parts[1]
-            result = qwen_tts(text, voice_id, voice_rate, voice_file, voice_volume, "", "", is_preview, "", provider="bailian_token_plan")
+            result = qwen_tts(text, voice_id, voice_rate, voice_file, voice_volume, "", "", is_preview, "", provider="bailian_token_plan", emotion=emotion)
         else:
             logger.error(f"Invalid token plan voice name format: {voice_name}")
             result = None

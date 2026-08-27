@@ -59,7 +59,7 @@
           </el-select>
         </div>
 
-        <div v-if="form.ttsServer === 'coze-tts' && currentVoiceSupportsEmotion" class="form-item">
+        <div v-if="currentVoiceSupportsEmotion" class="form-item">
           <label class="form-label">{{ t('Voice Emotion') }}</label>
           <el-select v-model="form.voiceEmotion" :placeholder="t('Select emotion')" class="form-select">
             <el-option
@@ -313,7 +313,20 @@ const voiceList = computed<Voice[]>(() => {
       if (parts.length >= 3) {
         const voiceNameGender = parts[2];
         const label = voiceNameGender.replace('Female', t('Female')).replace('Male', t('Male'));
-        voices.push({ label, value: v });
+        const emotions: string[] = [];
+        let supportsEmotion = false;
+
+        if (parts.length >= 6 && parts[5]) {
+          const emotionParts = parts[5].split(',');
+          for (const ep of emotionParts) {
+            if (ep.trim()) {
+              emotions.push(ep.trim());
+              supportsEmotion = true;
+            }
+          }
+        }
+
+        voices.push({ label, value: v, supportsEmotion, emotions });
       }
     } else if (v.startsWith('siliconflow:')) {
       const parts = v.split(':');
