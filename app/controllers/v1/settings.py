@@ -159,7 +159,6 @@ def get_config(request: Request):
             "bailian_token_plan": {
                 "api_key": config.bailian_token_plan.get("api_key", ""),
                 "model_name": config.bailian_token_plan.get("model_name", "qwen-audio-3.0-tts-plus"),
-                "base_url": config.bailian_token_plan.get("base_url", "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"),
             },
             "gemini": {
                 "api_key": config.app.get("gemini_api_key", ""),

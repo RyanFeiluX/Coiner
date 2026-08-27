@@ -416,13 +416,13 @@ def get_qwen_voices(force_refresh=False) -> list[str]:
 
 def get_bailian_token_plan_voices(force_refresh=False) -> list[str]:
     """
-    获取阿里百炼Token Plan TTS的声音列表（复用Qwen默认声音列表）
+    获取阿里百炼Token Plan TTS的声音列表（SpeechSynthesizer端点专用）
 
     Args:
         force_refresh: 是否强制刷新缓存
 
     Returns:
-        声音列表，格式为: "bailiantokenplan|voice_id|voice_name-gender||"
+        声音列表，格式为: "BailianTokenPlan|voice_id|voice_name-gender||"
     """
     global _voice_cache
 
@@ -436,48 +436,24 @@ def get_bailian_token_plan_voices(force_refresh=False) -> list[str]:
             logger.info(f"Using cached Token Plan voices (age: {cache_age:.1f}s)")
             return cache_entry['voices']
 
-    logger.info("Loading Token Plan voices from hardcoded list")
+    logger.info("Loading Bailian Token Plan voices from hardcoded list")
 
-    # 复用Qwen TTS官方默认中文声音列表
+    # qwen-audio-3.0-tts-plus 官方系统音色
     voices_with_id_gender = [
-        ("Cherry", "芊悦", "Female"),
-        ("Serena", "苏瑶", "Female"),
-        ("Ethan", "晨煦", "Male"),
-        ("Chelsie", "千雪", "Female"),
-        ("Momo", "茉兔", "Female"),
-        ("Vivian", "十三", "Female"),
-        ("Moon", "月白", "Male"),
-        ("Maia", "四月", "Female"),
-        ("Kai", "凯", "Male"),
-        ("Nofish", "不吃鱼", "Male"),
-        ("Bella", "萌宝", "Female"),
-        ("Jennifer", "詹妮弗", "Female"),
-        ("Ryan", "甜茶", "Male"),
-        ("Katerina", "卡捷琳娜", "Female"),
-        ("Aiden", "艾登", "Male"),
-        ("Eldric Sage", "沧明子", "Male"),
-        ("Mia", "乖小妹", "Female"),
-        ("Mochi", "沙小弥", "Male"),
-        ("Bellona", "燕铮莺", "Female"),
-        ("Vincent", "田叔", "Male"),
-        ("Bunny", "萌小姬", "Female"),
-        ("Neil", "阿闻", "Male"),
-        ("Elias", "墨讲师", "Female"),
-        ("Arthur", "徐大爷", "Male"),
-        ("Nini", "邻家妹妹", "Female"),
-        ("Seren", "小婉", "Female"),
+        ("longanlingxin", "龙安灵心", "Female"),
+        ("longanlufeng", "龙安鲁风", "Male"),
     ]
 
     voices = []
     for voice_id, voice_name, gender in voices_with_id_gender:
-        voices.append(f"bailiantokenplan|{voice_id}|{voice_name}-{gender}||")
+        voices.append(f"BailianTokenPlan|{voice_id}|{voice_name}-{gender}||")
 
     _voice_cache['bailian_token_plan'] = {
         'voices': voices,
         'timestamp': current_time,
         'api_key': api_key
     }
-    logger.info(f"Token Plan voices cached: {len(voices)} voices")
+    logger.info(f"Bailian Token Plan voices cached: {len(voices)} voices")
 
     return voices
 
@@ -1794,7 +1770,7 @@ def is_qwen_voice(voice_name: str):
 
 def is_bailian_token_plan_voice(voice_name: str):
     """检查是否是阿里百炼Token Plan TTS的声音"""
-    return voice_name.startswith("bailiantokenplan|")
+    return voice_name.startswith("BailianTokenPlan|")
 
 
 def tts(
@@ -1878,7 +1854,7 @@ def tts(
             result = None
     elif is_bailian_token_plan_voice(voice_name):
         # 从voice_name中提取voice_id
-        # 格式: bailiantokenplan|voice_id|voice_name-gender||
+        # 格式: BailianTokenPlan|voice_id|voice_name-gender||
         parts = voice_name.split("|")
         if len(parts) >= 2:
             voice_id = parts[1]
@@ -2600,16 +2576,18 @@ def qwen_tts(
         # 配置Qwen API (使用HTTP API)，支持qwen和bailian_token_plan两种provider
         if provider == "bailian_token_plan":
             api_key = config.bailian_token_plan.get("api_key", "")
-            base_url = config.bailian_token_plan.get("base_url", "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1")
+            # Token Plan TTS 使用固定的 DashScope 原生端点
+            endpoint = "https://token-plan.cn-beijing.maas.aliyuncs.com/api/v1/services/audio/tts/SpeechSynthesizer"
         else:
             api_key = config.qwen.get("api_key", "")
             base_url = "https://dashscope.aliyuncs.com/api/v1"  # 硬编码Qwen API端点
+            endpoint = f"{base_url}/services/audio/tts/SpeechSynthesizer"
         
         if not api_key:
             logger.warning("Qwen API key is not set, using text-to-speech fallback")
             return None
         
-        logger.debug(f"Using Qwen TTS ({provider}) with base_url: {base_url}")
+        logger.debug(f"Using Qwen TTS ({provider}) with endpoint: {endpoint}")
         
         # Text segmentation processing - Qwen API limit is typically 5000 characters
         max_segment_length = 5000
@@ -2642,6 +2620,86 @@ def qwen_tts(
         audio_segments = []
         for i, segment in enumerate(segments):
             logger.debug(f"Processing segment {i+1}/{len(segments)}, length: {len(segment)}")
+            
+            if provider == "bailian_token_plan":
+                # 阿里百炼Token Plan语音合成：使用固定的SpeechSynthesizer端点，直接返回音频二进制流
+                try:
+                    url = endpoint
+                    headers = {
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    }
+                    default_model = config.bailian_token_plan.get("model_name", "qwen-audio-3.0-tts-plus")
+                    model = target_model if target_model else default_model
+                    payload = {
+                        "model": model,
+                        "input": {
+                            "text": segment,
+                            "voice": voice_id,
+                            "format": "mp3",
+                            "sample_rate": 24000
+                        }
+                    }
+                    logger.debug(f"Token Plan TTS segment {i+1}: model={model}, text_len={len(segment)}")
+                    response = requests.post(url, json=payload, headers=headers, timeout=60)
+                    logger.debug(f"Token Plan TTS API response status: {response.status_code}")
+                    
+                    if response.status_code == 200:
+                        try:
+                            response_data = response.json()
+                            logger.debug(f"Token Plan TTS response: {response_data}")
+                            
+                            audio_output = response_data.get("output", {}).get("audio", {})
+                            audio_url = audio_output.get("url") if isinstance(audio_output, dict) else None
+                            audio_data = audio_output.get("data") if isinstance(audio_output, dict) else None
+                            
+                            if audio_url:
+                                logger.debug(f"Downloading audio from URL: {audio_url[:100]}...")
+                                audio_response = requests.get(audio_url, timeout=60)
+                                if audio_response.status_code == 200:
+                                    audio_bytes = audio_response.content
+                                else:
+                                    logger.error(f"Failed to download audio: {audio_response.status_code}")
+                                    return None
+                            elif audio_data:
+                                import base64
+                                audio_bytes = base64.b64decode(audio_data)
+                            else:
+                                # 尝试作为原始二进制音频处理
+                                audio_bytes = response.content
+                            
+                            logger.debug(f"Token Plan TTS audio size: {len(audio_bytes)} bytes")
+                            audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes))
+                            audio_segments.append(audio_segment)
+                            logger.info(f"Segment {i+1} decoded: {len(audio_segment)/1000:.1f}s, text_len={len(segment)}")
+                        except Exception as e:
+                            logger.error(f"Failed to decode audio: {e}")
+                            temp_file = "bailian_debug_audio.mp3"
+                            with open(temp_file, 'wb') as f:
+                                f.write(response.content)
+                            logger.info(f"Saved response to {temp_file} for debugging")
+                            return None
+                    else:
+                        api_key_masked = f"{api_key[:8]}...{api_key[-4:]}(len={len(api_key)})" if api_key else "empty"
+                        logger.error(
+                            f"Token Plan TTS API failed: status={response.status_code}\n"
+                            f"  url={url}\n"
+                            f"  api_key={api_key_masked}\n"
+                            f"  model={model}\n"
+                            f"  voice={voice_id}\n"
+                            f"  text_len={len(segment)}\n"
+                            f"  response={response.text}"
+                        )
+                        return None
+                except Exception as e:
+                    logger.error(
+                        f"Token Plan TTS API exception for segment {i+1}: {str(e)}\n"
+                        f"  url={url}\n"
+                        f"  api_key={'set' if api_key else 'empty'}\n"
+                        f"  model={model}, voice={voice_id}"
+                    )
+                    return None
+                continue
             
             try:
                 # 使用HTTP API调用Qwen TTS (Qwen-TTS)
@@ -2734,10 +2792,15 @@ def qwen_tts(
                         logger.error(f"Failed to parse Qwen TTS response: {e}")
                         return None
                 else:
-                    error_msg = f"Qwen TTS API failed: {response.status_code}"
-                    if response.text:
-                        error_msg += f" - {response.text[:500]}"
-                    logger.error(error_msg)
+                    api_key_masked = f"{api_key[:8]}...{api_key[-4:]}(len={len(api_key)})" if api_key else "empty"
+                    logger.error(
+                        f"Qwen TTS API failed: status={response.status_code}\n"
+                        f"  url={url}\n"
+                        f"  api_key={api_key_masked}\n"
+                        f"  model={model}\n"
+                        f"  voice={voice_id}\n"
+                        f"  response={response.text}"
+                    )
                     return None
                     
             except Exception as e:

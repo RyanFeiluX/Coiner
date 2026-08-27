@@ -273,9 +273,6 @@
               <el-form-item :label="t('Token Plan API Key')">
                 <el-input v-model="form.bailianTokenPlanApiKey" type="password" show-password />
               </el-form-item>
-              <el-form-item :label="t('Base URL')">
-                <el-input v-model="form.bailianTokenPlanBaseUrl" />
-              </el-form-item>
               <el-form-item :label="t('Token Plan TTS Model')">
                 <el-select v-model="form.bailianTokenPlanModelName" style="width: 100%">
                   <el-option label="qwen-audio-3.0-tts-plus" value="qwen-audio-3.0-tts-plus" />
@@ -468,7 +465,6 @@ const loadSettingsToForm = () => {
   form.qwenModelName = settingsStore.audio.qwenModelName || 'qwen3-tts-flash';
   form.bailianTokenPlanApiKey = settingsStore.audio.bailianTokenPlanApiKey || '';
   form.bailianTokenPlanModelName = settingsStore.audio.bailianTokenPlanModelName || 'qwen-audio-3.0-tts-plus';
-  form.bailianTokenPlanBaseUrl = settingsStore.audio.bailianTokenPlanBaseUrl || 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1';
 };
 
 const form = reactive({
@@ -495,7 +491,6 @@ const form = reactive({
   qwenApiKey: '',
   bailianTokenPlanApiKey: '',
   bailianTokenPlanModelName: 'qwen-audio-3.0-tts-plus',
-  bailianTokenPlanBaseUrl: 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1'
 });
 
 // Cloned voices data
@@ -832,7 +827,6 @@ const saveSettings = async () => {
     settingsStore.updateAudioSetting('qwenModelName', form.qwenModelName);
     settingsStore.updateAudioSetting('bailianTokenPlanApiKey', form.bailianTokenPlanApiKey);
     settingsStore.updateAudioSetting('bailianTokenPlanModelName', form.bailianTokenPlanModelName);
-    settingsStore.updateAudioSetting('bailianTokenPlanBaseUrl', form.bailianTokenPlanBaseUrl);
 
     // Build app config based on LLM provider
     const appConfig: Record<string, any> = {
@@ -893,8 +887,7 @@ const saveSettings = async () => {
       },
       bailian_token_plan: {
         api_key: form.bailianTokenPlanApiKey,
-        model_name: form.bailianTokenPlanModelName,
-        base_url: form.bailianTokenPlanBaseUrl
+        model_name: form.bailianTokenPlanModelName
       },
       tavily: {
         api_key: form.tavilyApiKey

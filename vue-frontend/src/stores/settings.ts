@@ -70,7 +70,6 @@ interface AudioSettings {
   geminiApiKey: string;
   bailianTokenPlanApiKey: string;
   bailianTokenPlanModelName: string;
-  bailianTokenPlanBaseUrl: string;
   tavilyApiKey: string;
   voiceEmotion: string;
   speechVolume: string;
@@ -213,7 +212,6 @@ export const useSettingsStore = defineStore('settings', {
       geminiApiKey: '',
       bailianTokenPlanApiKey: '',
       bailianTokenPlanModelName: 'qwen-audio-3.0-tts-plus',
-      bailianTokenPlanBaseUrl: 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
       tavilyApiKey: '',
       voiceEmotion: '',
       speechVolume: '1.0',
@@ -885,10 +883,6 @@ export const useSettingsStore = defineStore('settings', {
             if (data.bailian_token_plan.model_name) {
               this.audio.bailianTokenPlanModelName = data.bailian_token_plan.model_name;
               console.log('[SettingsStore] Updated bailianTokenPlanModelName from config:', this.audio.bailianTokenPlanModelName);
-            }
-            if (data.bailian_token_plan.base_url) {
-              this.audio.bailianTokenPlanBaseUrl = data.bailian_token_plan.base_url;
-              console.log('[SettingsStore] Updated bailianTokenPlanBaseUrl from config:', this.audio.bailianTokenPlanBaseUrl);
             }
           }
 

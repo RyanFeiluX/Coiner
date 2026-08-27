@@ -308,7 +308,7 @@ const voiceList = computed<Voice[]>(() => {
         const label = voiceNameGender.replace('Female', t('Female')).replace('Male', t('Male'));
         voices.push({ label, value: v });
       }
-    } else if (v.startsWith('bailiantokenplan|')) {
+    } else if (v.startsWith('BailianTokenPlan|')) {
       const parts = v.split('|');
       if (parts.length >= 3) {
         const voiceNameGender = parts[2];
