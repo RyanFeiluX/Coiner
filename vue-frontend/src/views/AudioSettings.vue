@@ -54,7 +54,7 @@
             <el-option
               v-for="voice in filteredVoiceList"
               :key="voice.value"
-              :label="voice.label"
+              :label="voice.description ? `${voice.label} - ${voice.description}` : voice.label"
               :value="voice.value"
             />
           </el-select>
@@ -131,51 +131,65 @@
       </div>
       <div class="right-column">
         <div class="form-item">
-          <label class="form-label">{{ t('Speaking Volume (1.0 means 100%)') }}</label>
+          <label class="form-label">{{ t('Speaking Volume') }}</label>
           <el-select v-model="form.speechVolume" :placeholder="t('Select volume')" class="form-select">
-            <el-option label="0.0" value="0.0" />
-            <el-option label="0.1" value="0.1" />
-            <el-option label="0.2" value="0.2" />
-            <el-option label="0.3" value="0.3" />
-            <el-option label="0.4" value="0.4" />
-            <el-option label="0.5" value="0.5" />
-            <el-option label="0.6" value="0.6" />
-            <el-option label="0.7" value="0.7" />
-            <el-option label="0.8" value="0.8" />
-            <el-option label="0.9" value="0.9" />
-            <el-option label="1.0" value="1.0" />
-            <el-option label="1.1" value="1.1" />
-            <el-option label="1.2" value="1.2" />
-            <el-option label="1.3" value="1.3" />
-            <el-option label="1.4" value="1.4" />
-            <el-option label="1.5" value="1.5" />
-            <el-option label="1.6" value="1.6" />
-            <el-option label="1.7" value="1.7" />
-            <el-option label="1.8" value="1.8" />
-            <el-option label="1.9" value="1.9" />
-            <el-option label="2.0" value="2.0" />
+            <el-option-group :label="t('Quick Select')">
+              <el-option :label="t('Normal')" value="1.0" />
+              <el-option :label="t('Loud')" value="1.2" />
+              <el-option :label="t('Quiet')" value="0.8" />
+            </el-option-group>
+            <el-option-group :label="t('Custom')">
+              <el-option label="0.0" value="0.0" />
+              <el-option label="0.1" value="0.1" />
+              <el-option label="0.2" value="0.2" />
+              <el-option label="0.3" value="0.3" />
+              <el-option label="0.4" value="0.4" />
+              <el-option label="0.5" value="0.5" />
+              <el-option label="0.6" value="0.6" />
+              <el-option label="0.7" value="0.7" />
+              <el-option label="0.8" value="0.8" />
+              <el-option label="0.9" value="0.9" />
+              <el-option label="1.0" value="1.0" />
+              <el-option label="1.1" value="1.1" />
+              <el-option label="1.2" value="1.2" />
+              <el-option label="1.3" value="1.3" />
+              <el-option label="1.4" value="1.4" />
+              <el-option label="1.5" value="1.5" />
+              <el-option label="1.6" value="1.6" />
+              <el-option label="1.7" value="1.7" />
+              <el-option label="1.8" value="1.8" />
+              <el-option label="1.9" value="1.9" />
+              <el-option label="2.0" value="2.0" />
+            </el-option-group>
           </el-select>
         </div>
 
         <div class="form-item">
-          <label class="form-label">{{ t('Speaking Rate (1.0 means normal speed)') }}</label>
+          <label class="form-label">{{ t('Speaking Rate') }}</label>
           <el-select v-model="form.speechRate" :placeholder="t('Select rate')" class="form-select">
-            <el-option label="0.5" value="0.5" />
-            <el-option label="0.6" value="0.6" />
-            <el-option label="0.7" value="0.7" />
-            <el-option label="0.8" value="0.8" />
-            <el-option label="0.9" value="0.9" />
-            <el-option label="1.0" value="1.0" />
-            <el-option label="1.1" value="1.1" />
-            <el-option label="1.2" value="1.2" />
-            <el-option label="1.3" value="1.3" />
-            <el-option label="1.4" value="1.4" />
-            <el-option label="1.5" value="1.5" />
-            <el-option label="1.6" value="1.6" />
-            <el-option label="1.7" value="1.7" />
-            <el-option label="1.8" value="1.8" />
-            <el-option label="1.9" value="1.9" />
-            <el-option label="2.0" value="2.0" />
+            <el-option-group :label="t('Quick Select')">
+              <el-option :label="t('Normal')" value="1.0" />
+              <el-option :label="t('Fast')" value="1.2" />
+              <el-option :label="t('Slow')" value="0.8" />
+            </el-option-group>
+            <el-option-group :label="t('Custom')">
+              <el-option label="0.5" value="0.5" />
+              <el-option label="0.6" value="0.6" />
+              <el-option label="0.7" value="0.7" />
+              <el-option label="0.8" value="0.8" />
+              <el-option label="0.9" value="0.9" />
+              <el-option label="1.0" value="1.0" />
+              <el-option label="1.1" value="1.1" />
+              <el-option label="1.2" value="1.2" />
+              <el-option label="1.3" value="1.3" />
+              <el-option label="1.4" value="1.4" />
+              <el-option label="1.5" value="1.5" />
+              <el-option label="1.6" value="1.6" />
+              <el-option label="1.7" value="1.7" />
+              <el-option label="1.8" value="1.8" />
+              <el-option label="1.9" value="1.9" />
+              <el-option label="2.0" value="2.0" />
+            </el-option-group>
           </el-select>
         </div>
 
@@ -270,6 +284,7 @@ interface Voice {
   emotions?: string[];
   previewText?: string;
   previewAudio?: string;
+  description?: string;
 }
 
 const voiceList = computed<Voice[]>(() => {
@@ -307,7 +322,21 @@ const voiceList = computed<Voice[]>(() => {
       if (parts.length >= 3) {
         const voiceNameGender = parts[2];
         const label = voiceNameGender.replace('Female', t('Female')).replace('Male', t('Male'));
-        voices.push({ label, value: v });
+        const description = parts[3] || '';
+        const emotions: string[] = [];
+        let supportsEmotion = false;
+
+        if (parts.length >= 7 && parts[6]) {
+          const emotionParts = parts[6].split(',');
+          for (const ep of emotionParts) {
+            if (ep.trim()) {
+              emotions.push(ep.trim());
+              supportsEmotion = true;
+            }
+          }
+        }
+
+        voices.push({ label, value: v, supportsEmotion, emotions, description });
       }
     } else if (v.startsWith('BailianTokenPlan|')) {
       const parts = v.split('|');
@@ -357,7 +386,8 @@ const filteredVoiceList = computed(() => {
   }
   const keyword = searchKeyword.value.toLowerCase();
   return voiceList.value.filter((voice: Voice) =>
-    voice.label.toLowerCase().includes(keyword)
+    voice.label.toLowerCase().includes(keyword) ||
+    (voice.description && voice.description.toLowerCase().includes(keyword))
   );
 });
 

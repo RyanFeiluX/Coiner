@@ -371,7 +371,7 @@ def import_cloned_voices(request: Request, data: dict):
         # Set default provider if not specified
         for voice_data in voices:
             if "provider" not in voice_data:
-            voice_data["provider"] = "bailian"
+                voice_data["provider"] = "bailian"
         
         cloned_voices_config.import_voices(voices)
         logger.info(f"Imported {len(voices)} cloned voices")

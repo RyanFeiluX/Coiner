@@ -170,8 +170,8 @@ def tts(
             logger.error(f"Invalid coze voice name format: {voice_name}")
             result = None
     elif is_bailian_voice(voice_name):
-        # 从voice_name中提取voice_id、target_model、preview_audio和preview_text
-        # 格式: bailian|voice_id|voice_name-gender|target_model或preview_audio|preview_text
+        # 从voice_name中提取voice_id、description
+        # 格式: bailian|voice_id|voice_name-gender|description|||emotions
         parts = voice_name.split("|")
         if len(parts) >= 2:
             voice_id = parts[1]
@@ -179,16 +179,12 @@ def tts(
             is_cloned = "qwen-tts-vc-" in voice_id
             
             if is_cloned:
-                # 克隆声音格式: bailian|voice_id|name-gender|target_model|
+                # 克隆声音格式: bailian|voice_id|name-gender|target_model|||emotions
                 target_model = parts[3] if len(parts) > 3 else ""
-                preview_audio = ""
-                preview_text = ""
-                result = bailian_tts(text, voice_id, voice_rate, voice_file, voice_volume, preview_audio, preview_text, is_preview, target_model)
+                result = bailian_tts(text, voice_id, voice_rate, voice_file, voice_volume, "", "", is_preview, target_model, emotion=emotion)
             else:
-                # 普通声音格式: bailian|voice_id|voice_name-gender|preview_audio|preview_text
-                preview_audio = parts[3] if len(parts) > 3 else ""
-                preview_text = parts[4] if len(parts) > 4 else ""
-                result = bailian_tts(text, voice_id, voice_rate, voice_file, voice_volume, preview_audio, preview_text, is_preview)
+                # 普通声音格式: bailian|voice_id|voice_name-gender|description|||emotions
+                result = bailian_tts(text, voice_id, voice_rate, voice_file, voice_volume, "", "", is_preview, emotion=emotion)
         else:
             logger.error(f"Invalid bailian voice name format: {voice_name}")
             result = None
@@ -214,7 +210,7 @@ def tts(
     _native_speed_providers = (
         is_coze_voice(voice_name) or
         is_siliconflow_voice(voice_name) or
-        is_qwen_voice(voice_name) or
+        is_bailian_voice(voice_name) or
         is_bailian_token_plan_voice(voice_name) or
         not (is_azure_v2_voice(voice_name) or is_gemini_voice(voice_name))
     )
@@ -242,7 +238,7 @@ def tts(
     _volume_handled_internally = (
         is_siliconflow_voice(voice_name) or
         is_coze_voice(voice_name) or
-        is_qwen_voice(voice_name)
+        is_bailian_voice(voice_name)
     )
     if not _volume_handled_internally and voice_volume != 1.0 and os.path.exists(voice_file):
         try:

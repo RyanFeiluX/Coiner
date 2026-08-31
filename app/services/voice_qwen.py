@@ -13,9 +13,9 @@ from loguru import logger
 from app.config import config
 from app.utils import utils
 
-# 缓存字典，用于存储Qwen/百炼Token Plan TTS音色信息
+# 缓存字典，用于存储百炼 TTS/百炼Token Plan TTS音色信息
 _voice_cache = {
-    'qwen': {'voices': [], 'timestamp': None, 'api_key': None},
+    'bailian': {'voices': [], 'timestamp': None, 'api_key': None},
     'bailian_token_plan': {'voices': [], 'timestamp': None, 'api_key': None},
 }
 
@@ -232,34 +232,56 @@ def get_bailian_voices(force_refresh=False) -> list[str]:
     
     logger.info("Loading Bailian voices from hardcoded list")
     
-    # 定义默认中文声音列表 (Qwen-TTS 官方语音列表)
+    # 定义中文声音列表 (Qwen-TTS 官方非实时语音列表)
     voices_with_id_gender = [
-        ("Cherry", "芊悦", "Female"),
-        ("Serena", "苏瑶", "Female"),
-        ("Ethan", "晨煦", "Male"),
-        ("Chelsie", "千雪", "Female"),
-        ("Momo", "茉兔", "Female"),
-        ("Vivian", "十三", "Female"),
-        ("Moon", "月白", "Male"),
-        ("Maia", "四月", "Female"),
-        ("Kai", "凯", "Male"),
-        ("Nofish", "不吃鱼", "Male"),
-        ("Bella", "萌宝", "Female"),
-        ("Jennifer", "詹妮弗", "Female"),
-        ("Ryan", "甜茶", "Male"),
-        ("Katerina", "卡捷琳娜", "Female"),
-        ("Aiden", "艾登", "Male"),
-        ("Eldric Sage", "沧明子", "Male"),
-        ("Mia", "乖小妹", "Female"),
-        ("Mochi", "沙小弥", "Male"),
-        ("Bellona", "燕铮莺", "Female"),
-        ("Vincent", "田叔", "Male"),
-        ("Bunny", "萌小姬", "Female"),
-        ("Neil", "阿闻", "Male"),
-        ("Elias", "墨讲师", "Female"),
-        ("Arthur", "徐大爷", "Male"),
-        ("Nini", "邻家妹妹", "Female"),
-        ("Seren", "小婉", "Female"),
+        ("Cherry", "芊悦", "Female", "阳光积极、亲切自然小姐姐"),
+        ("Serena", "苏瑶", "Female", "温柔小姐姐"),
+        ("Ethan", "晨煦", "Male", "标准普通话，阳光、温暖、活力、朝气"),
+        ("Chelsie", "千雪", "Female", "二次元虚拟女友"),
+        ("Momo", "茉兔", "Female", "撒娇搞怪，逗你开心"),
+        ("Vivian", "十三", "Female", "拽拽的、可爱的小暴躁"),
+        ("Moon", "月白", "Male", "率性帅气的月白"),
+        ("Maia", "四月", "Female", "知性与温柔的碰撞"),
+        ("Kai", "凯", "Male", "耳朵的一场SPA"),
+        ("Nofish", "不吃鱼", "Male", "不会翘舌音的设计师"),
+        ("Bella", "萌宝", "Female", "喝酒不打醉拳的小萝莉"),
+        ("Jennifer", "詹妮弗", "Female", "品牌级、电影质感般美语女声"),
+        ("Ryan", "甜茶", "Male", "节奏拉满，戏感炸裂，真实与张力共舞"),
+        ("Katerina", "卡捷琳娜", "Female", "御姐音色，韵律回味十足"),
+        ("Aiden", "艾登", "Male", "精通厨艺的美语大男孩"),
+        ("Eldric Sage", "沧明子", "Male", "沉稳睿智的老者，沧桑如松却心明如镜"),
+        ("Mia", "乖小妹", "Female", "温顺如春水，乖巧如初雪"),
+        ("Mochi", "沙小弥", "Male", "聪明伶俐的小大人，童真未泯却早慧如禅"),
+        ("Bellona", "燕铮莺", "Female", "声音洪亮，吐字清晰，人物鲜活"),
+        ("Vincent", "田叔", "Male", "一口独特的沙哑烟嗓，尽显江湖豪情"),
+        ("Bunny", "萌小姬", "Female", "萌属性爆棚的小萝莉"),
+        ("Neil", "阿闻", "Male", "平直的基线语调，字正腔圆，最专业的新闻主持人"),
+        ("Elias", "墨讲师", "Female", "既保持学科严谨性，又将复杂知识转化为可消化的认知模块"),
+        ("Arthur", "徐大爷", "Male", "被岁月和旱烟浸泡过的质朴嗓音"),
+        ("Nini", "邻家妹妹", "Female", "糯米糍一样又软又黏的嗓音"),
+        ("Seren", "小婉", "Female", "温和舒缓的声线，助你更快地进入睡眠"),
+        ("Pip", "顽屁小孩", "Male", "调皮捣蛋却充满童真的他来了"),
+        ("Stella", "少女阿月", "Female", "平时是甜到发腻的迷糊少女音"),
+        ("Bodega", "博德加", "Male", "热情的西班牙大叔"),
+        ("Sonrisa", "索尼莎", "Female", "热情开朗的拉美大姐"),
+        ("Alek", "阿列克", "Male", "一开口，是战斗民族的冷，也是毛呢大衣下的暖"),
+        ("Dolce", "多尔切", "Male", "慵懒的意大利大叔"),
+        ("Sohee", "素熙", "Female", "温柔开朗，情绪丰富的韩国欧尼"),
+        ("Ono Anna", "小野杏", "Female", "鬼灵精怪的青梅竹马"),
+        ("Lenn", "莱恩", "Male", "理性是底色，叛逆藏在细节里"),
+        ("Emilien", "埃米尔安", "Male", "浪漫的法国大哥哥"),
+        ("Andre", "安德雷", "Male", "声音磁性，自然舒服、沉稳男生"),
+        ("Radio Gol", "拉迪奥·戈尔", "Male", "足球诗人，用激情解说足球"),
+        ("Jada", "上海-阿珍", "Female", "风风火火的沪上阿姐"),
+        ("Dylan", "北京-晓东", "Male", "北京胡同里长大的少年"),
+        ("Li", "南京-老李", "Male", "耐心的瑜伽老师"),
+        ("Marcus", "陕西-秦川", "Male", "面宽话短，心实声沉——老陕的味道"),
+        ("Roy", "闽南-阿杰", "Male", "诙谐直爽、市井活泼的台湾哥仔形象"),
+        ("Peter", "天津-李彼得", "Male", "天津相声，专业捧哏"),
+        ("Sunny", "四川-晴儿", "Female", "甜到你心里的川妹子"),
+        ("Eric", "四川-程川", "Male", "一个跳脱市井的四川成都男子"),
+        ("Rocky", "粤语-阿强", "Male", "幽默风趣的阿强，在线陪聊"),
+        ("Kiki", "粤语-阿清", "Female", "甜美的港妹闺蜜"),
     ]
 
     voices = []
@@ -269,8 +291,9 @@ def get_bailian_voices(force_refresh=False) -> list[str]:
         
         # 使用硬编码的语音列表
         logger.info("Using hardcoded Bailian voices")
-        for voice_id, voice_name, gender in voices_with_id_gender:
-            voices.append(f"bailian|{voice_id}|{voice_name}-{gender}||")
+        emotion_str = ",".join(f"{k}-{v[1]}" for k, v in BAILIAN_EMOTION_TAGS.items())
+        for voice_id, voice_name, gender, description in voices_with_id_gender:
+            voices.append(f"bailian|{voice_id}|{voice_name}-{gender}|{description}|||{emotion_str}")
         logger.info(f"Bailian loaded {len(voices)} hardcoded voices")
         
         # 加载克隆的声音 - 优先从独立配置文件加载，备用从API获取
@@ -305,7 +328,7 @@ def get_bailian_voices(force_refresh=False) -> list[str]:
         # 添加克隆声音到列表
         if cloned_voices:
             for voice_id, display_name, gender, target_model in cloned_voices:
-                voices.append(f"bailian|{voice_id}|{display_name}-{gender}|{target_model}|")
+                voices.append(f"bailian|{voice_id}|{display_name}-{gender}|{target_model}|||{emotion_str}")
             logger.info(f"Bailian loaded {len(cloned_voices)} cloned voices total: {[v[1] for v in cloned_voices]}")
         
         # 更新缓存
@@ -319,13 +342,14 @@ def get_bailian_voices(force_refresh=False) -> list[str]:
         return voices
     except Exception as e:
         # 发生异常，返回默认列表
-        logger.error(f"Error getting Qwen voices: {str(e)}")
-        for voice_id, voice_name, gender in voices_with_id_gender:
-            voices.append(f"qwen|{voice_id}|{voice_name}-{gender}||")
-        logger.info(f"Qwen loaded {len(voices)} DEFAULT hardcoded voices (exception occurred): {voices}")
+        logger.error(f"Error getting Bailian voices: {str(e)}")
+        emotion_str = ",".join(f"{k}-{v[1]}" for k, v in BAILIAN_EMOTION_TAGS.items())
+        for voice_id, voice_name, gender, description in voices_with_id_gender:
+            voices.append(f"bailian|{voice_id}|{voice_name}-{gender}|{description}|||{emotion_str}")
+        logger.info(f"Bailian loaded {len(voices)} DEFAULT hardcoded voices (exception occurred): {voices}")
         
         # 即使发生异常，也更新缓存以避免重复失败
-        _voice_cache['qwen'] = {
+        _voice_cache['bailian'] = {
             'voices': voices,
             'timestamp': current_time,
             'api_key': api_key
@@ -386,6 +410,48 @@ def is_bailian_voice(voice_name: str):
 def is_bailian_token_plan_voice(voice_name: str):
     """检查是否是阿里百炼Token Plan TTS的声音"""
     return voice_name.startswith("BailianTokenPlan|")
+
+def build_bailian_instructions(voice_rate: float, voice_volume: float, emotion: str = "") -> str:
+    """
+    构建百炼TTS的指令控制字符串
+    
+    Args:
+        voice_rate: 语音速率 (0.5-2.0)
+        voice_volume: 音频音量 (0.1-2.0)
+        emotion: 语音情感
+    
+    Returns:
+        指令字符串
+    """
+    instructions_parts = []
+    
+    # 语速控制
+    if voice_rate < 0.8:
+        instructions_parts.append("语速稍慢")
+    elif voice_rate > 1.2:
+        instructions_parts.append("语速稍快")
+    else:
+        instructions_parts.append("语速正常")
+    
+    # 音量控制
+    if voice_volume < 0.8:
+        instructions_parts.append("音量稍小")
+    elif voice_volume > 1.2:
+        instructions_parts.append("音量稍大")
+    else:
+        instructions_parts.append("音量正常")
+    
+    # 情感控制
+    if emotion:
+        # emotion格式: "excited-兴奋"，取key部分
+        emotion_key = emotion.split('-')[0] if '-' in emotion else emotion
+        if emotion_key in BAILIAN_EMOTION_TAGS:
+            instructions_parts.append(BAILIAN_EMOTION_TAGS[emotion_key][0])
+    
+    # 合并 instructions
+    if instructions_parts:
+        return "，".join(instructions_parts) + "。"
+    return ""
 
 def bailian_tts(
     text: str,
@@ -607,8 +673,12 @@ def bailian_tts(
                         "sample_rate": 48000
                     }
                 }
-                if emotion:
-                    payload["instructions"] = emotion
+                
+                # 构建指令控制字符串（语速、音量、情感）
+                instructions = build_bailian_instructions(voice_rate, voice_volume, emotion)
+                if instructions:
+                    payload["instructions"] = instructions
+                    payload["optimize_instructions"] = True
                 
                 logger.debug(f"Qwen TTS segment {i+1}: model={model}, text_len={len(segment)}")
                 
