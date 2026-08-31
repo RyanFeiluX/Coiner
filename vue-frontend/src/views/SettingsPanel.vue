@@ -462,7 +462,7 @@ const loadSettingsToForm = () => {
   form.geminiApiKey = settingsStore.audio.geminiApiKey || '';
   form.cozeApiKey = settingsStore.audio.cozeApiKey || '';
   form.qwenApiKey = settingsStore.audio.qwenApiKey || '';
-  form.qwenModelName = settingsStore.audio.qwenModelName || 'qwen3-tts-flash';
+  form.qwenModelName = settingsStore.audio.qwenModelName || 'qwen3-tts-instruct-flash';
   form.bailianTokenPlanApiKey = settingsStore.audio.bailianTokenPlanApiKey || '';
   form.bailianTokenPlanModelName = settingsStore.audio.bailianTokenPlanModelName || 'qwen-audio-3.0-tts-plus';
 };
@@ -487,7 +487,7 @@ const form = reactive({
   siliconflowApiKey: '',
   geminiApiKey: '',
   cozeApiKey: '',
-  qwenModelName: 'qwen3-tts-flash',
+  qwenModelName: 'qwen3-tts-instruct-flash',
   qwenApiKey: '',
   bailianTokenPlanApiKey: '',
   bailianTokenPlanModelName: 'qwen-audio-3.0-tts-plus',

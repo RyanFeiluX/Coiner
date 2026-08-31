@@ -29,12 +29,6 @@
               {{ t('Refresh') }}
             </el-button>
           </div>
-          <el-input
-            v-model="searchKeyword"
-            :placeholder="t('Enter voice keyword to search...')"
-            class="form-input"
-            clearable
-          />
         </div>
 
         <div class="form-item">
@@ -47,9 +41,16 @@
             v-model="form.speechSynthesis"
             :placeholder="t('Select voice')"
             class="form-select"
-            filterable
             :loading="loadingVoices"
           >
+            <template #header>
+              <el-input
+                v-model="searchKeyword"
+                :placeholder="t('Enter voice keyword to search...')"
+                clearable
+                size="small"
+              />
+            </template>
             <el-option
               v-for="voice in filteredVoiceList"
               :key="voice.value"
@@ -118,7 +119,7 @@
               :closable="false"
             >
               <ul>
-                <li>{{ t('Model') }}: {{ settingsStore.audio.qwenModelName || 'qwen3-tts-flash' }}</li>
+                <li>{{ t('Model') }}: {{ settingsStore.audio.qwenModelName || 'qwen3-tts-instruct-flash' }}</li>
                 <li>{{ t('Base URL') }}: https://dashscope.aliyuncs.com/api/v1</li>
                 <li>{{ t('Speech rate range [0.5, 2.0], default value is 1.0') }}</li>
                 <li>{{ t('Volume range [0.1, 2.0], default value is 1.0') }}</li>

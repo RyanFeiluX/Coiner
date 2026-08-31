@@ -154,7 +154,7 @@ def get_config(request: Request):
             },
             "qwen": {
                 "api_key": config.qwen.get("api_key", ""),
-                "model_name": config.qwen.get("model_name", "qwen3-tts-flash"),
+                "model_name": config.qwen.get("model_name", "qwen3-tts-instruct-flash"),
             },
             "bailian_token_plan": {
                 "api_key": config.bailian_token_plan.get("api_key", ""),

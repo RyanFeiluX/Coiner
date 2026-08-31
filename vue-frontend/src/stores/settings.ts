@@ -208,7 +208,7 @@ export const useSettingsStore = defineStore('settings', {
       siliconflowApiKey: '',
       cozeApiKey: '',
       qwenApiKey: '',
-      qwenModelName: 'qwen3-tts-flash',
+      qwenModelName: 'qwen3-tts-instruct-flash',
       geminiApiKey: '',
       bailianTokenPlanApiKey: '',
       bailianTokenPlanModelName: 'qwen-audio-3.0-tts-plus',

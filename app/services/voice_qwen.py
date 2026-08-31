@@ -592,7 +592,7 @@ def qwen_tts(
                 if provider == "bailian_token_plan":
                     default_model = config.bailian_token_plan.get("model_name", "qwen-audio-3.0-tts-plus")
                 else:
-                    default_model = config.qwen.get("model_name", "qwen3-tts-flash")
+                    default_model = config.qwen.get("model_name", "qwen3-tts-instruct-flash")
                 model = target_model if target_model else default_model
                 
                 payload = {
@@ -607,6 +607,8 @@ def qwen_tts(
                         "sample_rate": 48000
                     }
                 }
+                if emotion:
+                    payload["instructions"] = emotion
                 
                 logger.debug(f"Qwen TTS segment {i+1}: model={model}, text_len={len(segment)}")
                 

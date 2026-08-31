@@ -315,9 +315,24 @@ onUnmounted(() => {
   stopPolling();
 });
 
+// Reset execution state: every scan starts a fresh split task
+const resetExecutionState = () => {
+  stopPolling();
+  currentTaskId.value = '';
+  isRunning.value = false;
+  isCompleted.value = false;
+  progress.value = 0;
+  status.value = '';
+  splitResults.value = [];
+};
+
 // Scan task
 const scanTask = async () => {
   if (!taskInput.value) return;
+
+  // A new scan always produces a new split task: re-enable the split
+  // button, reset progress and clear previous results/polling
+  resetExecutionState();
 
   isScanning.value = true;
   try {
