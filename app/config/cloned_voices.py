@@ -35,7 +35,7 @@ class ClonedVoicesConfig:
         Get cloned voices filtered by provider and/or model.
         
         Args:
-            provider: Filter by provider (e.g., "qwen", "cosyvoice")
+            provider: Filter by provider (e.g., "bailian", "cosyvoice")
             model: Filter by model (e.g., "qwen3-tts-vc-2026-01-22")
         
         Returns:

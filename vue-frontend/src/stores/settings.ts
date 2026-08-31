@@ -65,8 +65,8 @@ interface AudioSettings {
   speechKey: string;
   siliconflowApiKey: string;
   cozeApiKey: string;
-  qwenApiKey: string;
-  qwenModelName: string;
+  bailianApiKey: string;
+  bailianModelName: string;
   geminiApiKey: string;
   bailianTokenPlanApiKey: string;
   bailianTokenPlanModelName: string;
@@ -207,8 +207,8 @@ export const useSettingsStore = defineStore('settings', {
       speechKey: '',
       siliconflowApiKey: '',
       cozeApiKey: '',
-      qwenApiKey: '',
-      qwenModelName: 'qwen3-tts-instruct-flash',
+      bailianApiKey: '',
+      bailianModelName: 'qwen3-tts-instruct-flash',
       geminiApiKey: '',
       bailianTokenPlanApiKey: '',
       bailianTokenPlanModelName: 'qwen-audio-3.0-tts-plus',
@@ -856,15 +856,15 @@ export const useSettingsStore = defineStore('settings', {
             console.log('Updated coze config:', this.llm.coze);
           }
           
-          // Load qwen config
-          if (data.qwen) {
-            if (data.qwen.api_key) {
-              this.audio.qwenApiKey = data.qwen.api_key;
-              console.log('[SettingsStore] Updated qwenApiKey from config:', this.audio.qwenApiKey);
+          // Load bailian config
+          if (data.bailian) {
+            if (data.bailian.api_key) {
+              this.audio.bailianApiKey = data.bailian.api_key;
+              console.log('[SettingsStore] Updated bailianApiKey from config:', this.audio.bailianApiKey);
             }
-            if (data.qwen.model_name) {
-              this.audio.qwenModelName = data.qwen.model_name;
-              console.log('[SettingsStore] Updated qwenModelName from config:', this.audio.qwenModelName);
+            if (data.bailian.model_name) {
+              this.audio.bailianModelName = data.bailian.model_name;
+              console.log('[SettingsStore] Updated bailianModelName from config:', this.audio.bailianModelName);
             }
           }
 

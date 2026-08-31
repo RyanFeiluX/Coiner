@@ -168,7 +168,7 @@
                 <el-option :label="t('SiliconFlow TTS')" value="siliconflow" />
                 <el-option :label="t('Google Gemini TTS')" value="gemini-tts" />
                 <el-option :label="t('Coze TTS')" value="coze-tts" />
-                <el-option :label="t('Qwen TTS')" value="qwen-tts" />
+                <el-option :label="t('Bailian TTS')" value="bailian-tts" />
                 <el-option :label="t('Aliyun Bailian Token Plan')" value="bailian-token-plan" />
               </el-select>
             </el-form-item>
@@ -213,18 +213,18 @@
             </el-form>
           </div>
 
-          <!-- Qwen TTS -->
-          <div v-if="form.ttsProvider === 'qwen-tts'" class="tts-provider-config">
+          <!-- Bailian TTS -->
+          <div v-if="form.ttsProvider === 'bailian-tts'" class="tts-provider-config">
             <el-form :model="form" label-width="120px">
               <el-form-item>
                 <template #label>
-                  <span>{{ t('Qwen API Key') }} <span style="color: red;">*</span></span>
+                  <span>{{ t('Bailian API Key') }} <span style="color: red;">*</span></span>
                 </template>
-                <el-input v-model="form.qwenApiKey" type="password" show-password />
+                <el-input v-model="form.bailianApiKey" type="password" show-password />
               </el-form-item>
-              <el-form-item :label="t('Qwen TTS Model')">
+              <el-form-item :label="t('Bailian TTS Model')">
                 <div style="display: flex; align-items: center; gap: 8px; width: 100%">
-                  <el-select v-model="form.qwenModelName" style="flex: 1">
+                  <el-select v-model="form.bailianModelName" style="flex: 1">
                     <el-option-group :label="t('Qwen3-TTS-Flash')">
                       <el-option label="qwen3-tts-flash (Stable)" value="qwen3-tts-flash" />
                       <el-option label="qwen3-tts-flash-2025-11-27" value="qwen3-tts-flash-2025-11-27" />
@@ -252,7 +252,7 @@
                       <el-button :icon="InfoFilled" circle />
                     </template>
                     <div>
-                      <p style="font-weight: bold; margin-bottom: 8px;">{{ t('Qwen TTS Model Info') }}</p>
+                      <p style="font-weight: bold; margin-bottom: 8px;">{{ t('Bailian TTS Model Info') }}</p>
                       <ul style="margin: 0; padding-left: 20px;">
                         <li>{{ t('Qwen3-TTS-Flash Info') }}</li>
                         <li>{{ t('Qwen3-TTS-Instruct-Flash Info') }}</li>
@@ -455,14 +455,14 @@ const loadSettingsToForm = () => {
   form.tavilyApiKey = settingsStore.audio.tavilyApiKey || '';
   
   // Load TTS Provider config
-  form.ttsProvider = settingsStore.audio.ttsServer || 'qwen-tts';
+  form.ttsProvider = settingsStore.audio.ttsServer || 'bailian-tts';
   form.azureSpeechRegion = settingsStore.audio.speechRegion || '';
   form.azureSpeechKey = settingsStore.audio.speechKey || '';
   form.siliconflowApiKey = settingsStore.audio.siliconflowApiKey || '';
   form.geminiApiKey = settingsStore.audio.geminiApiKey || '';
   form.cozeApiKey = settingsStore.audio.cozeApiKey || '';
-  form.qwenApiKey = settingsStore.audio.qwenApiKey || '';
-  form.qwenModelName = settingsStore.audio.qwenModelName || 'qwen3-tts-instruct-flash';
+  form.bailianApiKey = settingsStore.audio.bailianApiKey || '';
+  form.bailianModelName = settingsStore.audio.bailianModelName || 'qwen3-tts-instruct-flash';
   form.bailianTokenPlanApiKey = settingsStore.audio.bailianTokenPlanApiKey || '';
   form.bailianTokenPlanModelName = settingsStore.audio.bailianTokenPlanModelName || 'qwen-audio-3.0-tts-plus';
 };
@@ -481,14 +481,14 @@ const form = reactive({
   silenceDuration: 0.3,
   hostVisible: true,
   tavilyApiKey: '',
-  ttsProvider: 'qwen-tts',
+  ttsProvider: 'bailian-tts',
   azureSpeechRegion: '',
   azureSpeechKey: '',
   siliconflowApiKey: '',
   geminiApiKey: '',
   cozeApiKey: '',
-  qwenModelName: 'qwen3-tts-instruct-flash',
-  qwenApiKey: '',
+  bailianModelName: 'qwen3-tts-instruct-flash',
+  bailianApiKey: '',
   bailianTokenPlanApiKey: '',
   bailianTokenPlanModelName: 'qwen-audio-3.0-tts-plus',
 });
@@ -823,8 +823,8 @@ const saveSettings = async () => {
     settingsStore.updateAudioSetting('siliconflowApiKey', form.siliconflowApiKey);
     settingsStore.updateAudioSetting('geminiApiKey', form.geminiApiKey);
     settingsStore.updateAudioSetting('cozeApiKey', form.cozeApiKey);
-    settingsStore.updateAudioSetting('qwenApiKey', form.qwenApiKey);
-    settingsStore.updateAudioSetting('qwenModelName', form.qwenModelName);
+    settingsStore.updateAudioSetting('bailianApiKey', form.bailianApiKey);
+    settingsStore.updateAudioSetting('bailianModelName', form.bailianModelName);
     settingsStore.updateAudioSetting('bailianTokenPlanApiKey', form.bailianTokenPlanApiKey);
     settingsStore.updateAudioSetting('bailianTokenPlanModelName', form.bailianTokenPlanModelName);
 
@@ -881,9 +881,9 @@ const saveSettings = async () => {
       coze: {
         api_key: form.cozeApiKey
       },
-      qwen: {
-        api_key: form.qwenApiKey,
-        model_name: form.qwenModelName
+      bailian: {
+        api_key: form.bailianApiKey,
+        model_name: form.bailianModelName
       },
       bailian_token_plan: {
         api_key: form.bailianTokenPlanApiKey,

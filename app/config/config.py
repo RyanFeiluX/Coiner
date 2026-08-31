@@ -71,7 +71,7 @@ SECRET_KEYS = {
     "azure": ["speech_key"],
     "siliconflow": ["api_key"],
     "coze": ["api_key"],
-    "qwen": ["api_key"],
+    "bailian": ["api_key"],
     "bailian_token_plan": ["api_key"],
     "tavily": ["api_key"],
 }
@@ -121,7 +121,7 @@ def save_config():
     _cfg["azure"] = azure
     _cfg["siliconflow"] = siliconflow
     _cfg["coze"] = coze
-    _cfg["qwen"] = qwen
+    _cfg["bailian"] = bailian
     _cfg["bailian_token_plan"] = bailian_token_plan
     _cfg["tavily"] = tavily
     _cfg["audio"] = audio
@@ -165,7 +165,7 @@ proxy = _cfg.get("proxy", {})
 azure = _cfg.get("azure", {})
 siliconflow = _cfg.get("siliconflow", {})
 coze = _cfg.get("coze", {})
-qwen = _cfg.get("qwen", {})
+bailian = _cfg.get("bailian", {})
 bailian_token_plan = _cfg.get("bailian_token_plan", {})
 tavily = _cfg.get("tavily", {})
 audio = _cfg.get("audio", {})

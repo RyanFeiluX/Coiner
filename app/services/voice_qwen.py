@@ -1,5 +1,5 @@
 """
-Qwen 千问 / 阿里百炼 Token Plan 专用模块：克隆音色、语音列表、TTS 合成。
+百炼 TTS / 阿里百炼 Token Plan 专用模块：克隆音色、语音列表、TTS 合成。
 从 voice.py 拆分而来，由 voice.py 在文件末尾再导出。
 """
 import os
@@ -206,31 +206,31 @@ def fetch_cloned_voices_from_api(api_key: str) -> list:
     
     return cloned_voices
 
-def get_qwen_voices(force_refresh=False) -> list[str]:
+def get_bailian_voices(force_refresh=False) -> list[str]:
     """
-    获取Qwen TTS的声音列表，包括克隆的声音
+    获取百炼 TTS的声音列表，包括克隆的声音
     
     Args:
         force_refresh: 是否强制刷新缓存
     
     Returns:
-        声音列表，格式为: "qwen|voice_id|voice_name-gender|preview_audio|preview_text"
+        声音列表，格式为: "bailian|voice_id|voice_name-gender|preview_audio|preview_text"
     """
     global _voice_cache
     
     # 检查缓存
-    api_key = config.qwen.get("api_key", "")
-    cache_entry = _voice_cache['qwen']
+    api_key = config.bailian.get("api_key", "")
+    cache_entry = _voice_cache['bailian']
     
     # 检查缓存是否有效
     current_time = datetime.now().timestamp()
     if not force_refresh and cache_entry['voices'] and cache_entry['timestamp']:
         cache_age = current_time - cache_entry['timestamp']
         if cache_age < CACHE_DURATION and cache_entry['api_key'] == api_key:
-            logger.info(f"Using cached Qwen voices (age: {cache_age:.1f}s)")
+            logger.info(f"Using cached Bailian voices (age: {cache_age:.1f}s)")
             return cache_entry['voices']
     
-    logger.info("Loading Qwen voices from hardcoded list")
+    logger.info("Loading Bailian voices from hardcoded list")
     
     # 定义默认中文声音列表 (Qwen-TTS 官方语音列表)
     voices_with_id_gender = [
@@ -265,20 +265,20 @@ def get_qwen_voices(force_refresh=False) -> list[str]:
     voices = []
 
     try:
-        api_key = config.qwen.get("api_key", "")
+        api_key = config.bailian.get("api_key", "")
         
         # 使用硬编码的语音列表
-        logger.info("Using hardcoded Qwen voices")
+        logger.info("Using hardcoded Bailian voices")
         for voice_id, voice_name, gender in voices_with_id_gender:
-            voices.append(f"qwen|{voice_id}|{voice_name}-{gender}||")
-        logger.info(f"Qwen loaded {len(voices)} hardcoded voices")
+            voices.append(f"bailian|{voice_id}|{voice_name}-{gender}||")
+        logger.info(f"Bailian loaded {len(voices)} hardcoded voices")
         
         # 加载克隆的声音 - 优先从独立配置文件加载，备用从API获取
         cloned_voices = []
         
         # 优先从独立配置文件加载克隆声音
         from app.config.cloned_voices import cloned_voices_config
-        config_cloned_voices = cloned_voices_config.get_voices(provider="qwen")
+        config_cloned_voices = cloned_voices_config.get_voices(provider="bailian")
         if config_cloned_voices:
             for voice_data in config_cloned_voices:
                 voice_id = voice_data.get("voiceId", "")
@@ -305,16 +305,16 @@ def get_qwen_voices(force_refresh=False) -> list[str]:
         # 添加克隆声音到列表
         if cloned_voices:
             for voice_id, display_name, gender, target_model in cloned_voices:
-                voices.append(f"qwen|{voice_id}|{display_name}-{gender}|{target_model}|")
-            logger.info(f"Qwen loaded {len(cloned_voices)} cloned voices total: {[v[1] for v in cloned_voices]}")
+                voices.append(f"bailian|{voice_id}|{display_name}-{gender}|{target_model}|")
+            logger.info(f"Bailian loaded {len(cloned_voices)} cloned voices total: {[v[1] for v in cloned_voices]}")
         
         # 更新缓存
-        _voice_cache['qwen'] = {
+        _voice_cache['bailian'] = {
             'voices': voices,
             'timestamp': current_time,
             'api_key': api_key
         }
-        logger.info(f"Qwen voices cached: {len(voices)} voices")
+        logger.info(f"Bailian voices cached: {len(voices)} voices")
         
         return voices
     except Exception as e:
@@ -379,15 +379,15 @@ def get_bailian_token_plan_voices(force_refresh=False) -> list[str]:
 
     return voices
 
-def is_qwen_voice(voice_name: str):
-    """检查是否是Qwen TTS的声音"""
-    return voice_name.startswith("qwen|")
+def is_bailian_voice(voice_name: str):
+    """检查是否是百炼 TTS的声音"""
+    return voice_name.startswith("bailian|")
 
 def is_bailian_token_plan_voice(voice_name: str):
     """检查是否是阿里百炼Token Plan TTS的声音"""
     return voice_name.startswith("BailianTokenPlan|")
 
-def qwen_tts(
+def bailian_tts(
     text: str,
     voice_id: str,
     voice_rate: float,
@@ -397,11 +397,11 @@ def qwen_tts(
     preview_text: str = "",
     is_preview: bool = False,
     target_model: str = "",
-    provider: str = "qwen",
+    provider: str = "bailian",
     emotion: str = "",
 ) -> Union[SubMaker, None]:
     """
-    使用Qwen TTS生成语音（provider支持"qwen"和"bailian_token_plan"）
+    使用百炼 TTS生成语音（provider支持"bailian"和"bailian_token_plan"）
 
     Args:
         text: 要转换的文本
@@ -411,7 +411,7 @@ def qwen_tts(
         voice_volume: 音频音量
         preview_audio: 预览音频URL（用于试听）
         preview_text: 预览文本（用于匹配试听）
-        provider: 供应商，可选"qwen"或"bailian_token_plan"
+        provider: 供应商，可选"bailian"或"bailian_token_plan"
         emotion: 语音情感（bailian_token_plan时通过BAILIAN_EMOTION_TAGS映射为文本标签嵌入）
 
     Returns:
@@ -444,14 +444,14 @@ def qwen_tts(
             except Exception as e:
                 logger.error(f"Error downloading preview audio: {str(e)}")
         
-        # 配置Qwen API (使用HTTP API)，支持qwen和bailian_token_plan两种provider
+        # 配置百炼 API (使用HTTP API)，支持bailian和bailian_token_plan两种provider
         if provider == "bailian_token_plan":
             api_key = config.bailian_token_plan.get("api_key", "")
             # Token Plan TTS 使用固定的 DashScope 原生端点
             endpoint = "https://token-plan.cn-beijing.maas.aliyuncs.com/api/v1/services/audio/tts/SpeechSynthesizer"
         else:
-            api_key = config.qwen.get("api_key", "")
-            base_url = "https://dashscope.aliyuncs.com/api/v1"  # 硬编码Qwen API端点
+            api_key = config.bailian.get("api_key", "")
+            base_url = "https://dashscope.aliyuncs.com/api/v1"  # 硬编码百炼 API端点
             endpoint = f"{base_url}/services/audio/tts/SpeechSynthesizer"
         
         if not api_key:
@@ -592,7 +592,7 @@ def qwen_tts(
                 if provider == "bailian_token_plan":
                     default_model = config.bailian_token_plan.get("model_name", "qwen-audio-3.0-tts-plus")
                 else:
-                    default_model = config.qwen.get("model_name", "qwen3-tts-instruct-flash")
+                    default_model = config.bailian.get("model_name", "qwen3-tts-instruct-flash")
                 model = target_model if target_model else default_model
                 
                 payload = {

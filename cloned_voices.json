@@ -1,5 +1,5 @@
 {
-  "qwen": {
+  "bailian": {
     "qwen3-tts-vc-2026-01-22": [
       {
         "brief": "Created via qwen3-tts-vc-2026-01-22 (Beijing)",
@@ -7,7 +7,7 @@
         "displayName": "RyanQwen",
         "gender": "Male",
         "model": "qwen3-tts-vc-2026-01-22",
-        "provider": "Qwen",
+        "provider": "Bailian",
         "region": "Beijing",
         "voiceId": "qwen-tts-vc-ryanqwen-voice-20260610003356324-bfd5"
       },
@@ -17,7 +17,7 @@
         "displayName": "擎苍千问",
         "gender": "Male",
         "model": "qwen3-tts-vc-2026-01-22",
-        "provider": "Qwen",
+        "provider": "Bailian",
         "region": "Beijing",
         "voiceId": "qwen-tts-vc-qingcangqwen-voice-20260610010247128-08eb"
       }

@@ -169,9 +169,9 @@ def tts(
         else:
             logger.error(f"Invalid coze voice name format: {voice_name}")
             result = None
-    elif is_qwen_voice(voice_name):
+    elif is_bailian_voice(voice_name):
         # 从voice_name中提取voice_id、target_model、preview_audio和preview_text
-        # 格式: qwen|voice_id|voice_name-gender|target_model或preview_audio|preview_text
+        # 格式: bailian|voice_id|voice_name-gender|target_model或preview_audio|preview_text
         parts = voice_name.split("|")
         if len(parts) >= 2:
             voice_id = parts[1]
@@ -179,18 +179,18 @@ def tts(
             is_cloned = "qwen-tts-vc-" in voice_id
             
             if is_cloned:
-                # 克隆声音格式: qwen|voice_id|name-gender|target_model|
+                # 克隆声音格式: bailian|voice_id|name-gender|target_model|
                 target_model = parts[3] if len(parts) > 3 else ""
                 preview_audio = ""
                 preview_text = ""
-                result = qwen_tts(text, voice_id, voice_rate, voice_file, voice_volume, preview_audio, preview_text, is_preview, target_model)
+                result = bailian_tts(text, voice_id, voice_rate, voice_file, voice_volume, preview_audio, preview_text, is_preview, target_model)
             else:
-                # 普通声音格式: qwen|voice_id|voice_name-gender|preview_audio|preview_text
+                # 普通声音格式: bailian|voice_id|voice_name-gender|preview_audio|preview_text
                 preview_audio = parts[3] if len(parts) > 3 else ""
                 preview_text = parts[4] if len(parts) > 4 else ""
-                result = qwen_tts(text, voice_id, voice_rate, voice_file, voice_volume, preview_audio, preview_text, is_preview)
+                result = bailian_tts(text, voice_id, voice_rate, voice_file, voice_volume, preview_audio, preview_text, is_preview)
         else:
-            logger.error(f"Invalid qwen voice name format: {voice_name}")
+            logger.error(f"Invalid bailian voice name format: {voice_name}")
             result = None
     elif is_bailian_token_plan_voice(voice_name):
         # 从voice_name中提取voice_id
@@ -415,9 +415,9 @@ from app.services.voice_coze import (
     coze_tts,
 )
 from app.services.voice_qwen import (
-    get_qwen_voices,
+    get_bailian_voices,
     get_bailian_token_plan_voices,
-    is_qwen_voice,
+    is_bailian_voice,
     is_bailian_token_plan_voice,
-    qwen_tts,
+    bailian_tts,
 )

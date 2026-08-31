@@ -19,7 +19,7 @@ def get_voices(request: Request, tts_server: str = "azure-tts-v1", force_refresh
     Get voice list based on TTS server selection.
 
     Args:
-        tts_server: TTS server type (azure-tts-v1, azure-tts-v2, siliconflow, gemini-tts, coze-tts, qwen-tts)
+        tts_server: TTS server type (azure-tts-v1, azure-tts-v2, siliconflow, gemini-tts, coze-tts, bailian-tts)
         force_refresh: Force refresh voice cache (for Coze, Qwen, and Azure TTS)
     """
     try:
@@ -29,8 +29,8 @@ def get_voices(request: Request, tts_server: str = "azure-tts-v1", force_refresh
             voices = voice.get_gemini_voices()
         elif tts_server == "coze-tts":
             voices = voice.get_coze_voices(force_refresh=force_refresh)
-        elif tts_server == "qwen-tts":
-            voices = voice.get_qwen_voices(force_refresh=force_refresh)
+        elif tts_server == "bailian-tts":
+            voices = voice.get_bailian_voices(force_refresh=force_refresh)
         elif tts_server == "bailian-token-plan":
             voices = voice.get_bailian_token_plan_voices(force_refresh=force_refresh)
         elif tts_server == "azure-tts-v1":
@@ -152,9 +152,9 @@ def get_config(request: Request):
             "coze": {
                 "api_key": config.coze.get("api_key", ""),
             },
-            "qwen": {
-                "api_key": config.qwen.get("api_key", ""),
-                "model_name": config.qwen.get("model_name", "qwen3-tts-instruct-flash"),
+            "bailian": {
+                "api_key": config.bailian.get("api_key", ""),
+                "model_name": config.bailian.get("model_name", "qwen3-tts-instruct-flash"),
             },
             "bailian_token_plan": {
                 "api_key": config.bailian_token_plan.get("api_key", ""),
@@ -206,9 +206,9 @@ def update_config(request: Request, cfg: dict):
             for key, value in cfg["coze"].items():
                 config.coze[key] = value
 
-        if "qwen" in cfg:
-            for key, value in cfg["qwen"].items():
-                config.qwen[key] = value
+        if "bailian" in cfg:
+            for key, value in cfg["bailian"].items():
+                config.bailian[key] = value
 
         if "bailian_token_plan" in cfg:
             for key, value in cfg["bailian_token_plan"].items():
@@ -299,7 +299,7 @@ def add_cloned_voice(request: Request, voice_data: dict):
             - gender: Voice gender (optional)
             - model: Target model for TTS synthesis (required)
             - brief: Description of the voice (optional)
-            - provider: Voice provider (optional, default: "qwen")
+            - provider: Voice provider (optional, default: "bailian")
             - region: Service region (optional)
     """
     try:
@@ -309,7 +309,7 @@ def add_cloned_voice(request: Request, voice_data: dict):
                 return utils.get_response(400, {"error": f"Missing required field: {field}"})
         
         if "provider" not in voice_data:
-            voice_data["provider"] = "qwen"
+                voice_data["provider"] = "bailian"
         
         cloned_voices_config.add_voice(voice_data)
         logger.info(f"Added/updated cloned voice: {voice_data['displayName']}")
@@ -371,7 +371,7 @@ def import_cloned_voices(request: Request, data: dict):
         # Set default provider if not specified
         for voice_data in voices:
             if "provider" not in voice_data:
-                voice_data["provider"] = "qwen"
+            voice_data["provider"] = "bailian"
         
         cloned_voices_config.import_voices(voices)
         logger.info(f"Imported {len(voices)} cloned voices")

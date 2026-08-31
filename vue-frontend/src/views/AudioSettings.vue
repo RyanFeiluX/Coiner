@@ -17,7 +17,7 @@
             <el-option :label="t('SiliconFlow TTS')" value="siliconflow" />
             <el-option :label="t('Google Gemini TTS')" value="gemini-tts" />
             <el-option :label="t('Coze TTS')" value="coze-tts" />
-            <el-option :label="t('Qwen TTS')" value="qwen-tts" />
+            <el-option :label="t('Bailian TTS')" value="bailian-tts" />
             <el-option :label="t('Aliyun Bailian Token Plan')" value="bailian-token-plan" />
           </el-select>
         </div>
@@ -111,15 +111,15 @@
           </div>
         </div>
 
-        <div v-if="form.ttsServer === 'qwen-tts'" class="qwen-settings-panel">
+        <div v-if="form.ttsServer === 'bailian-tts'" class="qwen-settings-panel">
           <div class="form-item">
             <el-alert
-              :title="t('Qwen TTS Settings:')"
+              :title="t('Bailian TTS Settings:')"
               type="info"
               :closable="false"
             >
               <ul>
-                <li>{{ t('Model') }}: {{ settingsStore.audio.qwenModelName || 'qwen3-tts-instruct-flash' }}</li>
+                <li>{{ t('Model') }}: {{ settingsStore.audio.bailianModelName || 'qwen3-tts-instruct-flash' }}</li>
                 <li>{{ t('Base URL') }}: https://dashscope.aliyuncs.com/api/v1</li>
                 <li>{{ t('Speech rate range [0.5, 2.0], default value is 1.0') }}</li>
                 <li>{{ t('Volume range [0.1, 2.0], default value is 1.0') }}</li>
@@ -245,7 +245,7 @@ const form = reactive({
   speechKey: settingsStore.audio.speechKey,
   siliconflowApiKey: settingsStore.audio.siliconflowApiKey,
   cozeApiKey: settingsStore.audio.cozeApiKey,
-  qwenApiKey: settingsStore.audio.qwenApiKey,
+  bailianApiKey: settingsStore.audio.bailianApiKey,
   voiceEmotion: settingsStore.audio.voiceEmotion,
   speechVolume: settingsStore.audio.speechVolume,
   speechRate: settingsStore.audio.speechRate,
@@ -302,7 +302,7 @@ const voiceList = computed<Voice[]>(() => {
           previewAudio: parts.length >= 4 ? parts[3] : ''
         });
       }
-    } else if (v.startsWith('qwen|')) {
+    } else if (v.startsWith('bailian|')) {
       const parts = v.split('|');
       if (parts.length >= 3) {
         const voiceNameGender = parts[2];
@@ -459,8 +459,8 @@ const loadConfig = async () => {
       if (cfg.coze) {
         form.cozeApiKey = cfg.coze.api_key || '';
       }
-      if (cfg.qwen) {
-        form.qwenApiKey = cfg.qwen.api_key || '';
+      if (cfg.bailian) {
+        form.bailianApiKey = cfg.bailian.api_key || '';
       }
     }
   } catch (error: any) {
@@ -490,8 +490,8 @@ const saveConfig = async () => {
       coze: {
         api_key: form.cozeApiKey
       },
-      qwen: {
-        api_key: form.qwenApiKey
+      bailian: {
+        api_key: form.bailianApiKey
       }
     };
     await apiService.updateConfig(cfg);

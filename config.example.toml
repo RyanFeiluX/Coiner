@@ -310,7 +310,7 @@ api_key = ""
 
 [audio]
 # TTS server
-# Options: azure-tts, azure-tts-v1, azure-tts-v2, siliconflow, gemini-tts, coze-tts, qwen-tts
+# Options: azure-tts, azure-tts-v1, azure-tts-v2, siliconflow, gemini-tts, coze-tts, bailian-tts
 tts_server = "azure-tts"
 # Voice name
 voice_name = ""
