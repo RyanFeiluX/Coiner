@@ -994,7 +994,11 @@ You are a senior video director and storyboard designer with 10 years of experie
      - "Now let's look at the specific content."
    - Each scene's script MUST contain real, concrete spoken words that the host would actually say — including specific facts, examples, data points, or arguments extracted from the original text.
    - If the original text has 5 key points, distribute them across scenes and write out the actual explanation for each point.
-7. **Avoid Repetitive Closing Hooks**: 在多场景文案的最后两段（倒数第二场景和最后一个场景）中，不要让两个场景都出现"在评论区告诉我你的想法"、"欢迎留言"、"点赞关注"或功能相同的互动引导语。只有一个场景——通常是最后一个场景——应该明确邀请观众评论。倒数第二场景可以提出开放性问题或总结观点，但不得重复最后一个场景的 CTA 句式。
+7. **Avoid Repetitive Closing Hooks**: 在多场景文案的最后两段（倒数第二场景和最后一个场景）中，不要让两个场景都出现互动钩子。具体规则：
+   - 只有最后一个场景可以包含明确的评论引导语（如"在评论区告诉我你的想法"、"欢迎留言"、"点赞关注"）。
+   - 只有最后一个场景可以包含开放性问题（如"你觉得哪种观点更有道理？"、"你怎么看？"、"你支持哪一方？"）。
+   - 倒数第二个场景应该总结观点或提供结论性陈述，不要提出新的问题或引导互动。
+   - 倒数第二个场景可以使用陈述句结尾，如"这就是事情的全貌"、"我们需要更全面的视角"等。
 8. **Short Sentence Rule for Subtitles**: Each scene's "script" should be composed of short, natural sentences. For Chinese, prefer each sentence to be 20-35 characters; for English, prefer 40-80 characters. Avoid writing one very long sentence that spans the entire scene. Use commas and periods to break long clauses into multiple short sentences. This ensures subtitles display cleanly without awkward line breaks.
 
 {few_shot_examples}
@@ -1321,11 +1325,11 @@ def _extract_scene_fields(scene_data: Dict) -> Dict:
 
 def _deduplicate_scene_ctas(scenes: List[Dict]) -> List[Dict]:
     """
-    Remove duplicate call-to-action phrases from the second-to-last scene.
+    Remove duplicate call-to-action phrases and open-ended questions from the second-to-last scene.
 
-    The last scene is allowed to keep its CTA (e.g. "tell me in the comments");
-    if the second-to-last scene repeats the same type of CTA, strip it so the
-    closing hook only appears once.
+    The last scene is allowed to keep its CTA (e.g. "tell me in the comments") and
+    open-ended questions; if the second-to-last scene repeats these, strip them so
+    the closing hook only appears once.
     """
     if len(scenes) < 2:
         return scenes
@@ -1338,13 +1342,32 @@ def _deduplicate_scene_ctas(scenes: List[Dict]) -> List[Dict]:
         r"欢迎留言",
         r"点赞[加并]?关注",
         r"记得点赞",
-        r"let me know in the comments",
-        r"leave a comment below",
-        r"drop a comment",
-        r"like and subscribe",
-        r"don't forget to like",
+        r"let me know in the comments[^.?!]*[.?!]?",
+        r"leave a comment below[^.?!]*[.?!]?",
+        r"drop a comment[^.?!]*[.?!]?",
+        r"like and subscribe[^.?!]*[.?!]?",
+        r"don't forget to like[^.?!]*[.?!]?",
     ]
-    combined_pattern = re.compile("(" + "|".join(cta_patterns) + r")[,，.。!！?？]*", re.IGNORECASE)
+    combined_cta_pattern = re.compile("(" + "|".join(cta_patterns) + r")[,，.。!！?？]*", re.IGNORECASE)
+    
+    # Patterns for open-ended questions (开放性问题)
+    open_question_patterns = [
+        r"你觉得[哪什么].*？",
+        r"你认为[哪什么].*？",
+        r"你怎么看？",
+        r"你支持[哪什么].*？",
+        r"你有什么看法？",
+        r"你的观点是？",
+        r"你更倾向于[哪什么].*？",
+        r"你有什么想法？",
+        r"你怎么想？",
+        r"what do you think[^.?!]*[.?!]?",
+        r"which[^.?!]*do you prefer[^.?!]*[.?!]?",
+        r"do you agree[^.?!]*[.?!]?",
+        r"what's your opinion[^.?!]*[.?!]?",
+        r"what are your thoughts[^.?!]*[.?!]?",
+    ]
+    combined_question_pattern = re.compile("(" + "|".join(open_question_patterns) + r")[,，.。!！?？]*", re.IGNORECASE)
 
     last_idx = len(scenes) - 1
     second_last_idx = last_idx - 1
@@ -1352,9 +1375,9 @@ def _deduplicate_scene_ctas(scenes: List[Dict]) -> List[Dict]:
     last_script = scenes[last_idx].get("script", "") or ""
     second_last_script = scenes[second_last_idx].get("script", "") or ""
 
-    # Only clean the second-to-last scene if BOTH it and the last scene contain CTA patterns
-    if combined_pattern.search(last_script) and combined_pattern.search(second_last_script):
-        cleaned = combined_pattern.sub("", second_last_script).strip()
+    # Handle CTA deduplication
+    if combined_cta_pattern.search(last_script) and combined_cta_pattern.search(second_last_script):
+        cleaned = combined_cta_pattern.sub("", second_last_script).strip()
         # Remove leftover leading/trailing punctuation or extra spaces
         cleaned = re.sub(r"^[，,。\s]+|[，,。\s]+$", "", cleaned)
         # Remove dangling incomplete introducers like "不妨", "那就", "快来", "记得"
@@ -1366,11 +1389,28 @@ def _deduplicate_scene_ctas(scenes: List[Dict]) -> List[Dict]:
         else:
             # Fallback: replace the redundant CTA with a neutral reflection prompt
             scenes[second_last_idx]["script"] = re.sub(
-                combined_pattern,
+                combined_cta_pattern,
                 "你怎么看？",
                 second_last_script,
                 count=1,
             ).strip()
+    
+    # Handle open-ended question deduplication
+    # Re-read the script after potential CTA cleaning
+    second_last_script = scenes[second_last_idx].get("script", "") or ""
+    if combined_question_pattern.search(last_script) and combined_question_pattern.search(second_last_script):
+        cleaned = combined_question_pattern.sub("", second_last_script).strip()
+        # Remove leftover leading/trailing punctuation or extra spaces
+        cleaned = re.sub(r"^[，,。\s]+|[，,。\s]+$", "", cleaned)
+        # Remove dangling incomplete introducers
+        cleaned = re.sub(r"(?:不妨|那就|快来|记得)$", "", cleaned).strip()
+        cleaned = re.sub(r"^[，,。\s]+|[，,。\s]+$", "", cleaned)
+        # Avoid leaving an empty or too-short script
+        if len(cleaned) >= 10:
+            scenes[second_last_idx]["script"] = cleaned
+        else:
+            # Fallback: replace the redundant question with a neutral conclusion
+            scenes[second_last_idx]["script"] = "这就是事情的全貌。"
 
     return scenes
 
