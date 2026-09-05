@@ -203,6 +203,15 @@
                   >
                     {{ t('Split Video') }}
                   </el-button>
+                  <el-button
+                    v-if="task.task_type === 'scene_integration' && task.status === 'completed' && task.videos && task.videos.length > 0"
+                    :key="'split-scene-'+task.task_id"
+                    type="warning"
+                    size="small"
+                    @click="navigateToVideoSplitter(task)"
+                  >
+                    {{ t('Split Video') }}
+                  </el-button>
                 </div>
               </div>
             </el-collapse-item>
