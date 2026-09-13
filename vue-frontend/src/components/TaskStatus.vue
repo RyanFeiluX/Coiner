@@ -212,6 +212,24 @@
                   >
                     {{ t('Split Video') }}
                   </el-button>
+                  <el-button
+                    v-if="task.task_type === 'video_split' && task.status === 'completed' && task.videos && task.videos.length > 0"
+                    :key="'scene-integration-'+task.task_id"
+                    type="success"
+                    size="small"
+                    @click="navigateToSceneIntegration(task)"
+                  >
+                    {{ t('Scene Integration') }}
+                  </el-button>
+                  <el-button
+                    v-if="task.task_type === 'video_split' && task.status === 'completed' && task.videos && task.videos.length > 0"
+                    :key="'video-split-'+task.task_id"
+                    type="warning"
+                    size="small"
+                    @click="navigateToVideoSplitter(task)"
+                  >
+                    {{ t('Split Video') }}
+                  </el-button>
                 </div>
               </div>
             </el-collapse-item>

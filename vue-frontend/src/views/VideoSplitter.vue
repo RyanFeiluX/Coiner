@@ -109,13 +109,24 @@
                 </div>
                 <div v-if="titleEnabled" class="segment-title-edit">
                   <el-input
-                    v-model="segment.title"
+                    :modelValue="getDisplayTitle(segment.title)"
+                    @update:modelValue="(val: string) => { segments[segIdx].title = getModelTitle(val); }"
                     :placeholder="t('Enter video title')"
                     size="small"
                     clearable
                     maxlength="60"
                     show-word-limit
+                    :ref="(el: any) => setInputRef(segIdx, el)"
                   />
+                  <el-button
+                    size="small"
+                    type="info"
+                    text
+                    @click="insertNewline(segIdx)"
+                    :title="t('Insert Line Break')"
+                  >
+                    ↵
+                  </el-button>
                 </div>
                 <div class="segment-scenes">
                   <div class="scene-chips">
@@ -210,7 +221,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { useI18nStore } from '../stores/i18n';
@@ -230,6 +241,34 @@ const minDuration = ref(30);
 const maxDuration = ref(90);
 // Title toggle
 const titleEnabled = ref(false);
+// Input refs for title editing
+const inputRefs = ref<Record<number, any>>({});
+const setInputRef = (idx: number, el: any) => {
+  if (el) inputRefs.value[idx] = el;
+};
+const NEWLINE_MARKER = '↵';
+const getDisplayTitle = (title: string) => {
+  return (title || '').replace(/\n/g, NEWLINE_MARKER);
+};
+const getModelTitle = (displayVal: string) => {
+  return displayVal.replace(new RegExp(NEWLINE_MARKER, 'g'), '\n');
+};
+const insertNewline = (idx: number) => {
+  const segment = segments.value[idx];
+  if (!segment) return;
+  const inputEl = inputRefs.value[idx]?.$el?.querySelector('input');
+  if (!inputEl) {
+    segment.title = (segment.title || '') + '\n';
+    return;
+  }
+  const pos = inputEl.selectionStart || 0;
+  const text = segment.title || '';
+  segment.title = text.slice(0, pos) + '\n' + text.slice(pos);
+  nextTick(() => {
+    inputEl.focus();
+    inputEl.setSelectionRange(pos + 1, pos + 1);
+  });
+};
 // Segments
 const segments = ref<any[]>([]);
 // Scanning state

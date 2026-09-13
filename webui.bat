@@ -6,36 +6,25 @@ echo Starting Coiner with Vue frontend...
 
 set PYTHONPATH=%CD%
 
-rem Ensure local npm.cmd is in PATH if it exists
-if exist "%CD%\npm.cmd" (
-    set "PATH=%CD%;%PATH%"
+rem Check if node and npm are available
+call node --version >nul 2>&1
+if !ERRORLEVEL! NEQ 0 (
+    echo Node.js is not installed or not in PATH
+    echo Please install Node.js from https://nodejs.org/
+    pause
+    exit /b 1
 )
-
-rem Check if npm is available and working
-call npm.cmd --version >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo npm not found or not working, installing npm...
-    node "%CD%\install-npm.js"
-    if %ERRORLEVEL% EQU 0 (
-        echo npm installed successfully
-        set "PATH=%CD%;%PATH%"
-    ) else (
-        echo Failed to install npm
-        pause
-        exit /b 1
-    )
-    rem Verify npm is now working
-    call npm.cmd --version >nul 2>&1
-    if %ERRORLEVEL% NEQ 0 (
-        echo npm still not working after installation
-        pause
-        exit /b 1
-    )
+call npm --version >nul 2>&1
+if !ERRORLEVEL! NEQ 0 (
+    echo npm is not installed or not in PATH
+    echo Please install Node.js from https://nodejs.org/
+    pause
+    exit /b 1
 )
 
 rem Activate conda environment
 call conda activate condaenv-coiner
-if %ERRORLEVEL% NEQ 0 (
+if !ERRORLEVEL! NEQ 0 (
     echo Failed to activate conda environment
     pause
     exit /b 1
