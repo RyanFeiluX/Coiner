@@ -638,7 +638,6 @@ const downloadAsZip = async (files: any[]) => {
 // Download selected
 const downloadSelected = async () => {
   console.log('[Download] downloadSelected called, count:', selectedResults.value.length);
-  ElMessage.info(t('Preparing download...'));
   const files = selectedResults.value;
   if (files.length === 0) return;
   if (files.length === 1) {
@@ -651,7 +650,6 @@ const downloadSelected = async () => {
 // Download all
 const downloadAll = async () => {
   console.log('[Download] downloadAll called, count:', splitResults.value.length);
-  ElMessage.info(t('Preparing download...'));
   const files = splitResults.value;
   if (files.length === 0) return;
   if (files.length === 1) {
