@@ -363,7 +363,16 @@ const resetExecutionState = () => {
   progress.value = 0;
   status.value = '';
   splitResults.value = [];
+  scanResult.value = null;
+  segments.value = [];
 };
+
+// 当 segments 内容变化时（编辑标题、增删场景等），清除上次分割结果并恢复按钮可用
+watch(segments, () => {
+  if (isCompleted.value) {
+    resetExecutionState();
+  }
+}, { deep: true });
 
 // Scan task
 const scanTask = async () => {
