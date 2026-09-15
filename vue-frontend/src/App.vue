@@ -99,12 +99,12 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { VideoCamera, Document, Microphone, ChatLineSquare, Collection, Timer, VideoPlay, Setting, Memo, Scissor } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { useI18nStore } from './stores/i18n';
 import { useTasksStore } from './stores/tasks';
 import { useSettingsStore } from './stores/settings';
 import { useScriptStore } from './stores/script';
-import { apiService } from './services/api';
+import { apiService, parseVideoScript } from './services/api';
 import SettingsPanel from './views/SettingsPanel.vue';
 
 const route = useRoute();
@@ -224,6 +224,49 @@ const generateVideo = async () => {
     const titleSettings = settingsStore.video.title;
     const hostVisibleValue = settingsStore.video.hostVisible;
     console.log('[Task Creation] hostVisibleValue:', hostVisibleValue, 'type:', typeof hostVisibleValue);
+
+    // 场景为空但文案已就绪，自动解析文案生成场景
+    if (!hasScenes && hasScript) {
+      try {
+        await ElMessageBox.confirm(
+          t('Scenes not generated yet. Will auto-parse script then generate video. Continue?'),
+          t('Auto Parse Scenes'),
+          { confirmButtonText: t('Continue'), cancelButtonText: t('Cancel'), type: 'info' }
+        );
+
+        const parseLang = (scriptStore.language === 'auto') ? null : scriptStore.language;
+        const parseResult = await parseVideoScript({
+          video_script: videoScript,
+          language: parseLang,
+          host_visible: hostVisibleValue ?? false,
+          script_preset: scriptStore.scriptPreset || 'standard',
+          web_search_enabled: scriptStore.webSearchEnabled || false,
+          search_results_count: scriptStore.searchResultsCount || 5,
+          search_rounds: scriptStore.searchRounds || 1,
+          search_source_preference: scriptStore.searchSourcePreference || 'balanced',
+          expansion_depth: scriptStore.expansionDepth || 'moderate',
+          paragraph_detail: scriptStore.paragraphDetail || 'normal',
+          script_style: scriptStore.scriptStyle || 'general',
+        });
+
+        if (parseResult && parseResult.scenes && parseResult.scenes.length > 0) {
+          scriptStore.updateScenes(parseResult.scenes);
+          ElMessage.success(t('Successfully parsed') + ' ' + parseResult.scenes.length + ' ' + t('scenes'));
+        } else {
+          ElMessage.warning(t('Auto parse returned no scenes, proceeding with video generation'));
+        }
+      } catch (e: any) {
+        if (e !== 'cancel') {
+          ElMessage.error(t('Auto parse failed: ') + (e?.message || e));
+        }
+        isGenerating.value = false;
+        return;
+      }
+
+      // 重新读取 scenes（可能已被 parseResult 更新）
+      scenes.length = 0;
+      scenes.push(...scriptStore.scenes);
+    }
     
     const taskParams: any = {
       video_subject: videoSubject,
