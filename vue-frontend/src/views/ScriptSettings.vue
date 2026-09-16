@@ -97,6 +97,26 @@
           />
           <div class="scene-count">{{ t('Total Scenes') }}: {{ scenes.length }}</div>
         </div>
+        <div class="scene-global-keyword-toggles">
+          <div class="locallens-toggle" :class="{ disabled: scenes.length === 0 }">
+            <span>{{ t('Chinese Only') }}</span>
+            <el-switch
+              v-model="allChineseOnlyOn"
+              :disabled="scenes.length === 0"
+              :class="{ 'locallens-partial': someChineseOnlyOn }"
+              @change="onAllChineseOnlyToggle"
+            />
+          </div>
+          <div class="locallens-toggle" :class="{ disabled: scenes.length === 0 }">
+            <span>{{ t('China Only') }}</span>
+            <el-switch
+              v-model="allChinaRegionOn"
+              :disabled="scenes.length === 0"
+              :class="{ 'locallens-partial': someChinaRegionOn }"
+              @change="onAllChinaRegionToggle"
+            />
+          </div>
+        </div>
         
         <!-- Title Text -->
         <div class="form-item">
@@ -125,6 +145,24 @@
                 <el-button size="small" @click="copyScene(index)">{{ t('Copy') }}</el-button>
                 <el-button size="small" @click="moveSceneUp(index)" :disabled="index === 0">{{ t('Move Up') }}</el-button>
                 <el-button size="small" @click="moveSceneDown(index)" :disabled="index === scenes.length - 1">{{ t('Move Down') }}</el-button>
+              </div>
+            </div>
+            <div class="scene-keyword-toggles">
+              <div class="locallens-toggle">
+                <span>{{ t('Chinese Only') }}</span>
+                <el-switch
+                  v-model="scene.keywordLanguage"
+                  active-value="chinese_only"
+                  inactive-value="bilingual"
+                />
+              </div>
+              <div class="locallens-toggle">
+                <span>{{ t('China Only') }}</span>
+                <el-switch
+                  v-model="scene.regionRestriction"
+                  active-value="china"
+                  inactive-value="global"
+                />
               </div>
             </div>
             
@@ -416,6 +454,8 @@ interface Scene {
   introVideoDuration?: number;
   introVideoCoverFull?: boolean;
   useLocallens?: boolean;
+  keywordLanguage?: 'bilingual' | 'chinese_only';
+  regionRestriction?: 'global' | 'china';
 }
 
 const addNewScene = () => {
@@ -429,7 +469,9 @@ const addNewScene = () => {
     introVideo: undefined,
     introVideoDuration: 10,
     introVideoCoverFull: false,
-    useLocallens: false
+    useLocallens: false,
+    keywordLanguage: undefined,
+    regionRestriction: undefined,
   };
   scriptStore.addScene(newScene);
 };
@@ -451,7 +493,9 @@ const copyScene = (index: number) => {
     introVideoOriginalPath: sceneToCopy.introVideoOriginalPath,
     introVideoDuration: sceneToCopy.introVideoDuration,
     introVideoCoverFull: sceneToCopy.introVideoCoverFull,
-    useLocallens: sceneToCopy.useLocallens
+    useLocallens: sceneToCopy.useLocallens,
+    keywordLanguage: sceneToCopy.keywordLanguage,
+    regionRestriction: sceneToCopy.regionRestriction,
   };
   // Copy to index+1 position
   const newScenes = [...scenes.value];
@@ -498,6 +542,44 @@ const locallensTooltip = computed(() => {
   return statusText;
 });
 
+// Global keyword language toggle (Chinese Only)
+const allChineseOnlyOn = computed({
+  get: () => scenes.value.length > 0 && scenes.value.every(s => s.keywordLanguage === 'chinese_only'),
+  set: (value: boolean) => {
+    const lang: 'bilingual' | 'chinese_only' = value ? 'chinese_only' : 'bilingual';
+    const newScenes = scenes.value.map(s => ({ ...s, keywordLanguage: lang }));
+    scriptStore.updateScenes(newScenes);
+  }
+});
+
+const someChineseOnlyOn = computed(() => {
+  const count = scenes.value.filter(s => s.keywordLanguage === 'chinese_only').length;
+  return count > 0 && count < scenes.value.length;
+});
+
+const onAllChineseOnlyToggle = (value: boolean | string) => {
+  ElMessage.success(value ? t('All scenes Chinese keywords') : t('All scenes bilingual keywords'));
+};
+
+// Global region restriction toggle (China Only)
+const allChinaRegionOn = computed({
+  get: () => scenes.value.length > 0 && scenes.value.every(s => s.regionRestriction === 'china'),
+  set: (value: boolean) => {
+    const region: 'global' | 'china' = value ? 'china' : 'global';
+    const newScenes = scenes.value.map(s => ({ ...s, regionRestriction: region }));
+    scriptStore.updateScenes(newScenes);
+  }
+});
+
+const someChinaRegionOn = computed(() => {
+  const count = scenes.value.filter(s => s.regionRestriction === 'china').length;
+  return count > 0 && count < scenes.value.length;
+});
+
+const onAllChinaRegionToggle = (value: boolean | string) => {
+  ElMessage.success(value ? t('All scenes China region') : t('All scenes global region'));
+};
+
 const moveSceneUp = (index: number) => {
   if (index > 0) {
     const newScenes = [...scenes.value];
@@ -538,6 +620,8 @@ const exportScenes = async () => {
       intro_video: scene.introVideo,
       intro_video_original_path: scene.introVideoOriginalPath,
       intro_duration: scene.introVideoDuration,
+      keyword_language: scene.keywordLanguage,
+      region_restriction: scene.regionRestriction,
     }))
   };
   const scenesData = JSON.stringify(exportData, null, 2);
@@ -679,7 +763,9 @@ const importScenes = (event: Event) => {
             script: scene.script,
             introVideo,
             introVideoOriginalPath,
-            introVideoDuration
+            introVideoDuration,
+            keywordLanguage: scene.keyword_language || scene.keywordLanguage,
+            regionRestriction: scene.region_restriction || scene.regionRestriction,
           };
         });
         
@@ -923,6 +1009,22 @@ watch(
   }
 );
 
+watch(
+  () => form.globalKeywordLanguage,
+  (newValue) => {
+    scriptStore.updateGlobalKeywordLanguage(newValue);
+    scriptStore.saveToLocalStorage();
+  }
+);
+
+watch(
+  () => form.globalRegionRestriction,
+  (newValue) => {
+    scriptStore.updateGlobalRegionRestriction(newValue);
+    scriptStore.saveToLocalStorage();
+  }
+);
+
 // Generate video script from topic
 const handleGenerateVideoScript = async () => {
   if (!form.videoSubject) {
@@ -1029,6 +1131,8 @@ watch([
   () => form.expansionDepth,
   () => form.paragraphDetail,
   () => form.scriptStyle,
+  () => form.globalKeywordLanguage,
+  () => form.globalRegionRestriction,
 ], () => {
   scriptStore.saveToLocalStorage();
 });
@@ -1265,6 +1369,13 @@ defineExpose({
   align-items: center;
 }
 
+.scene-global-keyword-toggles {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 8px;
+}
+
 .scene-count {
   margin-left: auto;
   padding: 6px 12px;
@@ -1307,6 +1418,15 @@ defineExpose({
   display: flex;
   gap: 5px;
   align-items: center;
+}
+
+.scene-keyword-toggles {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e0e0e0;
 }
 
 .locallens-toggle {

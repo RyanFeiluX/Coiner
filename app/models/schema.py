@@ -76,6 +76,8 @@ class Scene(BaseModel):
     video_clips: Optional[List[str]] = None  # Video clip paths for this scene
     audio_file: Optional[str] = None  # Audio file path for this scene
     subtitle_file: Optional[str] = None  # Subtitle file path for this scene
+    keyword_language: Optional[str] = None  # "bilingual" | "chinese_only" | None (default bilingual)
+    region_restriction: Optional[str] = None  # "global" | "china" | None (default global)
 
 
 class VideoParams(BaseModel):

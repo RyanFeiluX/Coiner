@@ -565,6 +565,7 @@ def _generate_scene_keywords(
     amount: int,
     purpose: str = "search",
     language: str = None,
+    keyword_language: str = None,
 ) -> List[str]:
     """
     Unified per-scene keyword generation entry point.
@@ -575,6 +576,7 @@ def _generate_scene_keywords(
         amount: Number of keywords to generate.
         purpose: "search" for scene search terms, "tag" for material-matching tags.
         language: Target language (used for the final instruction line).
+        keyword_language: "bilingual" | "chinese_only" | None (default bilingual).
 
     Returns:
         List of generated keywords/tags.
@@ -585,6 +587,7 @@ def _generate_scene_keywords(
         amount=amount,
         language=language,
         purpose=purpose,
+        keyword_language=keyword_language,
     )
 
     logger.info(f"Generating scene keywords for: {scene_script[:50]}...")
@@ -2100,7 +2103,8 @@ Please update the visual/camera descriptions according to the host visibility re
 def generate_scene_terms(
     scene_script: str,
     scene_camera: str,
-    amount: int = 5
+    amount: int = 5,
+    keyword_language: str = None,
 ) -> List[str]:
     """
     Generate search terms for a specific scene.
@@ -2111,6 +2115,7 @@ def generate_scene_terms(
         scene_script: Script for this specific scene
         scene_camera: Camera/visual description for this scene
         amount: Number of terms to generate
+        keyword_language: "bilingual" | "chinese_only" | None (default bilingual).
 
     Returns:
         List of search terms in the original language
@@ -2120,6 +2125,7 @@ def generate_scene_terms(
         scene_context=scene_camera,
         amount=amount,
         purpose="search",
+        keyword_language=keyword_language,
     )
 
     if not search_terms and stop_on_api_failure:
@@ -2131,17 +2137,21 @@ def generate_scene_terms(
     return search_terms
 
 
-def add_english_translations(terms: List[str]) -> List[str]:
+def add_english_translations(terms: List[str], skip: bool = False) -> List[str]:
     """
     For non-English terms, add English translations to maximize video search coverage.
 
     Args:
         terms: List of search terms (may contain any language)
+        skip: If True, return terms unchanged (used when keyword_language is "chinese_only")
 
     Returns:
         List of terms with English translations added for non-English terms
     """
     if not terms:
+        return terms
+
+    if skip:
         return terms
 
     # Check if terms are already in English

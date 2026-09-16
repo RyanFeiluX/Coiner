@@ -219,6 +219,9 @@ def generate_scene_terms(task_id, params, scenes):
     for i, scene in enumerate(scenes):
         logger.info(f"generating terms for scene {i+1}/{len(scenes)}: {scene.get('title', '')}")
         
+        # Read keyword_language from scene (per-scene setting)
+        keyword_language = scene.get("keyword_language", None)
+        
         # Check if scene already has keywords (from UI/parsing)
         existing_keywords = scene.get('keywords', '')
         terms = keyword_utils.parse_keywords(existing_keywords)
@@ -232,7 +235,8 @@ def generate_scene_terms(task_id, params, scenes):
                 terms = llm.generate_scene_terms(
                     scene_script=scene.get('audio', scene.get('script', '')),
                     scene_camera=scene.get('visual', scene.get('camera', '')),
-                    amount=5
+                    amount=5,
+                    keyword_language=keyword_language,
                 )
             else:
                 logger.info(f"Using existing keywords for scene {i+1}: {terms}")
@@ -241,7 +245,8 @@ def generate_scene_terms(task_id, params, scenes):
             terms = llm.generate_scene_terms(
                 scene_script=scene.get('audio', scene.get('script', '')),
                 scene_camera=scene.get('visual', scene.get('camera', '')),  # Use visual field from new format
-                amount=5
+                amount=5,
+                keyword_language=keyword_language,
             )
         
         if terms and not (isinstance(terms, str) and "Error: " in terms):
@@ -383,6 +388,10 @@ def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_
 
     # Deduplicate and cap at 5 while preserving order
     scene_keywords = list(dict.fromkeys([k.strip() for k in processed_keywords if k and k.strip()]))[:5]
+    
+    # Read per-scene keyword language and region restriction settings
+    keyword_language = scene.get("keyword_language", None)
+    region_restriction = scene.get("region_restriction", None)
     
     logger.info(f"scene {scene_num}: scene_id={scene_id}, script={scene_script[:50]}...")
     logger.info(f"scene {scene_num}: keywords={scene_keywords}")
@@ -663,6 +672,8 @@ def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_
             max_clip_duration=params.video_clip_duration,
             style_keyword=style_keyword,
             target_number_of_clips=target_online_clips,
+            keyword_language=keyword_language,
+            region_restriction=region_restriction,
         )
         
         if supplement_videos:

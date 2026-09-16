@@ -12,6 +12,8 @@ interface Scene {
   introVideoDuration?: number;
   introVideoCoverFull?: boolean;
   useLocallens?: boolean;
+  keywordLanguage?: 'bilingual' | 'chinese_only';
+  regionRestriction?: 'global' | 'china';
 }
 
 export interface ScriptSettings {
@@ -28,6 +30,8 @@ export interface ScriptSettings {
   expansionDepth: string;
   paragraphDetail: string;
   scriptStyle: string;
+  globalKeywordLanguage: 'bilingual' | 'chinese_only';
+  globalRegionRestriction: 'global' | 'china';
 }
 
 export const useScriptStore = defineStore('script', {
@@ -45,6 +49,8 @@ export const useScriptStore = defineStore('script', {
     expansionDepth: 'moderate',
     paragraphDetail: 'normal',
     scriptStyle: 'general',
+    globalKeywordLanguage: 'bilingual',
+    globalRegionRestriction: 'global',
   }),
   
   actions: {
@@ -140,6 +146,16 @@ export const useScriptStore = defineStore('script', {
       this.saveToLocalStorage();
     },
 
+    updateGlobalKeywordLanguage(value: 'bilingual' | 'chinese_only') {
+      this.globalKeywordLanguage = value;
+      this.saveToLocalStorage();
+    },
+
+    updateGlobalRegionRestriction(value: 'global' | 'china') {
+      this.globalRegionRestriction = value;
+      this.saveToLocalStorage();
+    },
+
     saveToLocalStorage() {
       const data = {
         videoSubject: this.videoSubject,
@@ -155,6 +171,8 @@ export const useScriptStore = defineStore('script', {
         expansionDepth: this.expansionDepth,
         paragraphDetail: this.paragraphDetail,
         scriptStyle: this.scriptStyle,
+        globalKeywordLanguage: this.globalKeywordLanguage,
+        globalRegionRestriction: this.globalRegionRestriction,
       };
       localStorage.setItem('coiner-script', JSON.stringify(data));
     }
