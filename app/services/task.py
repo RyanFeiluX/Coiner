@@ -431,76 +431,74 @@ def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_
         return None
         
     logger.info(f"generating subtitle for scene {scene_num}")
-    subtitle_path = ""
-    if params.subtitle_enabled:
-        subtitle_path = path.join(scene_dir, "subtitle.srt")
-        logger.info(f"scene {scene_num}: subtitle path: {subtitle_path}")
-        subtitle_provider = config.app.get("subtitle_provider", "edge").strip().lower()
-        
-        subtitle_fallback = False
-        if sub_maker is None:
-            logger.info(f"scene {scene_num}: sub_maker is None, using Whisper")
-            subtitle_fallback = True
-        elif subtitle_provider == "edge":
-            voice.create_subtitle(
-                text=scene_script, sub_maker=sub_maker, subtitle_file=subtitle_path
-            )
-            if not os.path.exists(subtitle_path):
-                subtitle_fallback = True
-        
-        if subtitle_provider == "whisper" or subtitle_fallback:
-            logger.info(f"scene {scene_num}: using Whisper to generate subtitle from audio file: {audio_file}")
-            logger.info(f"scene {scene_num}: audio file exists: {os.path.exists(audio_file)}, size: {os.path.getsize(audio_file) if os.path.exists(audio_file) else 0} bytes")
-            logger.info(f"scene {scene_num}: scene_script for subtitle: {scene_script[:100]}...")
-            try:
-                subtitle.create(audio_file=audio_file, subtitle_file=subtitle_path)
-                if os.path.exists(subtitle_path):
-                    subtitle.correct(subtitle_file=subtitle_path, video_script=scene_script)
-            except Exception as e:
-                logger.error(f"scene {scene_num}: failed to generate subtitle with Whisper: {str(e)}")
-                subtitle_fallback = True
-        
+    subtitle_path = path.join(scene_dir, "subtitle.srt")
+    logger.info(f"scene {scene_num}: subtitle path: {subtitle_path}")
+    subtitle_provider = config.app.get("subtitle_provider", "edge").strip().lower()
+    
+    subtitle_fallback = False
+    if sub_maker is None:
+        logger.info(f"scene {scene_num}: sub_maker is None, using Whisper")
+        subtitle_fallback = True
+    elif subtitle_provider == "edge":
+        voice.create_subtitle(
+            text=scene_script, sub_maker=sub_maker, subtitle_file=subtitle_path
+        )
         if not os.path.exists(subtitle_path):
-            logger.warning(f"scene {scene_num}: subtitle file not found")
-            # Fallback: create subtitle from script directly
-            try:
-                logger.info(f"scene {scene_num}: creating subtitle from script directly")
-                # Split script into lines
-                script_lines = utils.split_string_by_punctuations(scene_script)
-                script_lines = [line.strip() for line in script_lines if line.strip()]
+            subtitle_fallback = True
+    
+    if subtitle_provider == "whisper" or subtitle_fallback:
+        logger.info(f"scene {scene_num}: using Whisper to generate subtitle from audio file: {audio_file}")
+        logger.info(f"scene {scene_num}: audio file exists: {os.path.exists(audio_file)}, size: {os.path.getsize(audio_file) if os.path.exists(audio_file) else 0} bytes")
+        logger.info(f"scene {scene_num}: scene_script for subtitle: {scene_script[:100]}...")
+        try:
+            subtitle.create(audio_file=audio_file, subtitle_file=subtitle_path)
+            if os.path.exists(subtitle_path):
+                subtitle.correct(subtitle_file=subtitle_path, video_script=scene_script)
+        except Exception as e:
+            logger.error(f"scene {scene_num}: failed to generate subtitle with Whisper: {str(e)}")
+            subtitle_fallback = True
+    
+    if not os.path.exists(subtitle_path):
+        logger.warning(f"scene {scene_num}: subtitle file not found")
+        # Fallback: create subtitle from script directly
+        try:
+            logger.info(f"scene {scene_num}: creating subtitle from script directly")
+            # Split script into lines
+            script_lines = utils.split_string_by_punctuations(scene_script)
+            script_lines = [line.strip() for line in script_lines if line.strip()]
+            
+            if script_lines:
+                # Create subtitle file with simple timing
+                with open(subtitle_path, 'w', encoding='utf-8') as f:
+                    start_time = 0.0
+                    for i, line in enumerate(script_lines):
+                        # Calculate end time (approx 2 seconds per line)
+                        end_time = start_time + 2.0
+                        # Format time for SRT
+                        def format_time(seconds):
+                            hours = int(seconds // 3600)
+                            minutes = int((seconds % 3600) // 60)
+                            secs = int(seconds % 60)
+                            ms = int((seconds % 1) * 1000)
+                            return f"{hours:02d}:{minutes:02d}:{secs:02d},{ms:03d}"
+                        
+                        # Write subtitle entry
+                        f.write(f"{i+1}\n")
+                        f.write(f"{format_time(start_time)} --> {format_time(end_time)}\n")
+                        f.write(f"{line}\n\n")
+                        
+                        # Update start time for next line
+                        start_time = end_time
                 
-                if script_lines:
-                    # Create subtitle file with simple timing
-                    with open(subtitle_path, 'w', encoding='utf-8') as f:
-                        start_time = 0.0
-                        for i, line in enumerate(script_lines):
-                            # Calculate end time (approx 2 seconds per line)
-                            end_time = start_time + 2.0
-                            # Format time for SRT
-                            def format_time(seconds):
-                                hours = int(seconds // 3600)
-                                minutes = int((seconds % 3600) // 60)
-                                secs = int(seconds % 60)
-                                ms = int((seconds % 1) * 1000)
-                                return f"{hours:02d}:{minutes:02d}:{secs:02d},{ms:03d}"
-                            
-                            # Write subtitle entry
-                            f.write(f"{i+1}\n")
-                            f.write(f"{format_time(start_time)} --> {format_time(end_time)}\n")
-                            f.write(f"{line}\n\n")
-                            
-                            # Update start time for next line
-                            start_time = end_time
-                    
-                    logger.success(f"scene {scene_num}: subtitle file created from script: {subtitle_path}")
-                else:
-                    logger.warning(f"scene {scene_num}: script is empty, cannot create subtitle")
-                    subtitle_path = ""
-            except Exception as e:
-                logger.error(f"scene {scene_num}: failed to create subtitle from script: {e}")
+                logger.success(f"scene {scene_num}: subtitle file created from script: {subtitle_path}")
+            else:
+                logger.warning(f"scene {scene_num}: script is empty, cannot create subtitle")
                 subtitle_path = ""
-        else:
-            logger.success(f"scene {scene_num}: subtitle file created: {subtitle_path}")
+        except Exception as e:
+            logger.error(f"scene {scene_num}: failed to create subtitle from script: {e}")
+            subtitle_path = ""
+    else:
+        logger.success(f"scene {scene_num}: subtitle file created: {subtitle_path}")
     
     # 3. Get video materials for scene
     if check_cancelled and check_cancelled():

@@ -203,7 +203,7 @@ def _rebuild_scene_video(scene_info: dict, task_dir: str) -> str:
 
     # Regenerate subtitle if missing (independent of whether audio was just generated or pre-existing)
     subtitle_path = scene_info.get("subtitle")
-    if (not subtitle_path or not os.path.exists(subtitle_path)) and params_data.get("subtitle_enabled", True):
+    if not subtitle_path or not os.path.exists(subtitle_path):
         subtitle_path = os.path.join(scene_dir, "subtitle.srt")
         try:
             from app.services import voice
