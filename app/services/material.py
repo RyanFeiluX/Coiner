@@ -455,6 +455,8 @@ def download_videos(
     max_clip_duration: int = 5,
     style_keyword: str = "",
     target_number_of_clips: Optional[int] = None,
+    keyword_language: Optional[str] = None,
+    region_restriction: Optional[str] = None,
 ) -> List[str]:
     # Initialize download system
     initialize_download_system()
@@ -478,9 +480,18 @@ def download_videos(
         return []
     
     # Add English translations for non-English terms to maximize search coverage
-    enhanced_search_terms = add_english_translations(valid_search_terms)
+    skip_english = (keyword_language == "chinese_only")
+    enhanced_search_terms = add_english_translations(valid_search_terms, skip=skip_english)
     logger.info(f"Enhanced search terms with translations: {enhanced_search_terms}")
     valid_search_terms = enhanced_search_terms
+
+    # Apply region restriction: prepend "中国" to search terms for China-only mode
+    if region_restriction == "china":
+        valid_search_terms = [
+            term if term.startswith("中国") else f"中国 {term}"
+            for term in valid_search_terms
+        ]
+        logger.info(f"Applied China region restriction: {valid_search_terms}")
 
     # Search with primary source
     logger.info(f"Searching videos from primary source: {primary_source}")

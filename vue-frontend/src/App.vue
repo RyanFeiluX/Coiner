@@ -201,6 +201,8 @@ const generateVideo = async () => {
       intro_duration: scene.introVideoDuration || scene.intro_duration || 10,
       intro_video_cover_full: scene.introVideoCoverFull || false,
       use_locallens: scene.useLocallens || scene.use_locallens || false,
+      keyword_language: scene.keywordLanguage || scene.keyword_language || null,
+      region_restriction: scene.regionRestriction || scene.region_restriction || null,
     }));
     
     const hasScenes = scenes.length > 0;

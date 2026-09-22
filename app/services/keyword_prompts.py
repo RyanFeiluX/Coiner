@@ -25,9 +25,16 @@ def build_video_terms_prompt(
     amount: int,
     language: Optional[str] = None,
     feedback: Optional[str] = None,
+    keyword_language: Optional[str] = None,
 ) -> str:
     """Prompt for generating video-level search terms."""
     feedback_section = f"\n\n## Feedback on Previous Attempt\n{feedback}\n" if feedback else ""
+    if keyword_language == "chinese_only":
+        lang_instruction = "5. Generate ONLY Chinese search terms. Do NOT generate English search terms."
+        example = '["古镇风景", "江南水乡", "传统建筑", "青石板路", "小桥流水"]'
+    else:
+        lang_instruction = "5. Generate both English and Chinese search terms to get more relevant videos."
+        example = '["design patterns", "设计模式", "software design", "软件设计", "coding best practices", "编程最佳实践", "object oriented", "面向对象", "design principles", "设计原则"]'
     return f"""
 # Role: Video Search Terms Generator
 
@@ -39,11 +46,11 @@ Generate {amount} search terms for stock videos, depending on the subject of a v
 2. Each search term should consist of 1-3 words, always add the main subject of the video.
 3. You must only return the JSON array of strings. You must not return anything else. You must not return the script.
 4. The search terms must be related to the subject of the video.
-5. Generate both English and Chinese search terms to get more relevant videos.
+{lang_instruction}
 {KEYWORD_POLICY}
 
 ## Output Example:
-["design patterns", "设计模式", "software design", "软件设计", "coding best practices", "编程最佳实践", "object oriented", "面向对象", "design principles", "设计原则"]
+{example}
 {feedback_section}
 
 ## Context:
@@ -52,8 +59,6 @@ Generate {amount} search terms for stock videos, depending on the subject of a v
 
 ### Video Script
 {video_script}
-
-Please generate both English and Chinese search terms to ensure better search results.
 """.strip()
 
 
@@ -64,6 +69,7 @@ def build_scene_keywords_prompt(
     language: Optional[str] = None,
     purpose: str = "search",
     feedback: Optional[str] = None,
+    keyword_language: Optional[str] = None,
 ) -> str:
     """
     Prompt for generating per-scene keywords/tags.
@@ -75,6 +81,7 @@ def build_scene_keywords_prompt(
         language: Target language (used for the final instruction line).
         purpose: "search" for scene search terms, "tag" for material-matching tags.
         feedback: Optional feedback from a previous validation attempt.
+        keyword_language: "bilingual" | "chinese_only" | None (default bilingual).
     """
     if purpose == "tag":
         role = "Scene Tag Generator"
@@ -89,6 +96,15 @@ def build_scene_keywords_prompt(
 
     feedback_section = f"\n\n## Feedback on Previous Attempt\n{feedback}\n" if feedback else ""
 
+    if keyword_language == "chinese_only":
+        lang_instruction = "4. Generate keywords ONLY in Chinese. Do NOT generate English keywords."
+        example = '["古镇风景", "江南水乡", "传统建筑", "青石板路", "小桥流水"]'
+        final_line = "Please generate keywords in Chinese only."
+    else:
+        lang_instruction = "4. Generate keywords in the same language as the scene script."
+        example = '["伊朗邮轮", "军舰甲板", "港口夜景", "海上航行", "乘客登船"]'
+        final_line = "Please generate keywords in the same language as the scene script."
+
     return f"""
 # Role: {role}
 
@@ -99,17 +115,17 @@ def build_scene_keywords_prompt(
 1. The keywords are to be returned as a JSON array of strings.
 2. {KEYWORD_POLICY}
 3. You must only return the JSON array of strings. You must not return anything else.
-4. Generate keywords in the same language as the scene script.
+4. {lang_instruction}
 5. Focus on visual elements mentioned in the camera/visual description.
 
 ## Output Example:
-["伊朗邮轮", "军舰甲板", "港口夜景", "海上航行", "乘客登船"]
+{example}
 {feedback_section}
 
 ## Context:
 {context}
 
-Please generate keywords in the same language as the scene script.
+{final_line}
 """.strip()
 
 
