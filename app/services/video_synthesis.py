@@ -376,6 +376,8 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         
         scenes_in_range = all_scenes[start_idx:end_idx + 1]
         
+        sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=2)
+        
         if not scenes_in_range:
             end_time = time.time()
             total_time = end_time - start_time
@@ -460,6 +462,8 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
             else:
                 logger.warning("script.json not found, cannot force rebuild scenes")
 
+        sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=5)
+
         # Attempt to rebuild scenes with missing combined.mp4
         rebuilt_count = 0
         for scene_info in scenes_in_range:
@@ -474,6 +478,8 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
                 logger.success(f"Scene {scene_info['scene_num']}: rebuilt successfully: {rebuilt_path}")
             else:
                 logger.warning(f"Scene {scene_info['scene_num']}: rebuild failed, scene will be skipped")
+
+        sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=8)
 
         # Collect scenes that are now valid
         valid_scenes = [s for s in scenes_in_range if s["video"] is not None and os.path.exists(s["video"])]
@@ -513,6 +519,8 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         if subtitle_recovered:
             logger.info(f"Subtitle recovery: {subtitle_recovered} scene(s) recovered")
 
+        sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=10)
+
         # Regenerate merged_subtitle.srt in the original task directory
         try:
             original_task_id = os.path.basename(task_dir)
@@ -537,6 +545,8 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
                     logger.success(f"Merged subtitle file regenerated: {merged}")
         except Exception as merge_e:
             logger.warning(f"Failed to regenerate merged subtitle: {merge_e}")
+
+        sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=12)
 
         # Get scene integration task directory for the final video
         # Use the provided task_id parameter for the scene integration task
@@ -732,6 +742,8 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
             else:
                 logger.warning("Failed to create silence prefix video")
         
+        sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=14)
+        
         # Burn subtitles into each scene video (pre-synthesis)
         # This eliminates audio-subtitle sync issues because subtitles are
         # embedded directly into each scene's video track before concatenation.
@@ -740,18 +752,23 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
             burned_count = 0
             skipped_count = 0
             failed_count = 0
+            total_scenes_to_burn = len(valid_scenes)
             
-            for scene in valid_scenes:
+            for burn_idx, scene in enumerate(valid_scenes):
                 scene_video = scene.get("video")
                 scene_subtitle = scene.get("subtitle")
                 
                 if not scene_video or not os.path.exists(scene_video):
                     skipped_count += 1
+                    burn_progress = 14 + int((burn_idx + 1) / total_scenes_to_burn * 6)
+                    sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=burn_progress)
                     continue
                 
                 if not scene_subtitle or not os.path.exists(scene_subtitle):
                     logger.info(f"Scene {scene['scene_num']}: no subtitle file, skipping burn-in")
                     skipped_count += 1
+                    burn_progress = 14 + int((burn_idx + 1) / total_scenes_to_burn * 6)
+                    sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=burn_progress)
                     continue
                 
                 scene_num = scene["scene_num"]
@@ -777,6 +794,9 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
                 except Exception as e:
                     logger.error(f"Scene {scene['scene_num']}: error burning subtitles - {e}, using original video")
                     failed_count += 1
+                
+                burn_progress = 14 + int((burn_idx + 1) / total_scenes_to_burn * 6)
+                sm.state.update_task(task_id, state=const.TASK_STATE_PROCESSING, progress=burn_progress)
             
             # Update video paths with burned versions
             video_paths = [s["video"] for s in valid_scenes]
