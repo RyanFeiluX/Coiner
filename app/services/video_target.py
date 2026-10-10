@@ -426,25 +426,23 @@ def burn_subtitles_to_scene_video(
     if pos == 'custom':
         custom_pos = float(getattr(params, 'custom_position', 70.0))
         estimated_h = int(font_size_px * 1.5)
+        margin_px = int(video_height * margin_ratio)
 
-        # Check if pillarbox (3:4 -> 9:16) will be applied later
-        # Position must be calculated relative to final output frame
-        target_h = video_height
-        pad_h = 0
-        vasp = getattr(params, 'video_aspect', None)
-        if vasp is not None:
-            vasp_value = vasp.value if hasattr(vasp, 'value') else str(vasp)
-            if vasp_value == "3:4":
-                target_h = 1920
-                pad_h = (target_h - video_height) // 2
+        # Mirror the preview semantics (video.py /subtitle-preview): the text
+        # TOP is placed at (content_h - text_h) * pos% within the CONTENT area.
+        # Scene videos are content-sized (3:4 letterbox bars are added later in
+        # process_final_video), so video_height here IS the content height.
+        # Mapping through the final 1920 frame instead would push the subtitle
+        # towards/past the content bottom edge and disagree with the preview.
+        y_top = (video_height - estimated_h) * (custom_pos / 100)
+        # Clamp exactly like the preview: text must keep margin_px distance
+        # from both the top and the bottom of the content area.
+        max_y = video_height - estimated_h - margin_px
+        min_y = margin_px
+        y_top = max(min_y, min(y_top, max_y))
 
-        y_in_target = int((target_h - estimated_h) * (custom_pos / 100))
-        y_in_scene = y_in_target - pad_h
-        y_in_scene = max(0, min(y_in_scene, video_height - estimated_h))
-
-        sub_params["margin_v"] = video_height - y_in_scene - estimated_h
-        if sub_params["margin_v"] < 0:
-            sub_params["margin_v"] = 0
+        # ASS alignment=2 anchors the text BOTTOM at margin_v from the bottom.
+        sub_params["margin_v"] = max(0, int(video_height - y_top - estimated_h))
     else:
         sub_params["margin_v"] = int(video_height * margin_ratio)
 
@@ -1603,12 +1601,17 @@ def process_final_video(
                 # Approximate MoviePy custom position logic in FFmpeg path.
                 # MoviePy: custom_y = (video_height - txt_clip.h) * (custom_position / 100)
                 # We estimate txt_clip.h ≈ font_size_px * 1.5 for a typical line.
+                # _video_height is the CONTENT height (letterbox bars excluded),
+                # matching both the preview and the per-scene burn path.
                 custom_pos = float(getattr(params, 'custom_position', 70.0))
                 estimated_h = int(font_size_px * 1.5)
-                target_y = int((_video_height - estimated_h) * (custom_pos / 100))
-                sub_params["margin_v"] = _video_height - target_y - estimated_h
-                if sub_params["margin_v"] < 0:
-                    sub_params["margin_v"] = 0
+                margin_px = int(_video_height * margin_ratio)
+                target_y = (_video_height - estimated_h) * (custom_pos / 100)
+                # Clamp like the preview: keep margin_px away from both edges.
+                max_y = _video_height - estimated_h - margin_px
+                min_y = margin_px
+                target_y = max(min_y, min(target_y, max_y))
+                sub_params["margin_v"] = max(0, int(_video_height - target_y - estimated_h))
             else:
                 margin_ratio = _subtitle_cfg.get("subtitle_margin", 0.05)
                 sub_params["margin_v"] = int(_video_height * margin_ratio)
