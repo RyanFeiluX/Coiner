@@ -87,14 +87,17 @@
               </div>
             </div>
             <div style="flex: 2;">
-              <label class="form-label">{{ t('Stroke Width') }}</label>
-              <el-slider
-                v-model="form.subtitleOutlineWidth"
-                :min="0"
-                :max="10"
-                :step="0.1"
-                show-input
-              />
+              <label class="form-label">{{ t('Stroke Width') }} (px)</label>
+              <div class="slider-control">
+                <el-slider
+                  v-model="form.subtitleOutlineWidth"
+                  :min="0"
+                  :max="30"
+                  :step="1"
+                  show-input
+                />
+                <span class="slider-value">{{ form.subtitleOutlineWidth }}px</span>
+              </div>
             </div>
           </div>
         </div>
@@ -523,6 +526,13 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.slider-value {
+  min-width: 70px;
+  text-align: right;
+  font-size: 14px;
+  color: #666;
 }
 
 .preview-section {

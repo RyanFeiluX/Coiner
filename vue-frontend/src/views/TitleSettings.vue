@@ -144,8 +144,8 @@
               <el-slider
                 v-model="form.titleStrokeWidth"
                 :min="0"
-                :max="10"
-                :step="0.5"
+                :max="30"
+                :step="1"
                 :show-input="true"
                 :input-size="'small'"
               />
