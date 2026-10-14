@@ -184,7 +184,7 @@
               
               <div class="form-item">
                 <label class="form-label" v-html="parseLabelMarkdown(t('Scene Script'))"></label>
-                <el-input v-model="scene.script" type="textarea" :rows="2" :placeholder="t('Enter scene script')" class="form-textarea" />
+                <el-input v-model="scene.script" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" :placeholder="t('Enter scene script')" class="form-textarea scene-script-autosize" />
               </div>
               
               <div class="form-item">
@@ -1235,6 +1235,13 @@ defineExpose({
   flex: 1;
   min-height: 56px !important;
   resize: none;
+}
+
+/* Scene script textarea: auto-resize with min 2 rows, max 8 rows */
+.scene-script-autosize :deep(.el-textarea__inner) {
+  flex: none;
+  min-height: 0 !important;
+  overflow-y: auto;
 }
 
 .form-select {
