@@ -577,8 +577,8 @@ def get_video_materials_list(request: Request):
 def upload_video_material_file(request: Request, file: UploadFile = File(...)):
     request_id = base.get_task_id(request)
     # check file ext
-    allowed_suffixes = ("mp4", "mov", "avi", "flv", "mkv", "jpg", "jpeg", "png", "gif")
-    if file.filename.endswith(allowed_suffixes):
+    allowed_suffixes = ("mp4", "mov", "avi", "flv", "mkv", "jpg", "jpeg", "png", "gif", "webp")
+    if file.filename.lower().endswith(allowed_suffixes):
         local_videos_dir = utils.storage_dir("local_videos", create=True)
         save_path = os.path.join(local_videos_dir, file.filename)
         # save file
@@ -602,8 +602,8 @@ def upload_video_material_file(request: Request, file: UploadFile = File(...)):
 def upload_intro_video(request: Request, task_id: str, file: UploadFile = File(...)):
     request_id = base.get_task_id(request)
     # check file ext
-    allowed_suffixes = ("mp4", "mov", "avi", "flv", "mkv", "jpg", "jpeg", "png", "gif")
-    if file.filename.endswith(allowed_suffixes):
+    allowed_suffixes = ("mp4", "mov", "avi", "flv", "mkv", "jpg", "jpeg", "png", "gif", "webp")
+    if file.filename.lower().endswith(allowed_suffixes):
         # Create task-specific intro_videos directory at storage root
         task_intro_videos_dir = utils.storage_dir("intro_videos", create=True)
         task_intro_videos_dir = os.path.join(task_intro_videos_dir, task_id)

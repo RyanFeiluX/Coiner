@@ -209,7 +209,7 @@
                   <input
                     :ref="el => setFileInputRef(el, index)"
                     type="file"
-                    accept=".mp4,.mov,.avi,.flv,.mkv,.jpg,.jpeg,.png,.gif"
+                    accept=".mp4,.mov,.avi,.flv,.mkv,.jpg,.jpeg,.png,.gif,.webp"
                     style="display: none"
                     @change="(e) => importIntroVideo(e, index)"
                   />
@@ -808,7 +808,7 @@ const triggerIntroVideoImport = (index: number) => {
 
 // Validate intro video file
 const validateIntroVideo = (file: File): { valid: boolean; message: string } => {
-  const allowedExtensions = ['.mp4', '.mov', '.avi', '.flv', '.mkv', '.jpg', '.jpeg', '.png', '.gif'];
+  const allowedExtensions = ['.mp4', '.mov', '.avi', '.flv', '.mkv', '.jpg', '.jpeg', '.png', '.gif', '.webp'];
   const fileName = file.name.toLowerCase();
   const isValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
   
@@ -873,7 +873,7 @@ const importIntroVideo = async (event: Event, index: number) => {
     
     if (response.data.status === 200 && response.data.data?.file) {
       const fullPath = response.data.data.file;
-      const isVideo = !file.name.match(/\.(jpg|jpeg|png|bmp)$/i);
+      const isVideo = !file.name.match(/\.(jpg|jpeg|png|bmp|webp)$/i);
       let duration = scenes.value[index].introVideoDuration || 10;
       if (isVideo) {
         const actual = await getMediaDuration(file);

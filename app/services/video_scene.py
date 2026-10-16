@@ -586,6 +586,7 @@ def build_scene_video(
 
     # Process intro video separately if provided
     intro_clips = []
+    temp_gif_path = None
     logger.info(f"build_scene_video - intro_video_path received: {intro_video_path}")
     total_intro_duration = 0
     has_enough_intro = False
@@ -598,13 +599,47 @@ def build_scene_video(
             try:
                 # Check if intro video is actually an image
                 temp_jpg_path = None
-                if intro_video_path.endswith(('.png', '.jpg', '.jpeg', '.bmp')):
+                intro_path_lower = intro_video_path.lower()
+                intro_source_path = intro_video_path
+                # Detect animated WebP so it keeps its animation instead of showing only the first frame
+                is_animated_webp = False
+                if intro_path_lower.endswith('.webp'):
+                    try:
+                        with Image.open(intro_video_path) as webp_img:
+                            is_animated_webp = bool(getattr(webp_img, 'is_animated', False))
+                        logger.info(f"WebP intro detected as {'animated' if is_animated_webp else 'static'}: {intro_video_path}")
+                    except Exception as e:
+                        logger.warning(f"Failed to detect animated WebP, treating as static image: {e}")
+                    if is_animated_webp:
+                        # ffmpeg cannot decode animated WebP (skips ANIM/ANMF chunks),
+                        # convert it to a temporary animated GIF first
+                        try:
+                            temp_fd, temp_gif_path = tempfile.mkstemp(suffix='.gif')
+                            os.close(temp_fd)
+                            gif_frames = []
+                            frame_durations = []
+                            with Image.open(intro_video_path) as anim_img:
+                                for frame_idx in range(anim_img.n_frames):
+                                    anim_img.seek(frame_idx)
+                                    gif_frames.append(anim_img.convert('RGB'))
+                                    frame_durations.append(int(anim_img.info.get('duration') or 100))
+                            gif_frames[0].save(
+                                temp_gif_path, save_all=True, append_images=gif_frames[1:],
+                                duration=frame_durations, loop=0,
+                            )
+                            intro_source_path = temp_gif_path
+                            logger.info(f"Converted animated WebP to temporary GIF: {temp_gif_path} ({len(gif_frames)} frames)")
+                        except Exception as e:
+                            logger.error(f"Failed to convert animated WebP to GIF, falling back to first frame: {e}")
+                            intro_source_path = intro_video_path
+                            is_animated_webp = False
+                if intro_path_lower.endswith(('.png', '.jpg', '.jpeg', '.bmp', '.webp')) and not is_animated_webp:
                     # Handle static images with specified duration
                     logger.info(f"Processing image as intro video with duration: {intro_duration:.1f}s")
                     
-                    # If it's a PNG, convert to a temporary JPG first to avoid issues
+                    # If it's a PNG/WebP, convert to a temporary JPG first to avoid issues
                     processed_image_path = intro_video_path
-                    if intro_video_path.lower().endswith('.png'):
+                    if intro_path_lower.endswith(('.png', '.webp')):
                         try:
                             # Open the PNG image
                             with Image.open(intro_video_path) as img:
@@ -617,9 +652,9 @@ def build_scene_video(
                                 # Save as JPG with high quality
                                 img.save(temp_jpg_path, 'JPEG', quality=95)
                                 processed_image_path = temp_jpg_path
-                                logger.info(f"Converted PNG intro to temporary JPG: {temp_jpg_path}")
+                                logger.info(f"Converted PNG/WebP intro to temporary JPG: {temp_jpg_path}")
                         except Exception as e:
-                            logger.error(f"Failed to convert PNG to JPG, using original PNG: {e}")
+                            logger.error(f"Failed to convert PNG/WebP to JPG, using original file: {e}")
                             processed_image_path = intro_video_path
                     
                     if intro_video_cover_full:
@@ -666,11 +701,11 @@ def build_scene_video(
                     intro_clips.append(clip)
                     total_intro_duration = clip_duration
                     logger.info(f"Image intro video processed: {intro_video_path} (duration: {clip_duration:.1f}s)")
-                elif intro_video_path.endswith('.gif'):
-                    # Handle animated GIF as video
-                    logger.info(f"Processing animated GIF as intro video")
+                elif intro_path_lower.endswith('.gif') or is_animated_webp:
+                    # Handle animated GIF/WebP as video
+                    logger.info(f"Processing animated GIF/WebP as intro video")
                     
-                    clip = VideoFileClip(intro_video_path)
+                    clip = VideoFileClip(intro_source_path)
                     clip_duration = clip.duration
                     clip_w, clip_h = clip.size
                     
@@ -703,7 +738,7 @@ def build_scene_video(
                     
                     intro_clips.append(clip)
                     total_intro_duration = clip_duration
-                    logger.info(f"Animated GIF intro video processed: {intro_video_path} (duration: {clip_duration:.1f}s)")
+                    logger.info(f"Animated GIF/WebP intro video processed: {intro_video_path} (duration: {clip_duration:.1f}s)")
                 else:
                     clip = VideoFileClip(intro_video_path)
                     clip_duration = clip.duration
@@ -800,6 +835,12 @@ def build_scene_video(
     # Check if we have any processed clips
     if not all_clips:
         logger.error("No video clips were successfully processed")
+        if temp_gif_path and os.path.exists(temp_gif_path):
+            try:
+                os.remove(temp_gif_path)
+                logger.info(f"Cleaned up temporary GIF: {temp_gif_path}")
+            except Exception as e:
+                logger.warning(f"Failed to clean up temporary GIF: {e}")
         return None, []
     
     # Combine clips to match audio duration
@@ -824,6 +865,14 @@ def build_scene_video(
         audio_file=audio_file,
         threads=threads
     )
+
+    # Clean up temporary animated WebP GIF (clips are closed by finalize_video)
+    if temp_gif_path and os.path.exists(temp_gif_path):
+        try:
+            os.remove(temp_gif_path)
+            logger.info(f"Cleaned up temporary GIF: {temp_gif_path}")
+        except Exception as e:
+            logger.warning(f"Failed to clean up temporary GIF: {e}")
     
     # Return both the result and the used local paths for tracking
     return result, used_local_paths

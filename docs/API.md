@@ -690,7 +690,7 @@ Coiner 提供了一套完整的 RESTful API 接口，用于视频生成、配置
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| file | file | 是 | 视频文件 (mp4, mov, avi, flv, mkv, jpg, jpeg, png) |
+| file | file | 是 | 视频/图片文件 (mp4, mov, avi, flv, mkv, jpg, jpeg, png, gif, webp) |
 
 **响应示例**:
 ```json
