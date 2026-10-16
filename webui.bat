@@ -290,29 +290,41 @@ echo Press Enter to stop...
 pause > nul
 
 echo Stopping...
-rem Stop backend processes
+rem Stop backend processes (kill process tree so child python exits with cmd)
 echo Stopping backend processes...
-taskkill /F /FI "WINDOWTITLE eq Coiner - Backend API*" > nul 2>&1
+taskkill /F /T /FI "WINDOWTITLE eq Coiner - Backend API*" > nul 2>&1
 taskkill /F /IM python.exe /FI "COMMANDLINE like %%main.py%%" > nul 2>&1
 
-rem Stop frontend processes
+rem Stop frontend processes (include production "serve" node process)
 echo Stopping frontend processes...
-taskkill /F /FI "WINDOWTITLE eq Coiner - Vue Frontend*" > nul 2>&1
+taskkill /F /T /FI "WINDOWTITLE eq Coiner - Vue Frontend*" > nul 2>&1
 taskkill /F /IM python.exe /FI "COMMANDLINE like %%http.server%%" > nul 2>&1
 taskkill /F /IM node.exe /FI "COMMANDLINE like %%vite%%" > nul 2>&1
+taskkill /F /IM node.exe /FI "COMMANDLINE like %%serve%%" > nul 2>&1
 
-rem Additional cleanup for any remaining processes on ports 8000 and 3000
-echo Checking for processes on ports 8000 and 3000...
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8000') do (
+rem Additional cleanup: only LISTENING processes, dedupe PIDs
+echo Checking for listening processes on ports 8000 and 3000...
+set "KILLED_PIDS= "
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr LISTENING ^| findstr /C":8000 "') do (
     if %%a NEQ 0 (
-        echo Killing process %%a on port 8000...
-        taskkill /PID %%a /F > nul 2>&1
+        set "PID_SEEN="
+        for %%k in (!KILLED_PIDS!) do if "%%k"=="%%a" set "PID_SEEN=1"
+        if not defined PID_SEEN (
+            echo Killing process %%a on port 8000...
+            taskkill /PID %%a /F /T > nul 2>&1
+            set "KILLED_PIDS=!KILLED_PIDS! %%a"
+        )
     )
 )
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr :3000') do (
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr LISTENING ^| findstr /C":3000 "') do (
     if %%a NEQ 0 (
-        echo Killing process %%a on port 3000...
-        taskkill /PID %%a /F > nul 2>&1
+        set "PID_SEEN="
+        for %%k in (!KILLED_PIDS!) do if "%%k"=="%%a" set "PID_SEEN=1"
+        if not defined PID_SEEN (
+            echo Killing process %%a on port 3000...
+            taskkill /PID %%a /F /T > nul 2>&1
+            set "KILLED_PIDS=!KILLED_PIDS! %%a"
+        )
     )
 )
 
