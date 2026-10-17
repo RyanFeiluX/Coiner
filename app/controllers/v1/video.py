@@ -1156,7 +1156,11 @@ def update_scenes(request: Request, body: dict):
             if idx < 0 or idx >= len(scenes):
                 continue
             if "scene_data" in update and isinstance(update["scene_data"], dict):
-                scenes[idx] = update["scene_data"]
+                # Merge instead of replace so fields not sent by the frontend
+                # (e.g. keyword_language, region_restriction) are preserved
+                if not isinstance(scenes[idx], dict):
+                    scenes[idx] = {}
+                scenes[idx].update(update["scene_data"])
             if "search_terms" in update and isinstance(update["search_terms"], list):
                 while len(terms) <= idx:
                     terms.append([])
@@ -1234,6 +1238,11 @@ def recover_scene_integration(request: Request, body: dict):
     force_rebuild_scenes = body.get('force_rebuild_scenes', [])
     if not isinstance(force_rebuild_scenes, list):
         force_rebuild_scenes = []
+
+    # Scenes that should only rebuild audio/video, keeping current keywords
+    av_only_scenes = body.get('av_only_scenes', [])
+    if not isinstance(av_only_scenes, list):
+        av_only_scenes = []
     
     # Extract voice params for force rebuild
     voice_params = {k: v for k, v in {
@@ -1317,6 +1326,7 @@ def recover_scene_integration(request: Request, body: dict):
         force_rebuild_scenes=force_rebuild_scenes,
         voice_params=voice_params,
         video_material_params=video_material_params,
+        av_only_scenes=av_only_scenes,
     )
     
     # Get the task with task_type from state

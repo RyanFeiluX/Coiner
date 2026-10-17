@@ -330,7 +330,7 @@ def generate_scene_tags(scene_script, visual_requirement="", max_tags=3):
     return []
 
 
-def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_materials=None, check_cancelled=None, scene_terms_list=None):
+def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_materials=None, check_cancelled=None, scene_terms_list=None, use_scene_keywords=True):
     if used_local_materials is None:
         used_local_materials = set()
     if scene_terms_list is None:
@@ -351,9 +351,12 @@ def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_
         used_local_materials: Set of already-used local material URLs
         check_cancelled: Optional callable to check if task was cancelled
         scene_terms_list: Optional pre-generated search terms for each scene
+        use_scene_keywords: Whether to fall back to scene['keywords'] (latest
+            frontend-synced content) before LLM tag generation
     
     Returns:
-        Scene result dictionary with video clip path, audio path, subtitle path
+        Scene result dictionary with video clip path, audio path, subtitle path,
+        and the keywords actually used for material search
     """
     scene_num = scene_index + 1
     scene_title = scene.get('title', scene.get('visual_requirement', ''))
@@ -368,13 +371,23 @@ def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_
     scene_script = scene.get('audio', scene.get('script', ''))
     scene_visual = scene.get('visual', scene.get('camera', scene.get('visual_requirement', '')))
 
-    # Prefer pre-generated search terms from generate_scene_terms.
-    # Fall back to LLM tag generation only when pre-generated terms are missing or too few.
+    # Keyword resolution priority:
+    # 1. Pre-generated search terms (scene_terms_list)
+    # 2. scene['keywords'] (latest frontend-synced content in script.json)
+    # 3. LLM tag generation fallback
     processed_keywords = []
     if scene_terms_list and scene_index < len(scene_terms_list):
         processed_keywords = keyword_utils.parse_keywords(scene_terms_list[scene_index])
         if processed_keywords:
             logger.info(f"scene {scene_num}: reusing pre-generated search terms: {processed_keywords}")
+
+    if len(processed_keywords) < 3 and use_scene_keywords:
+        existing_keywords = keyword_utils.parse_keywords(scene.get('keywords', ''))
+        for kw in existing_keywords:
+            if kw and kw not in processed_keywords:
+                processed_keywords.append(kw)
+        if processed_keywords:
+            logger.info(f"scene {scene_num}: using scene keywords: {processed_keywords}")
 
     if len(processed_keywords) < 3:
         needed = 5 - len(processed_keywords) if processed_keywords else 3
@@ -811,6 +824,7 @@ def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_
         "audio_duration": audio_duration,
         "subtitle_path": subtitle_path,
         "combined_video_path": combined_video_path,
+        "keywords": scene_keywords,
     }
 
 

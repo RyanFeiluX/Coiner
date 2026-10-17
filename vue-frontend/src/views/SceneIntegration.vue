@@ -119,6 +119,18 @@
                           inactive-text=""
                         />
                         <span class="rebuild-label">{{ t('Rebuild') }}</span>
+                        <template v-if="forceRebuildScenes[scene.sceneNum]">
+                          <el-switch
+                            :model-value="avOnlyScenes[scene.sceneNum] ?? true"
+                            :disabled="isRunning"
+                            size="small"
+                            @update:model-value="(v: any) => { avOnlyScenes[scene.sceneNum] = v; }"
+                          />
+                          <span class="rebuild-label">{{ t('AV Only') }}</span>
+                          <el-tooltip :content="t('Only rebuild audio/video, keep current keywords')" placement="top">
+                            <el-icon class="rebuild-info"><InfoFilled /></el-icon>
+                          </el-tooltip>
+                        </template>
                       </div>
                     </div>
                   </el-collapse-item>
@@ -196,6 +208,7 @@
 import { ref, watch, onUnmounted, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { InfoFilled } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
 import { useI18nStore } from '../stores/i18n';
 import { useSettingsStore } from '../stores/settings';
 import { useScriptStore } from '../stores/script';
@@ -235,6 +248,8 @@ const integrationResult = ref('');
 const isCompleted = ref(false);
 // Force rebuild toggle per scene (keyed by scene number)
 const forceRebuildScenes = ref<Record<number, boolean>>({});
+// AV-only rebuild toggle per scene (default ON: keep current keywords)
+const avOnlyScenes = ref<Record<number, boolean>>({});
 // Current task ID for polling
 const currentTaskId = ref('');
 // Polling interval ID
@@ -466,6 +481,8 @@ const startIntegration = async () => {
     // from the original task on the backend, not overridden by current UI settings.
     if (forceScenes.length > 0) {
       requestParams.force_rebuild_scenes = forceScenes;
+      // Scenes with AV-only toggle ON (default) keep current keywords instead of regenerating
+      requestParams.av_only_scenes = forceScenes.filter((num) => avOnlyScenes.value[num] ?? true);
     }
 
     const response = await apiService.recoverSceneIntegration(
@@ -490,6 +507,41 @@ const startIntegration = async () => {
   }
 };
 
+// Sync regenerated keywords from backend task state into local UI state
+const syncUpdatedKeywords = (task: any) => {
+  const updated = task?.updated_scene_keywords;
+  if (!updated || typeof updated !== 'object') return;
+
+  const scriptStore = useScriptStore();
+  let syncedCount = 0;
+
+  for (const [sceneNumStr, keywords] of Object.entries(updated)) {
+    const sceneNum = parseInt(sceneNumStr, 10);
+    const keywordsStr = typeof keywords === 'string' ? keywords : String(keywords);
+    if (!sceneNum || !keywordsStr) continue;
+
+    // Sync into script store (Scene Settings page keyword input)
+    const storeScene = scriptStore.scenes[sceneNum - 1];
+    if (storeScene) {
+      storeScene.keywords = keywordsStr;
+    }
+
+    // Sync into locally scanned scene data (Scene Integration page)
+    if (taskFiles.value?.scenesData) {
+      const sceneData = taskFiles.value.scenesData.find((s: any) => s.sceneNum === sceneNum);
+      if (sceneData) {
+        sceneData.sceneData = { ...sceneData.sceneData, keywords: keywordsStr };
+        sceneData.searchTerms = keywordsStr.split(',').map((k: string) => k.trim()).filter((k: string) => k);
+      }
+    }
+    syncedCount++;
+  }
+
+  if (syncedCount > 0) {
+    ElMessage.info(t('Scene keywords updated to regenerated values'));
+  }
+};
+
 // Start polling task status
 const startPolling = () => {
   stopPolling();
@@ -510,6 +562,7 @@ const startPolling = () => {
             if (task.videos && task.videos.length > 0) {
               integrationResult.value = task.videos[0];
             }
+            syncUpdatedKeywords(task);
             stopPolling();
             isRunning.value = false;
             return;
@@ -525,6 +578,7 @@ const startPolling = () => {
           if (task.videos && task.videos.length > 0) {
             integrationResult.value = task.videos[0];
           }
+          syncUpdatedKeywords(task);
           stopPolling();
           isRunning.value = false;
         } else if (task.state === 'failed' || task.state === 3) {
@@ -802,6 +856,12 @@ defineExpose({
   font-size: 13px;
   color: #909399;
   margin-left: 2px;
+}
+
+.rebuild-info {
+  margin-left: 2px;
+  color: #909399;
+  cursor: help;
 }
 
 .rebuild-hint {

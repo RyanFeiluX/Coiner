@@ -278,7 +278,7 @@ def _rebuild_scene_video(scene_info: dict, task_dir: str) -> str:
     return None
 
 
-def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_scene=None, end_scene=None, task_id: str = None, subtitle_params: dict = None, bgm_params: dict = None, title_params: dict = None, video_enhance_params: dict = None, check_cancelled=None, task_create_time: float = None, force_rebuild_scenes: list = None, voice_params: dict = None, video_material_params: dict = None) -> str:
+def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_scene=None, end_scene=None, task_id: str = None, subtitle_params: dict = None, bgm_params: dict = None, title_params: dict = None, video_enhance_params: dict = None, check_cancelled=None, task_create_time: float = None, force_rebuild_scenes: list = None, voice_params: dict = None, video_material_params: dict = None, av_only_scenes: list = None) -> str:
     """
     Recover video synthesis from existing task files.
     
@@ -298,6 +298,8 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
         force_rebuild_scenes: List of scene numbers to force rebuild with current params
         voice_params: Current voice params for force rebuild (voice_name, voice_rate, voice_volume, voice_emotion)
         video_material_params: Current video material params for force rebuild (video_source, video_aspect, video_concat_mode, video_clip_duration)
+        av_only_scenes: Subset of force_rebuild_scenes to rebuild audio/video only,
+            keeping the current (frontend-synced) keywords instead of regenerating them
         
     Returns:
         Path to the final video file, or None if failed
@@ -424,10 +426,16 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
                     updated_params = VideoParams(**params_dict)
                     scenes_list = params_dict.get("scenes", [])
                     total_scenes = len(scenes_list)
+                    search_terms_list = script_data.get("search_terms", [])
+                    av_only_set = set(av_only_scenes or [])
 
                     from app.services.task import process_scene
 
                     original_task_id = os.path.basename(task_dir)
+
+                    # Track regenerated keywords to write back to script.json and notify frontend
+                    keywords_updated = False
+                    updated_scene_keywords = {}
 
                     for scene_info in scenes_in_range:
                         if scene_info["scene_num"] not in force_set:
@@ -438,7 +446,16 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
                             continue
 
                         scene_dict = scenes_list[scene_index]
-                        logger.info(f"Scene {scene_info['scene_num']}: force rebuild via process_scene")
+                        scene_num = scene_info["scene_num"]
+                        is_av_only = scene_num in av_only_set
+                        if is_av_only:
+                            logger.info(
+                                f"Scene {scene_num}: AV-only rebuild, keeping current keywords: "
+                                f"{scene_dict.get('keywords', '')}"
+                            )
+                        else:
+                            logger.info(f"Scene {scene_num}: rebuild with keyword regeneration")
+
                         try:
                             result = process_scene(
                                 task_id=original_task_id,
@@ -447,16 +464,48 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
                                 scene_index=scene_index,
                                 total_scenes=total_scenes,
                                 check_cancelled=check_cancelled,
+                                scene_terms_list=search_terms_list if is_av_only else None,
+                                use_scene_keywords=is_av_only,
                             )
                             if result:
                                 scene_info["video"] = result.get("combined_video_path")
                                 scene_info["audio"] = result.get("audio_file")
                                 scene_info["subtitle"] = result.get("subtitle_path") or scene_info.get("subtitle")
-                                logger.success(f"Scene {scene_info['scene_num']}: force rebuilt successfully")
+                                logger.success(f"Scene {scene_num}: force rebuilt successfully")
+
+                                if not is_av_only:
+                                    new_keywords = result.get("keywords") or []
+                                    new_keywords_str = ", ".join(new_keywords)
+                                    logger.info(f"Scene {scene_num}: keywords regenerated: {new_keywords}")
+                                    scene_dict["keywords"] = new_keywords_str
+                                    while len(search_terms_list) <= scene_index:
+                                        search_terms_list.append([])
+                                    search_terms_list[scene_index] = new_keywords
+                                    keywords_updated = True
+                                    updated_scene_keywords[str(scene_num)] = new_keywords_str
+                                    # Notify frontend via task state so UI can auto-refresh
+                                    # (preserve current progress; update_task defaults would reset it)
+                                    current_task = sm.state.get_task(task_id) or {}
+                                    sm.state.update_task(
+                                        task_id,
+                                        state=current_task.get("state", const.TASK_STATE_PROCESSING),
+                                        progress=current_task.get("progress", 0),
+                                        updated_scene_keywords=dict(updated_scene_keywords),
+                                    )
                             else:
-                                logger.warning(f"Scene {scene_info['scene_num']}: force rebuild failed (process_scene returned None)")
+                                logger.warning(f"Scene {scene_num}: force rebuild failed (process_scene returned None)")
                         except Exception as e:
-                            logger.warning(f"Scene {scene_info['scene_num']}: force rebuild exception: {e}")
+                            logger.warning(f"Scene {scene_num}: force rebuild exception: {e}")
+
+                    if keywords_updated:
+                        script_data["search_terms"] = search_terms_list
+                        script_data["params"]["scenes"] = scenes_list
+                        try:
+                            with open(script_path, "w", encoding="utf-8") as f:
+                                f.write(utils.to_json(script_data))
+                            logger.info(f"Regenerated keywords written back to script.json: {updated_scene_keywords}")
+                        except Exception as e:
+                            logger.warning(f"Failed to write regenerated keywords back to script.json: {e}")
                 except Exception as e:
                     logger.warning(f"Failed to read/update script.json for force rebuild: {e}")
             else:
