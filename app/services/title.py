@@ -284,30 +284,56 @@ def create_title_clip(
     logger.info(f"Wrapped text: '{chr(10).join(lines)}'")
     
     # Calculate total dimensions and line metrics.
-    # PIL's textbbox reports glyph bounds relative to the anchor point; for some
-    # fonts (e.g. MicrosoftYaHeiBold.ttc) the top offset can be positive, meaning
-    # the glyph starts below y=0. We record each line's height and top offset so
-    # we can shift the drawing position and avoid clipping the top/bottom.
-    line_metrics = []  # Each item: {'height': int, 'top': int, 'width': int}
+    # textbbox() predictions can differ by a few pixels from the actual
+    # rasterized ink (font hinting/antialiasing), which misaligns lines whose
+    # styles differ (e.g. the first-line override). So each line is first
+    # rendered to a probe strip and the REAL ink box (strip.getbbox()) is used
+    # to derive exact ink offsets relative to the text origin — final placement
+    # still uses draw.text on the main canvas (preserves AA/bg semantics).
+    line_probes = []  # per rendered line: None (blank) or dict of ink offsets
+    line_metrics = []  # Each item: {'height': int, 'width': int}
     max_line_width = 0
     line_gap = 4  # Small vertical gap between lines
     
-    def _measure_line(line: str, style: dict):
-        if not line.strip():
-            # Empty line: reserve a line based on the line's font size
-            empty_height = int(style["font_size_px"] * 1.2)
-            return {"height": empty_height, "top": 0, "width": 0}
-        bbox = temp_draw.textbbox((0, 0), line, font=style["font"], stroke_width=style["stroke_width"])
+    def _probe_line(line: str, style: dict):
+        sw = style["stroke_width"] if style["stroke_color"] and style["stroke_width"] > 0 else 0
+        bbox = temp_draw.textbbox((0, 0), line, font=style["font"], stroke_width=sw)
+        pad = sw + 16  # generous margin so stroke/antialiasing never clips
+        w = max(1, bbox[2] - bbox[0] + 2 * pad)
+        h = max(1, bbox[3] - bbox[1] + 2 * pad)
+        strip = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+        sd = ImageDraw.Draw(strip)
+        ox = pad - bbox[0]
+        oy = pad - bbox[1]
+        sd.text((ox, oy), line, font=style["font"], fill=style["text_color"],
+                stroke_width=sw,
+                stroke_fill=style["stroke_color"] if sw else None)
+        ink = strip.getbbox()  # (l, t, r, b) of real ink, or None if empty
+        if ink is None:
+            return None
+        # Ink offsets relative to the draw.text origin (ox, oy)
         return {
-            "height": bbox[3] - bbox[1],
-            "top": bbox[1],
-            "width": bbox[2] - bbox[0],
+            "left": ink[0] - ox,
+            "top": ink[1] - oy,
+            "right": ink[2] - ox,
+            "bottom": ink[3] - oy,
+            "stroke_width": sw,
         }
     
     for i, line in enumerate(lines):
-        metrics = _measure_line(line, line_styles[i])
-        line_metrics.append(metrics)
-        max_line_width = max(max_line_width, metrics["width"])
+        style = line_styles[i]
+        if not line.strip():
+            probe = None
+        else:
+            probe = _probe_line(line, style)
+        line_probes.append(probe)
+        if probe is None:
+            # Empty line: reserve a line based on the line's font size
+            line_metrics.append({"height": int(style["font_size_px"] * 1.2), "width": 0})
+        else:
+            width = probe["right"] - probe["left"]
+            line_metrics.append({"height": probe["bottom"] - probe["top"], "width": width})
+            max_line_width = max(max_line_width, width)
     
     # Total height = sum of content heights + gaps between lines
     total_height = sum(m["height"] for m in line_metrics) + line_gap * max(0, len(lines) - 1)
@@ -335,38 +361,34 @@ def create_title_clip(
             bg_color = (bg_color[0], bg_color[1], bg_color[2], 255)
         draw.rectangle([(0, 0), (img_width, img_height)], fill=bg_color)
     
-    # Draw each line with correct alignment
+    # Draw each line, positioning its REAL ink box on the target axis
     logger.info(f"Drawing {len(lines)} lines with title_align={params.title_align}:")
     current_y = 0
     for i, line in enumerate(lines):
-        metrics = line_metrics[i]
-        line_height = metrics["height"]
-        top_offset = metrics["top"]
-        line_style = line_styles[i]
-        
-        if line.strip():
-            line_width = metrics["width"]
+        probe = line_probes[i]
+        if probe is not None:
+            ink_left = probe["left"]
+            ink_right = probe["right"]
+            ink_width = ink_right - ink_left
             
-            # Calculate x position for this line based on alignment
+            # Origin x such that the actual ink lands on the alignment axis
             if params.title_align == "left":
-                x = 0
+                x = -ink_left
             elif params.title_align == "right":
-                x = img_width - line_width
+                x = img_width - ink_right
             else:  # center
-                x = (img_width - line_width) // 2
+                x = (img_width - ink_width) // 2 - ink_left
+            # Origin y such that the ink top starts exactly at current_y
+            y = current_y - probe["top"]
             
-            # Shift the anchor up by the top offset so the actual glyph content
-            # starts exactly at current_y instead of being pushed below the clip.
-            draw_y = current_y - top_offset
-            logger.info(f"  Line {i}: '{line}', line_width={line_width}, x={x}, current_y={current_y}, draw_y={draw_y}")
-            
-            line_stroke_width = line_style["stroke_width"] if line_style["stroke_color"] and line_style["stroke_width"] > 0 else 0
-            draw.text((x, draw_y), line, font=line_style["font"], fill=line_style["text_color"],
-                      stroke_width=line_stroke_width,
-                      stroke_fill=line_style["stroke_color"] if line_stroke_width > 0 else None)
+            logger.info(f"  Line {i}: '{line}', ink_w={ink_width}, x={x}, current_y={current_y}, y={y}")
+            line_style = line_styles[i]
+            draw.text((x, y), line, font=line_style["font"], fill=line_style["text_color"],
+                      stroke_width=probe["stroke_width"],
+                      stroke_fill=line_style["stroke_color"] if probe["stroke_width"] else None)
         
-        # Always advance y, even for empty lines!
-        current_y += line_height
+        # Always advance y, even for blank lines!
+        current_y += line_metrics[i]["height"]
         if i < len(lines) - 1:
             current_y += line_gap
     
