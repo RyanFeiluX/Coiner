@@ -171,6 +171,12 @@ class VideoParams(BaseModel):
     title_background_overlay: Optional[bool] = False
     title_overlay_color: Optional[str] = "rgba(0,0,0,0.5)"
     title_align: Optional[str] = "center"
+    title_first_line_override: Optional[bool] = False
+    title_first_line_font: Optional[str] = "MicrosoftYaHeiBold.ttc"
+    title_first_line_font_size: Optional[int] = 72
+    title_first_line_text_color: Optional[str] = "#FFFFFF"
+    title_first_line_stroke_color: Optional[str] = "#000000"
+    title_first_line_stroke_width: Optional[float] = 2.0
 
 
 class SubtitleRequest(BaseModel):

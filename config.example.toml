@@ -390,6 +390,18 @@ title_overlay_color = "rgba(0,0,0,0.5)"
 title_style = "none"
 # Title alignment: "left", "center", "right"
 title_align = "center"
+# First-line style override (true/false): style the first title line independently
+title_first_line_override = false
+# First-line font name
+title_first_line_font = "MicrosoftYaHeiBold.ttc"
+# First-line font size (in points)
+title_first_line_font_size = 72
+# First-line text color (hex format)
+title_first_line_text_color = "#FFFFFF"
+# First-line stroke color (hex format)
+title_first_line_stroke_color = "#000000"
+# First-line stroke width
+title_first_line_stroke_width = 2.0
 
 [ui]
 # UI related settings

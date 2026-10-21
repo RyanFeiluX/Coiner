@@ -101,6 +101,12 @@ def get_config(request: Request):
                 "title_overlay_color": config.title.get("title_overlay_color", "rgba(0,0,0,0.5)"),
                 "title_style": config.title.get("title_style", "none"),
                 "title_align": config.title.get("title_align", "center"),
+                "title_first_line_override": config.title.get("title_first_line_override", False),
+                "title_first_line_font": config.title.get("title_first_line_font", "MicrosoftYaHeiBold.ttc"),
+                "title_first_line_font_size": config.title.get("title_first_line_font_size", 72),
+                "title_first_line_text_color": config.title.get("title_first_line_text_color", "#FFFFFF"),
+                "title_first_line_stroke_color": config.title.get("title_first_line_stroke_color", "#000000"),
+                "title_first_line_stroke_width": config.title.get("title_first_line_stroke_width", 2.0),
             },
             "ui": {
                 **config.ui,

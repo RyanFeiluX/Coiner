@@ -129,7 +129,9 @@ def create_title_clip(
         return None
     
     logger.info(f"Creating title clip: '{params.title_text}' ({video_width}x{video_height})")
-    
+
+    original_lines = params.title_text.split('\n')
+
     font_path = _get_valid_font_path(params.title_font_name, params.title_text)
     logger.info(f"Using font path: {font_path}")
     
@@ -170,7 +172,54 @@ def create_title_clip(
     text_color = parse_color(params.title_text_color)
     stroke_color = parse_color(params.title_stroke_color) if params.title_stroke_color != "transparent" else None
     stroke_width = int(params.title_stroke_width) if params.title_stroke_color != "transparent" else 0
-    
+
+    # Style bundle for the default (whole-title) tier
+    global_style = {
+        "font": font,
+        "font_size_px": font_size_px,
+        "text_color": text_color,
+        "stroke_color": stroke_color,
+        "stroke_width": stroke_width,
+    }
+
+    # Optional first-line override tier: first user line (and its wrapped
+    # continuations) uses its own font/size/color/stroke; other lines keep
+    # the whole-title settings above.
+    first_line_style = None
+    if params.title_first_line_override and original_lines:
+        fl_text = original_lines[0]
+        fl_font_name = params.title_first_line_font or params.title_font_name
+        fl_font_size = int(params.title_first_line_font_size or params.title_font_size)
+        fl_text_color_str = params.title_first_line_text_color or params.title_text_color
+        fl_stroke_color_str = params.title_first_line_stroke_color if params.title_first_line_stroke_color is not None else params.title_stroke_color
+        fl_stroke_width_val = params.title_first_line_stroke_width if params.title_first_line_stroke_width is not None else params.title_stroke_width
+
+        fl_font_path = _get_valid_font_path(fl_font_name, fl_text)
+        if not os.path.exists(fl_font_path):
+            fl_font_path = font_path
+        fl_font_size_px = max(1, int(fl_font_size * video_height / _play_res_y))
+        try:
+            fl_font = ImageFont.truetype(fl_font_path, fl_font_size_px)
+        except Exception as e:
+            logger.warning(f"Failed to load first-line font '{fl_font_path}': {str(e)}, using global font")
+            fl_font = font
+            fl_font_size_px = font_size_px
+        fl_text_color = parse_color(fl_text_color_str)
+        if fl_stroke_color_str == "transparent":
+            fl_stroke_color = None
+            fl_stroke_width = 0
+        else:
+            fl_stroke_color = parse_color(fl_stroke_color_str)
+            fl_stroke_width = int(fl_stroke_width_val)
+        first_line_style = {
+            "font": fl_font,
+            "font_size_px": fl_font_size_px,
+            "text_color": fl_text_color,
+            "stroke_color": fl_stroke_color,
+            "stroke_width": fl_stroke_width,
+        }
+        logger.info(f"First-line style override enabled: font={fl_font_name}, size={fl_font_size_px}px")
+
     bg_color = None
     if params.title_background_color != 'transparent' and params.title_background_color is not True:
         bg_color = parse_color(params.title_background_color)
@@ -181,22 +230,26 @@ def create_title_clip(
     
     # Wrap text manually using PIL's actual text measurement
     # First split by existing newlines to preserve original line breaks!
-    original_lines = params.title_text.split('\n')
     lines = []
+    line_styles = []
     
-    def get_text_width(txt):
-        bbox = temp_draw.textbbox((0, 0), txt, font=font, stroke_width=stroke_width)
+    def get_text_width(txt, style=None):
+        st = style or global_style
+        bbox = temp_draw.textbbox((0, 0), txt, font=st["font"], stroke_width=st["stroke_width"])
         return bbox[2] - bbox[0]
     
     # Process each original line
-    for orig_line in original_lines:
+    for orig_idx, orig_line in enumerate(original_lines):
+        orig_style = first_line_style if (orig_idx == 0 and first_line_style) else global_style
         if not orig_line:
             lines.append('')
+            line_styles.append(orig_style)
             continue
             
         # Check if this original line fits on one line
-        if get_text_width(orig_line) <= max_width:
+        if get_text_width(orig_line, orig_style) <= max_width:
             lines.append(orig_line)
+            line_styles.append(orig_style)
             continue
         
         # Need to wrap this individual original line
@@ -204,18 +257,19 @@ def create_title_clip(
         
         current_line = orig_line
         while current_line:
-            line_width = get_text_width(current_line)
+            line_width = get_text_width(current_line, orig_style)
             
             if line_width <= max_width:
                 lines.append(current_line)
+                line_styles.append(orig_style)
                 break
             
             # Find best split position
             best_split = 1
-            best_width = get_text_width(current_line[:1])
+            best_width = get_text_width(current_line[:1], orig_style)
             
             for i in range(2, len(current_line)):
-                w = get_text_width(current_line[:i])
+                w = get_text_width(current_line[:i], orig_style)
                 if w <= max_width and w > best_width:
                     best_width = w
                     best_split = i
@@ -224,6 +278,7 @@ def create_title_clip(
                         break
             
             lines.append(current_line[:best_split])
+            line_styles.append(orig_style)
             current_line = current_line[best_split:].lstrip()
     
     logger.info(f"Wrapped text: '{chr(10).join(lines)}'")
@@ -237,20 +292,20 @@ def create_title_clip(
     max_line_width = 0
     line_gap = 4  # Small vertical gap between lines
     
-    def _measure_line(line: str):
+    def _measure_line(line: str, style: dict):
         if not line.strip():
-            # Empty line: reserve a line based on font size
-            empty_height = int(font_size_px * 1.2)
+            # Empty line: reserve a line based on the line's font size
+            empty_height = int(style["font_size_px"] * 1.2)
             return {"height": empty_height, "top": 0, "width": 0}
-        bbox = temp_draw.textbbox((0, 0), line, font=font, stroke_width=stroke_width)
+        bbox = temp_draw.textbbox((0, 0), line, font=style["font"], stroke_width=style["stroke_width"])
         return {
             "height": bbox[3] - bbox[1],
             "top": bbox[1],
             "width": bbox[2] - bbox[0],
         }
     
-    for line in lines:
-        metrics = _measure_line(line)
+    for i, line in enumerate(lines):
+        metrics = _measure_line(line, line_styles[i])
         line_metrics.append(metrics)
         max_line_width = max(max_line_width, metrics["width"])
     
@@ -287,6 +342,7 @@ def create_title_clip(
         metrics = line_metrics[i]
         line_height = metrics["height"]
         top_offset = metrics["top"]
+        line_style = line_styles[i]
         
         if line.strip():
             line_width = metrics["width"]
@@ -304,9 +360,10 @@ def create_title_clip(
             draw_y = current_y - top_offset
             logger.info(f"  Line {i}: '{line}', line_width={line_width}, x={x}, current_y={current_y}, draw_y={draw_y}")
             
-            draw.text((x, draw_y), line, font=font, fill=text_color,
-                      stroke_width=stroke_width if stroke_color and stroke_width > 0 else 0,
-                      stroke_fill=stroke_color if stroke_color and stroke_width > 0 else None)
+            line_stroke_width = line_style["stroke_width"] if line_style["stroke_color"] and line_style["stroke_width"] > 0 else 0
+            draw.text((x, draw_y), line, font=line_style["font"], fill=line_style["text_color"],
+                      stroke_width=line_stroke_width,
+                      stroke_fill=line_style["stroke_color"] if line_stroke_width > 0 else None)
         
         # Always advance y, even for empty lines!
         current_y += line_height

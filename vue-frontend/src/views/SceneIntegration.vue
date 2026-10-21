@@ -410,6 +410,12 @@ const startIntegration = async () => {
     title_background_overlay: settingsStore.video.title.backgroundOverlay,
     title_overlay_color: settingsStore.video.title.overlayColor,
     title_align: settingsStore.video.title.align,
+    title_first_line_override: settingsStore.video.title.firstLineOverride,
+    title_first_line_font: settingsStore.video.title.firstLineFont,
+    title_first_line_font_size: settingsStore.video.title.firstLineFontSize,
+    title_first_line_text_color: settingsStore.video.title.firstLineColor,
+    title_first_line_stroke_color: settingsStore.video.title.firstLineStrokeColor,
+    title_first_line_stroke_width: settingsStore.video.title.firstLineStrokeWidth,
   };
   
   // Collect scenes with force rebuild toggle enabled

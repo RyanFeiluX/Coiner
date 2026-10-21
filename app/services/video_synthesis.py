@@ -744,7 +744,13 @@ def recover_video_synthesis(task_id_or_path: str, progress_callback=None, start_
             title_animation_duration=title_params.get('title_animation_duration', title_config.get("title_animation_duration", ui_config.get("title_animation_duration", 0.5))),
             title_background_overlay=title_params.get('title_background_overlay', title_config.get("title_background_overlay", ui_config.get("title_background_overlay", False))),
             title_overlay_color=title_params.get('title_overlay_color', title_config.get("title_overlay_color", ui_config.get("title_overlay_color", "rgba(0,0,0,0.5)"))),
-            title_align=title_params.get('title_align', title_config.get("title_align", ui_config.get("title_align", "center")))
+            title_align=title_params.get('title_align', title_config.get("title_align", ui_config.get("title_align", "center"))),
+            title_first_line_override=title_params.get('title_first_line_override', title_config.get("title_first_line_override", False)),
+            title_first_line_font=title_params.get('title_first_line_font', title_config.get("title_first_line_font", "MicrosoftYaHeiBold.ttc")),
+            title_first_line_font_size=title_params.get('title_first_line_font_size', title_config.get("title_first_line_font_size", 72)),
+            title_first_line_text_color=title_params.get('title_first_line_text_color', title_config.get("title_first_line_text_color", "#FFFFFF")),
+            title_first_line_stroke_color=title_params.get('title_first_line_stroke_color', title_config.get("title_first_line_stroke_color", "#000000")),
+            title_first_line_stroke_width=title_params.get('title_first_line_stroke_width', title_config.get("title_first_line_stroke_width", 2.0)),
         )
         
         # Log title parameters for debugging

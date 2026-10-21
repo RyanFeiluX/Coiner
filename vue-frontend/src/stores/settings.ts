@@ -34,6 +34,12 @@ interface TitleSettings {
   overlayColor: string;
   style: string;
   align: string;
+  firstLineOverride: boolean;
+  firstLineFont: string;
+  firstLineFontSize: number;
+  firstLineColor: string;
+  firstLineStrokeColor: string;
+  firstLineStrokeWidth: number;
 }
 
 interface VideoSettings {
@@ -195,7 +201,13 @@ export const useSettingsStore = defineStore('settings', {
             backgroundOverlay: false,
             overlayColor: 'rgba(0,0,0,0.5)',
             style: 'classic',
-            align: 'center'
+            align: 'center',
+            firstLineOverride: false,
+            firstLineFont: 'MicrosoftYaHeiBold.ttc',
+            firstLineFontSize: 72,
+            firstLineColor: '#FFFFFF',
+            firstLineStrokeColor: '#000000',
+            firstLineStrokeWidth: 2.0
           }
         },
     
@@ -352,6 +364,12 @@ export const useSettingsStore = defineStore('settings', {
             title_overlay_color: this.video.title.overlayColor,
             title_style: this.video.title.style,
             title_align: this.video.title.align,
+            title_first_line_override: this.video.title.firstLineOverride,
+            title_first_line_font: this.video.title.firstLineFont,
+            title_first_line_font_size: this.video.title.firstLineFontSize,
+            title_first_line_text_color: this.video.title.firstLineColor,
+            title_first_line_stroke_color: this.video.title.firstLineStrokeColor,
+            title_first_line_stroke_width: this.video.title.firstLineStrokeWidth,
           }
         };
         console.log('[SettingsStore] Sending config:', JSON.stringify(titleConfig, null, 2));
@@ -720,6 +738,24 @@ export const useSettingsStore = defineStore('settings', {
             if (data.title.title_align !== undefined) {
               this.video.title.align = data.title.title_align;
               console.log('[SettingsStore] Updated video.title.align from config.title:', this.video.title.align);
+            }
+            if (typeof data.title.title_first_line_override === 'boolean') {
+              this.video.title.firstLineOverride = data.title.title_first_line_override;
+            }
+            if (data.title.title_first_line_font !== undefined) {
+              this.video.title.firstLineFont = data.title.title_first_line_font;
+            }
+            if (data.title.title_first_line_font_size !== undefined) {
+              this.video.title.firstLineFontSize = Number(data.title.title_first_line_font_size);
+            }
+            if (data.title.title_first_line_text_color !== undefined) {
+              this.video.title.firstLineColor = data.title.title_first_line_text_color;
+            }
+            if (data.title.title_first_line_stroke_color !== undefined) {
+              this.video.title.firstLineStrokeColor = data.title.title_first_line_stroke_color;
+            }
+            if (data.title.title_first_line_stroke_width !== undefined) {
+              this.video.title.firstLineStrokeWidth = Number(data.title.title_first_line_stroke_width);
             }
           }
 

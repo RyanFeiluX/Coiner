@@ -154,6 +154,119 @@
           </div>
           
           <div class="form-item">
+            <label class="form-label">
+              <el-checkbox v-model="form.titleFirstLineOverride" @change="onFirstLineOverrideChange" />
+              {{ t('First Line Style') }}
+            </label>
+          </div>
+          
+          <div v-if="form.titleFirstLineOverride" class="first-line-section">
+            <div class="form-item">
+              <label class="form-label">{{ t('First Line Font') }}</label>
+              <el-select v-model="form.titleFirstLineFont" :placeholder="t('Select font')" class="form-select">
+                <el-option 
+                  v-for="font in availableFonts" 
+                  :key="font" 
+                  :label="font" 
+                  :value="font"
+                />
+              </el-select>
+            </div>
+            
+            <div class="form-item">
+              <label class="form-label">{{ t('First Line Font Size') }}</label>
+              <div class="slider-control">
+                <el-slider
+                  v-model="form.titleFirstLineFontSize"
+                  :min="20"
+                  :max="120"
+                  :step="2"
+                  :show-input="true"
+                  :input-size="'small'"
+                />
+                <span class="slider-value">{{ form.titleFirstLineFontSize }}pt</span>
+              </div>
+            </div>
+            
+            <div class="form-item">
+              <label class="form-label">{{ t('First Line Text Color') }}</label>
+              <div class="color-select-wrapper">
+                <div class="color-options">
+                  <button
+                    v-for="color in colorOptions"
+                    :key="color.value"
+                    class="color-option"
+                    :class="{ active: form.titleFirstLineColor === color.hex }"
+                    :style="{ backgroundColor: color.hex }"
+                    :title="t(color.label)"
+                    @click="form.titleFirstLineColor = color.hex"
+                  >
+                    <span v-if="form.titleFirstLineColor === color.hex" class="check-icon">✓</span>
+                  </button>
+                </div>
+                <div class="custom-color-picker">
+                  <el-color-picker
+                    v-model="form.titleFirstLineColor"
+                    show-alpha
+                    class="color-picker"
+                  />
+                  <span class="custom-color-label">{{ t('Custom Color') }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="form-item">
+              <label class="form-label">{{ t('First Line Stroke Color') }}</label>
+              <div class="color-select-wrapper">
+                <div class="color-options">
+                  <button
+                    class="color-option"
+                    :class="{ active: form.titleFirstLineStrokeColor === 'transparent' }"
+                    :style="{ backgroundColor: 'transparent', border: '2px dashed #999' }"
+                    :title="t('Transparent')"
+                    @click="form.titleFirstLineStrokeColor = 'transparent'"
+                  >
+                    <span v-if="form.titleFirstLineStrokeColor === 'transparent'" class="check-icon">✓</span>
+                  </button>
+                  <button
+                    v-for="color in colorOptions"
+                    :key="color.value"
+                    class="color-option"
+                    :class="{ active: form.titleFirstLineStrokeColor === color.hex }"
+                    :style="{ backgroundColor: color.hex }"
+                    :title="t(color.label)"
+                    @click="form.titleFirstLineStrokeColor = color.hex"
+                  >
+                    <span v-if="form.titleFirstLineStrokeColor === color.hex" class="check-icon">✓</span>
+                  </button>
+                </div>
+                <div class="custom-color-picker" v-if="form.titleFirstLineStrokeColor !== 'transparent'">
+                  <el-color-picker
+                    v-model="form.titleFirstLineStrokeColor"
+                    show-alpha
+                    class="color-picker"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div class="form-item">
+              <label class="form-label">{{ t('First Line Stroke Width') }}</label>
+              <div class="slider-control">
+                <el-slider
+                  v-model="form.titleFirstLineStrokeWidth"
+                  :min="0"
+                  :max="30"
+                  :step="1"
+                  :show-input="true"
+                  :input-size="'small'"
+                />
+                <span class="slider-value">{{ form.titleFirstLineStrokeWidth }}px</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-item">
             <label class="form-label">{{ t('Background Color') }}</label>
             <div class="color-select-wrapper">
               <div class="color-options">
@@ -329,7 +442,16 @@
                   :style="previewStyle"
                   v-show="!previewImageUrl"
                 >
-                  {{ form.titleText || scriptStore.videoTitle || t('Preview Title') }}
+                  <template v-if="form.titleFirstLineOverride">
+                    <div
+                      v-for="(line, idx) in previewLines"
+                      :key="idx"
+                      :style="idx === 0 ? firstLinePreviewStyle : undefined"
+                    >{{ line }}</div>
+                  </template>
+                  <template v-else>
+                    {{ form.titleText || scriptStore.videoTitle || t('Preview Title') }}
+                  </template>
                 </div>
                 <img 
                   v-if="previewImageUrl" 
@@ -442,8 +564,25 @@ const form = reactive({
   titleBackgroundOverlay: settingsStore.video.title.backgroundOverlay,
   titleOverlayColor: settingsStore.video.title.overlayColor,
   titleStyle: settingsStore.video.title.style,
-  titleAlign: settingsStore.video.title.align || 'center'
+  titleAlign: settingsStore.video.title.align || 'center',
+  titleFirstLineOverride: settingsStore.video.title.firstLineOverride ?? false,
+  titleFirstLineFont: settingsStore.video.title.firstLineFont || settingsStore.video.title.font,
+  titleFirstLineFontSize: settingsStore.video.title.firstLineFontSize ?? settingsStore.video.title.fontSize,
+  titleFirstLineColor: settingsStore.video.title.firstLineColor || settingsStore.video.title.color,
+  titleFirstLineStrokeColor: settingsStore.video.title.firstLineStrokeColor || settingsStore.video.title.strokeColor,
+  titleFirstLineStrokeWidth: settingsStore.video.title.firstLineStrokeWidth ?? settingsStore.video.title.strokeWidth
 });
+
+const onFirstLineOverrideChange = (val: boolean | string | number) => {
+  if (val === true) {
+    // Seed first-line styles from the current whole-title settings
+    form.titleFirstLineFont = form.titleFont;
+    form.titleFirstLineFontSize = form.titleFontSize;
+    form.titleFirstLineColor = form.titleColor;
+    form.titleFirstLineStrokeColor = form.titleStrokeColor;
+    form.titleFirstLineStrokeWidth = form.titleStrokeWidth;
+  }
+};
 
 const loadingConfig = ref(true);
 const previewImageUrl = ref<string | null>(null);
@@ -473,6 +612,12 @@ async function updateTitlePreview() {
       title_align: form.titleAlign,
       title_animation: form.titleAnimation,
       title_animation_duration: form.titleAnimationDuration,
+      title_first_line_override: form.titleFirstLineOverride,
+      title_first_line_font: form.titleFirstLineFont,
+      title_first_line_font_size: form.titleFirstLineFontSize,
+      title_first_line_text_color: form.titleFirstLineColor,
+      title_first_line_stroke_color: form.titleFirstLineStrokeColor,
+      title_first_line_stroke_width: form.titleFirstLineStrokeWidth,
       video_aspect: aspect,
     });
     if (reqId !== previewRequestId) return; // stale response
@@ -617,6 +762,38 @@ const previewStyle = computed(() => {
     whiteSpace: 'pre-wrap' as const,
     maxWidth: `${maxWidthPercent}%`,
     wordBreak: 'break-word' as const
+  };
+});
+
+const previewLines = computed(() => {
+  const text = form.titleText || scriptStore.videoTitle || t('Preview Title');
+  return text.split('\n');
+});
+
+const firstLinePreviewStyle = computed(() => {
+  const previewHeight = parseInt(previewFrameStyle.value.height);
+  const aspect = settingsStore.video.aspect;
+  const isPillarbox = aspect === 'portrait_3_4';
+  const contentRatio = isPillarbox ? (1440 / 1920) : 1.0;
+  const contentHeight = previewHeight * contentRatio;
+  const scaleFactor = contentHeight / 1080;
+  const scaledFontSize = Math.round(form.titleFirstLineFontSize * scaleFactor);
+
+  const mappedFont = fontNameMapping[form.titleFirstLineFont] || form.titleFirstLineFont;
+  let fontFamilyValue = mappedFont;
+  if (mappedFont.includes('YaHei')) {
+    fontFamilyValue = `${mappedFont}, "Microsoft YaHei", "PingFang SC", sans-serif`;
+  } else if (mappedFont.includes('Heiti')) {
+    fontFamilyValue = `${mappedFont}, "STHeiti", "SimHei", sans-serif`;
+  } else {
+    fontFamilyValue = `${mappedFont}, sans-serif`;
+  }
+
+  return {
+    fontFamily: `${fontFamilyValue} !important`,
+    color: form.titleFirstLineColor,
+    fontSize: `${scaledFontSize}px`,
+    lineHeight: '1'
   };
 });
 
@@ -813,6 +990,24 @@ const loadConfig = async () => {
         if (cfg.title.title_align !== undefined) {
           form.titleAlign = cfg.title.title_align;
         }
+        if (typeof cfg.title.title_first_line_override === 'boolean') {
+          form.titleFirstLineOverride = cfg.title.title_first_line_override;
+        }
+        if (cfg.title.title_first_line_font !== undefined) {
+          form.titleFirstLineFont = cfg.title.title_first_line_font;
+        }
+        if (cfg.title.title_first_line_font_size !== undefined) {
+          form.titleFirstLineFontSize = cfg.title.title_first_line_font_size;
+        }
+        if (cfg.title.title_first_line_text_color !== undefined) {
+          form.titleFirstLineColor = cfg.title.title_first_line_text_color;
+        }
+        if (cfg.title.title_first_line_stroke_color !== undefined) {
+          form.titleFirstLineStrokeColor = cfg.title.title_first_line_stroke_color;
+        }
+        if (cfg.title.title_first_line_stroke_width !== undefined) {
+          form.titleFirstLineStrokeWidth = cfg.title.title_first_line_stroke_width;
+        }
 
         // Batch sync store + localStorage without triggering backend
         Object.assign(settingsStore.video.title, {
@@ -835,6 +1030,12 @@ const loadConfig = async () => {
           overlayColor: form.titleOverlayColor,
           style: form.titleStyle,
           align: form.titleAlign,
+          firstLineOverride: form.titleFirstLineOverride,
+          firstLineFont: form.titleFirstLineFont,
+          firstLineFontSize: form.titleFirstLineFontSize,
+          firstLineColor: form.titleFirstLineColor,
+          firstLineStrokeColor: form.titleFirstLineStrokeColor,
+          firstLineStrokeWidth: form.titleFirstLineStrokeWidth,
         });
         settingsStore.saveToLocalStorage();
       }
@@ -867,7 +1068,13 @@ const saveConfig = async () => {
       title_background_overlay: form.titleBackgroundOverlay,
       title_overlay_color: form.titleOverlayColor,
       title_style: form.titleStyle,
-      title_align: form.titleAlign
+      title_align: form.titleAlign,
+      title_first_line_override: form.titleFirstLineOverride,
+      title_first_line_font: form.titleFirstLineFont,
+      title_first_line_font_size: form.titleFirstLineFontSize,
+      title_first_line_text_color: form.titleFirstLineColor,
+      title_first_line_stroke_color: form.titleFirstLineStrokeColor,
+      title_first_line_stroke_width: form.titleFirstLineStrokeWidth
     }
   };
   console.log('[TitleSettings] Attempting to save config:', cfg);
@@ -909,6 +1116,12 @@ const updateTitleSettings = async () => {
   title.overlayColor = form.titleOverlayColor;
   title.style = form.titleStyle;
   title.align = form.titleAlign;
+  title.firstLineOverride = form.titleFirstLineOverride;
+  title.firstLineFont = form.titleFirstLineFont;
+  title.firstLineFontSize = form.titleFirstLineFontSize;
+  title.firstLineColor = form.titleFirstLineColor;
+  title.firstLineStrokeColor = form.titleFirstLineStrokeColor;
+  title.firstLineStrokeWidth = form.titleFirstLineStrokeWidth;
   settingsStore.saveToLocalStorage();
   await settingsStore.saveTitleToBackend();
 };
@@ -932,7 +1145,13 @@ watch([
   () => form.titleBackgroundOverlay,
   () => form.titleOverlayColor,
   () => form.titleStyle,
-  () => form.titleAlign
+  () => form.titleAlign,
+  () => form.titleFirstLineOverride,
+  () => form.titleFirstLineFont,
+  () => form.titleFirstLineFontSize,
+  () => form.titleFirstLineColor,
+  () => form.titleFirstLineStrokeColor,
+  () => form.titleFirstLineStrokeWidth
 ], async () => {
   if (loadingConfig.value) return;
   try {
@@ -960,6 +1179,12 @@ watch([
     form.titleOverlayColor = title.overlayColor;
     form.titleStyle = title.style;
     form.titleAlign = title.align || 'center';
+    form.titleFirstLineOverride = title.firstLineOverride ?? false;
+    form.titleFirstLineFont = title.firstLineFont || title.font;
+    form.titleFirstLineFontSize = title.firstLineFontSize ?? title.fontSize;
+    form.titleFirstLineColor = title.firstLineColor || title.color;
+    form.titleFirstLineStrokeColor = title.firstLineStrokeColor || title.strokeColor;
+    form.titleFirstLineStrokeWidth = title.firstLineStrokeWidth ?? title.strokeWidth;
   }
 });
 
@@ -1087,6 +1312,17 @@ defineExpose({
 .title-content {
   padding-top: 16px;
   border-top: 1px dashed #e4e7ed;
+}
+
+.first-line-section {
+  padding: 12px 12px 4px 12px;
+  margin-bottom: 4px;
+  border: 1px dashed #e4e7ed;
+  border-radius: 6px;
+  background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .slider-control {

@@ -370,6 +370,12 @@ def execute_split(
         "title_overlay_color": "rgba(0,0,0,0.5)",
         "title_margin_left": 0.05,
         "title_margin_right": 0.05,
+        "title_first_line_override": False,
+        "title_first_line_font": "MicrosoftYaHeiBold.ttc",
+        "title_first_line_font_size": 72,
+        "title_first_line_text_color": "#FFFFFF",
+        "title_first_line_stroke_color": "#000000",
+        "title_first_line_stroke_width": 2.0,
     }
     for key in effective_title:
         if title_params and key in title_params and title_params[key] is not None:
@@ -491,6 +497,12 @@ def execute_split(
                 title_overlay_color=effective_title.get("title_overlay_color", "rgba(0,0,0,0.5)"),
                 title_margin_left=effective_title.get("title_margin_left", 0.05),
                 title_margin_right=effective_title.get("title_margin_right", 0.05),
+                title_first_line_override=effective_title.get("title_first_line_override", False),
+                title_first_line_font=effective_title.get("title_first_line_font", "MicrosoftYaHeiBold.ttc"),
+                title_first_line_font_size=effective_title.get("title_first_line_font_size", 72),
+                title_first_line_text_color=effective_title.get("title_first_line_text_color", "#FFFFFF"),
+                title_first_line_stroke_color=effective_title.get("title_first_line_stroke_color", "#000000"),
+                title_first_line_stroke_width=effective_title.get("title_first_line_stroke_width", 2.0),
             )
 
             scene_results = [{"combined_video_path": vp} for vp in video_paths]

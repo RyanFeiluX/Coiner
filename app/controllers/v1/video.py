@@ -772,6 +772,12 @@ def preview_title(request: Request, body: dict):
     params.title_align = body.get('title_align', 'center')
     params.title_animation = body.get('title_animation', 'none')
     params.title_animation_duration = body.get('title_animation_duration', 0.5)
+    params.title_first_line_override = body.get('title_first_line_override', False)
+    params.title_first_line_font = body.get('title_first_line_font', 'MicrosoftYaHeiBold.ttc')
+    params.title_first_line_font_size = body.get('title_first_line_font_size', 72)
+    params.title_first_line_text_color = body.get('title_first_line_text_color', '#FFFFFF')
+    params.title_first_line_stroke_color = body.get('title_first_line_stroke_color', '#000000')
+    params.title_first_line_stroke_width = body.get('title_first_line_stroke_width', 2.0)
     
     logger.info(f"Title preview request - text: '{params.title_text}', font: '{params.title_font_name}'")
     

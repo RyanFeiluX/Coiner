@@ -45,6 +45,8 @@ _TITLE_KEYS = {
     "title_animation", "title_animation_duration",
     "title_background_overlay", "title_overlay_color",
     "title_style", "title_align",
+    "title_first_line_override", "title_first_line_font", "title_first_line_font_size",
+    "title_first_line_text_color", "title_first_line_stroke_color", "title_first_line_stroke_width",
 }
 
 # Keys that belong to [video] — used for migrating from legacy [app] location
