@@ -188,29 +188,38 @@
               </div>
               
               <div class="form-item">
-                <label class="form-label" v-html="parseLabelMarkdown(t('Intro Video'))"></label>
                 <div class="intro-video-section">
-                  <div class="intro-video-info" v-if="scene.introVideo">
-                    <div class="intro-video-path">
-                      <span class="intro-video-file">{{ getIntroVideoDisplayName(scene.introVideo) }}</span>
-                      <el-button size="small" @click="clearIntroVideo(index)">{{ t('Clear') }}</el-button>
-                    </div>
-                    <div class="intro-video-duration">
+                  <template v-if="scene.introVideo">
+                    <div class="intro-video-controls">
+                      <label class="form-label intro-video-label-inline" v-html="parseLabelMarkdown(t('Intro Video'))"></label>
+                      <template v-if="!isImageIntro(scene.introVideoOriginalPath)">
+                        <span class="control-label">{{ t('Start Offset') }}</span>
+                        <el-tooltip :content="introOffsetTooltip(scene)" :disabled="!scene.introVideoSourceDuration" placement="top">
+                          <el-input
+                            :model-value="getIntroOffset(scene)"
+                            @update:model-value="(v: any) => setIntroOffset(scene, v)"
+                            type="number"
+                            :min="0"
+                            :step="0.5"
+                            :placeholder="t('Start Offset')"
+                            class="duration-input"
+                            :class="{ 'offset-input-error': introOffsetInvalid(scene) }"
+                          />
+                        </el-tooltip>
+                        <span class="duration-unit">{{ t('s') }}</span>
+                      </template>
                       <el-icon class="video-icon"><VideoCamera /></el-icon>
                       <el-input v-model.number="scene.introVideoDuration" type="number" :placeholder="t('Duration')" class="duration-input" :disabled="scene.introVideoCoverFull" />
                       <span class="duration-unit">{{ t('s') }}</span>
                       <el-switch v-model="scene.introVideoCoverFull" :active-text="t('Cover Full Scene')" class="cover-full-switch" />
                     </div>
-                    <div class="intro-video-offset" v-if="!isImageIntro(scene.introVideoOriginalPath)">
-                      <el-icon class="video-icon"><VideoCamera /></el-icon>
-                      <span class="offset-label">{{ t('Start Offset') }}</span>
-                      <el-input :model-value="getIntroOffset(scene)" @update:model-value="(v: any) => setIntroOffset(scene, v)" type="number" :min="0" :step="0.5" :placeholder="t('Start Offset')" class="duration-input" />
-                      <span class="duration-unit">{{ t('s') }}</span>
-                      <span v-if="introOffsetInvalid(scene)" class="offset-error">{{ t('Offset exceeds source length') }}</span>
-                      <span v-else-if="scene.introVideoSourceDuration" class="offset-hint">{{ t('Available') }} {{ introAvailableSeconds(scene) }}s</span>
+                    <div class="intro-video-path">
+                      <span class="intro-video-file">{{ getIntroVideoDisplayName(scene.introVideo) }}</span>
+                      <el-button size="small" @click="clearIntroVideo(index)">{{ t('Clear') }}</el-button>
                     </div>
-                  </div>
+                  </template>
                   <div class="intro-video-placeholder" v-else>
+                    <label class="form-label intro-video-label-inline" v-html="parseLabelMarkdown(t('Intro Video'))"></label>
                     <span>{{ t('Not set') }}</span>
                     <el-button size="small" @click="triggerIntroVideoImport(index)">{{ t('Import Intro Video') }}</el-button>
                   </div>
@@ -964,6 +973,12 @@ const introAvailableSeconds = (scene: Scene) => {
   return Math.max(0, Math.round((source - getIntroOffset(scene)) * 10) / 10);
 };
 
+// Tooltip content for the start offset input
+const introOffsetTooltip = (scene: Scene): string =>
+  introOffsetInvalid(scene)
+    ? t('Offset exceeds source length')
+    : `${t('Available')} ${introAvailableSeconds(scene)}s`;
+
 // Get display name for intro video (show only filename, not full path)
 const getIntroVideoDisplayName = (fullPath: string): string => {
   if (!fullPath) return '';
@@ -1548,13 +1563,7 @@ defineExpose({
 .intro-video-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-
-.intro-video-info {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
 .intro-video-path {
@@ -1582,10 +1591,22 @@ defineExpose({
   color: #909399;
 }
 
-.intro-video-duration {
+.intro-video-controls {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+}
+
+.intro-video-label-inline {
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+.control-label {
+  font-size: 13px;
+  color: #606266;
+  white-space: nowrap;
 }
 
 .video-icon {
@@ -1594,7 +1615,7 @@ defineExpose({
 }
 
 .duration-input {
-  width: 80px;
+  width: 70px;
 }
 
 .duration-unit {
@@ -1606,25 +1627,8 @@ defineExpose({
   margin-left: auto;
 }
 
-.intro-video-offset {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.offset-label {
-  font-size: 14px;
-  color: #606266;
-}
-
-.offset-hint {
-  font-size: 12px;
-  color: #909399;
-}
-
-.offset-error {
-  font-size: 12px;
-  color: #f56c6c;
+.offset-input-error :deep(.el-input__wrapper) {
+  box-shadow: 0 0 0 1px var(--el-color-danger) inset;
 }
 
 
