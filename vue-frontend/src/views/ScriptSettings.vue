@@ -167,9 +167,9 @@
             </div>
             
             <div class="scene-content">
-              <div class="form-item">
+              <div class="form-item form-item-inline">
                 <label class="form-label" v-html="parseLabelMarkdown(t('Duration (seconds)'))"></label>
-                <el-input v-model.number="scene.duration" type="number" :placeholder="t('Enter duration')" class="form-input" />
+                <el-input v-model.number="scene.duration" type="number" :placeholder="t('Enter duration')" class="scene-duration-input" />
               </div>
               
               <div class="form-item">
@@ -1268,8 +1268,6 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 0;
-  margin: 0;
-  padding: 0;
 }
 
 .form-item-textarea {
@@ -1281,14 +1279,13 @@ defineExpose({
 
 .form-label {
   font-size: 14px;
-  margin-bottom: 2px;
-  margin-top: 0;
-  padding: 0;
+  margin-bottom: 4px;
 }
 
 .form-input {
   width: 100%;
   margin-top: 0;
+  gap: 0px;
 }
 
 .form-input :deep(.el-input) {
@@ -1409,7 +1406,6 @@ defineExpose({
 .form-label {
   font-size: 14px;
   margin-bottom: 2px;
-  margin-top: 0;
   padding: 0;
 }
 
@@ -1483,9 +1479,7 @@ defineExpose({
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 8px;
 }
 
 .scene-title {
@@ -1504,9 +1498,8 @@ defineExpose({
   display: flex;
   gap: 12px;
   align-items: center;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid #e0e0e0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .locallens-toggle {
@@ -1542,28 +1535,46 @@ defineExpose({
 .scene-content {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 4px;
+  margin-top: 2px;
+  margin-bottom: 2px;
 }
 
 .scene-content .form-item {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  margin: 0;
-  padding: 0;
+  margin-bottom: 2px;
+  gap: 0px;
 }
 
 .scene-content .form-label {
   font-size: 14px;
   margin-bottom: 2px;
-  margin-top: 0;
-  padding: 0;
+  margin-top: 2px;
+  gap: 0px;
+}
+
+.scene-content .form-item.form-item-inline {
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 2px;
+  gap: 0px;
+}
+
+.scene-content .form-item-inline .form-label {
+  margin-bottom: 0;
+  margin-right: 2px;
+  gap: 0px;
+}
+
+.scene-duration-input {
+  width: 70px;
 }
 
 .intro-video-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .intro-video-path {

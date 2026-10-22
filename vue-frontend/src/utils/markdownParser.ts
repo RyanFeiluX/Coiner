@@ -127,7 +127,7 @@ export class MarkdownParser {
 export function parseLabelMarkdown(text: string): string {
   // 移除括号中的内容，只保留标签本身
   const labelText = text.replace(/\([^)]*\)/g, '').trim();
-  return MarkdownParser.parse(labelText);
+  return MarkdownParser.parse(labelText).trim().replace(/^<p>([\s\S]*)<\/p>$/, '$1');
 }
 
 /**
