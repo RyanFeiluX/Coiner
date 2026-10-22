@@ -710,7 +710,6 @@ defineExpose({
 
 .form-input {
   width: 100%;
-  padding: 6px 8px;
   border-radius: 4px;
   box-sizing: border-box;
 }
@@ -721,7 +720,6 @@ defineExpose({
 
 .form-select {
   width: 100%;
-  padding: 6px 8px;
   border-radius: 4px;
   box-sizing: border-box;
 }
