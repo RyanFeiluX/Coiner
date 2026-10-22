@@ -200,6 +200,7 @@ const generateVideo = async () => {
       intro_video_original_path: scene.introVideoOriginalPath || scene.intro_video_original_path,
       intro_duration: scene.introVideoDuration || scene.intro_duration || 10,
       intro_video_cover_full: scene.introVideoCoverFull || false,
+      intro_start_offset: scene.introVideoStartOffset || scene.intro_start_offset || 0,
       use_locallens: scene.useLocallens || scene.use_locallens || false,
       keyword_language: scene.keywordLanguage || scene.keyword_language || null,
       region_restriction: scene.regionRestriction || scene.region_restriction || null,

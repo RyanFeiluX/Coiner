@@ -201,6 +201,14 @@
                       <span class="duration-unit">{{ t('s') }}</span>
                       <el-switch v-model="scene.introVideoCoverFull" :active-text="t('Cover Full Scene')" class="cover-full-switch" />
                     </div>
+                    <div class="intro-video-offset" v-if="!isImageIntro(scene.introVideoOriginalPath)">
+                      <el-icon class="video-icon"><VideoCamera /></el-icon>
+                      <span class="offset-label">{{ t('Start Offset') }}</span>
+                      <el-input :model-value="getIntroOffset(scene)" @update:model-value="(v: any) => setIntroOffset(scene, v)" type="number" :min="0" :step="0.5" :placeholder="t('Start Offset')" class="duration-input" />
+                      <span class="duration-unit">{{ t('s') }}</span>
+                      <span v-if="introOffsetInvalid(scene)" class="offset-error">{{ t('Offset exceeds source length') }}</span>
+                      <span v-else-if="scene.introVideoSourceDuration" class="offset-hint">{{ t('Available') }} {{ introAvailableSeconds(scene) }}s</span>
+                    </div>
                   </div>
                   <div class="intro-video-placeholder" v-else>
                     <span>{{ t('Not set') }}</span>
@@ -453,6 +461,8 @@ interface Scene {
   introVideoOriginalPath?: string;
   introVideoDuration?: number;
   introVideoCoverFull?: boolean;
+  introVideoStartOffset?: number;
+  introVideoSourceDuration?: number;
   useLocallens?: boolean;
   keywordLanguage?: 'bilingual' | 'chinese_only';
   regionRestriction?: 'global' | 'china';
@@ -469,6 +479,8 @@ const addNewScene = () => {
     introVideo: undefined,
     introVideoDuration: 10,
     introVideoCoverFull: false,
+    introVideoStartOffset: 0,
+    introVideoSourceDuration: undefined,
     useLocallens: false,
     keywordLanguage: undefined,
     regionRestriction: undefined,
@@ -493,6 +505,8 @@ const copyScene = (index: number) => {
     introVideoOriginalPath: sceneToCopy.introVideoOriginalPath,
     introVideoDuration: sceneToCopy.introVideoDuration,
     introVideoCoverFull: sceneToCopy.introVideoCoverFull,
+    introVideoStartOffset: sceneToCopy.introVideoStartOffset ?? 0,
+    introVideoSourceDuration: sceneToCopy.introVideoSourceDuration,
     useLocallens: sceneToCopy.useLocallens,
     keywordLanguage: sceneToCopy.keywordLanguage,
     regionRestriction: sceneToCopy.regionRestriction,
@@ -620,6 +634,8 @@ const exportScenes = async () => {
       intro_video: scene.introVideo,
       intro_video_original_path: scene.introVideoOriginalPath,
       intro_duration: scene.introVideoDuration,
+      intro_start_offset: scene.introVideoStartOffset || 0,
+      intro_source_duration: scene.introVideoSourceDuration,
       keyword_language: scene.keywordLanguage,
       region_restriction: scene.regionRestriction,
     }))
@@ -735,16 +751,23 @@ const importScenes = (event: Event) => {
           let introVideo = scene.introVideo || scene.intro_video;
           let introVideoOriginalPath = scene.introVideoOriginalPath || scene.intro_video_original_path;
           let introVideoDuration = scene.introVideoDuration || scene.intro_duration || 10;
+          let introVideoStartOffset = Number(scene.introVideoStartOffset ?? scene.intro_start_offset ?? 0);
+          if (!Number.isFinite(introVideoStartOffset) || introVideoStartOffset < 0) introVideoStartOffset = 0;
+          let introVideoSourceDuration = Number(scene.introVideoSourceDuration ?? scene.intro_source_duration ?? 0) || undefined;
           
           if (introVideo && typeof introVideo === 'string') {
             introVideo = introVideo.trim();
             if (!introVideo || introVideo.length === 0) {
               introVideo = undefined;
               introVideoDuration = 10;
+              introVideoStartOffset = 0;
+              introVideoSourceDuration = undefined;
             }
           } else {
             introVideo = undefined;
             introVideoDuration = 10;
+            introVideoStartOffset = 0;
+            introVideoSourceDuration = undefined;
           }
           
           if (!introVideo && introVideoOriginalPath) {
@@ -764,6 +787,8 @@ const importScenes = (event: Event) => {
             introVideo,
             introVideoOriginalPath,
             introVideoDuration,
+            introVideoStartOffset,
+            introVideoSourceDuration,
             keywordLanguage: scene.keyword_language || scene.keywordLanguage,
             regionRestriction: scene.region_restriction || scene.regionRestriction,
           };
@@ -873,17 +898,23 @@ const importIntroVideo = async (event: Event, index: number) => {
     
     if (response.data.status === 200 && response.data.data?.file) {
       const fullPath = response.data.data.file;
-      const isVideo = !file.name.match(/\.(jpg|jpeg|png|bmp|webp)$/i);
+      const isVideo = !file.name.match(/\.(jpg|jpeg|png|bmp)$/i);
       let duration = scenes.value[index].introVideoDuration || 10;
+      let sourceDuration: number | undefined = undefined;
       if (isVideo) {
         const actual = await getMediaDuration(file);
-        if (actual !== null) duration = Math.round(actual * 10) / 10;
+        if (actual !== null) {
+          duration = Math.round(actual * 10) / 10;
+          sourceDuration = duration;
+        }
       }
       const updatedScene = { 
         ...scenes.value[index], 
         introVideo: fullPath,
         introVideoOriginalPath: file.name,
-        introVideoDuration: duration
+        introVideoDuration: duration,
+        introVideoStartOffset: 0,
+        introVideoSourceDuration: sourceDuration
       };
       scriptStore.updateScene(index, updatedScene);
       ElMessage.success('Intro video uploaded successfully');
@@ -901,9 +932,36 @@ const importIntroVideo = async (event: Event, index: number) => {
 
 // Clear intro video
 const clearIntroVideo = (index: number) => {
-  const updatedScene = { ...scenes.value[index], introVideo: undefined, introVideoOriginalPath: undefined, introVideoDuration: 10 };
+  const updatedScene = { ...scenes.value[index], introVideo: undefined, introVideoOriginalPath: undefined, introVideoDuration: 10, introVideoStartOffset: 0, introVideoSourceDuration: undefined };
   scriptStore.updateScene(index, updatedScene);
   ElMessage.success('Intro video cleared');
+};
+
+// Whether the intro asset is a static image (start offset does not apply)
+const isImageIntro = (originalPath?: string) => !!originalPath && /\.(jpg|jpeg|png|bmp)$/i.test(originalPath);
+
+// Normalize the start offset of a scene to a safe number
+const getIntroOffset = (scene: Scene): number => {
+  const value = Number(scene.introVideoStartOffset);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+};
+
+// Keep the stored offset a non-negative number; empty/invalid input falls back to 0
+const setIntroOffset = (scene: Scene, value: any) => {
+  const num = Number(value);
+  scene.introVideoStartOffset = Number.isFinite(num) && num > 0 ? num : 0;
+};
+
+// True when the configured offset falls outside the source clip
+const introOffsetInvalid = (scene: Scene) => {
+  const source = scene.introVideoSourceDuration;
+  return !!source && getIntroOffset(scene) >= source;
+};
+
+// Seconds still usable after the offset is applied
+const introAvailableSeconds = (scene: Scene) => {
+  const source = scene.introVideoSourceDuration || 0;
+  return Math.max(0, Math.round((source - getIntroOffset(scene)) * 10) / 10);
 };
 
 // Get display name for intro video (show only filename, not full path)
@@ -1546,6 +1604,27 @@ defineExpose({
 
 .cover-full-switch {
   margin-left: auto;
+}
+
+.intro-video-offset {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.offset-label {
+  font-size: 14px;
+  color: #606266;
+}
+
+.offset-hint {
+  font-size: 12px;
+  color: #909399;
+}
+
+.offset-error {
+  font-size: 12px;
+  color: #f56c6c;
 }
 
 

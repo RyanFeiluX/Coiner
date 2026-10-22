@@ -11,6 +11,8 @@ interface Scene {
   introVideoOriginalPath?: string;
   introVideoDuration?: number;
   introVideoCoverFull?: boolean;
+  introVideoStartOffset?: number;
+  introVideoSourceDuration?: number;
   useLocallens?: boolean;
   keywordLanguage?: 'bilingual' | 'chinese_only';
   regionRestriction?: 'global' | 'china';

@@ -101,6 +101,8 @@ export interface Scene {
   introVideoOriginalPath?: string;
   introVideoDuration?: number;
   introVideoCoverFull?: boolean;
+  introVideoStartOffset?: number;
+  introVideoSourceDuration?: number;
 }
 
 export interface ParseScriptResponse {

@@ -528,6 +528,21 @@ def combine_early_scenes(
     return processed_clips
 
 
+def _clamp_intro_offset(offset, clip_duration: float) -> float:
+    try:
+        offset = float(offset or 0)
+    except (TypeError, ValueError):
+        offset = 0.0
+    if offset < 0:
+        logger.warning(f"intro_start_offset {offset} is negative, clamping to 0")
+        offset = 0.0
+    max_start = max(0.0, float(clip_duration or 0) - 0.5)
+    if offset > max_start:
+        logger.warning(f"intro_start_offset {offset:.2f}s exceeds usable range, clamping to {max_start:.2f}s")
+        offset = max_start
+    return offset
+
+
 def build_scene_video(
     combined_video_path: str,
     video_paths: List[str],
@@ -542,6 +557,7 @@ def build_scene_video(
     intro_video_path: str = None,
     intro_duration: int = 10,
     intro_video_cover_full: bool = False,
+    intro_start_offset: float = 0.0,
 ) -> str:
     # Ensure video_aspect is a valid VideoAspect enum
     if video_aspect is None:
@@ -709,9 +725,15 @@ def build_scene_video(
                     clip_duration = clip.duration
                     clip_w, clip_h = clip.size
                     
-                    if not intro_video_cover_full and clip_duration > intro_duration:
-                        clip = clip.subclip(0, intro_duration)
-                        clip_duration = intro_duration
+                    start_time = _clamp_intro_offset(intro_start_offset, clip_duration)
+                    if intro_video_cover_full:
+                        if start_time > 0:
+                            clip = clip.subclipped(start_time, clip_duration)
+                    elif clip_duration - start_time > intro_duration:
+                        clip = clip.subclipped(start_time, start_time + intro_duration)
+                    elif start_time > 0:
+                        clip = clip.subclipped(start_time, clip_duration)
+                    clip_duration = clip.duration
                     
                     aspect = VideoAspect(video_aspect)
                     video_width, video_height = aspect.to_resolution()
@@ -745,7 +767,7 @@ def build_scene_video(
                     clip_w, clip_h = clip.size
                     close_clip(clip)
                     
-                    start_time = 0
+                    start_time = _clamp_intro_offset(intro_start_offset, clip_duration)
                     if intro_video_cover_full:
                         end_time = clip_duration
                     else:

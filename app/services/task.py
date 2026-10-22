@@ -631,6 +631,19 @@ def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_
     intro_dur = scene.get("intro_duration", 10)
     intro_cover_full = scene.get("intro_video_cover_full", False)
     intro_exists = bool(intro_video_path and os.path.exists(intro_video_path))
+    try:
+        intro_start_offset = max(0.0, float(scene.get("intro_start_offset", 0) or 0))
+    except (TypeError, ValueError):
+        intro_start_offset = 0.0
+    if intro_exists and not intro_cover_full and intro_start_offset > 0:
+        # Effective intro length shrinks when a start offset is applied
+        # (mirrors build_scene_video clamping) so download estimates stay accurate.
+        intro_params = video.analyze_video_params(intro_video_path)
+        source_len = (intro_params or {}).get("duration") or 0
+        if source_len > 0:
+            offset = min(intro_start_offset, max(0.0, source_len - 0.5))
+            intro_dur = min(float(intro_dur), max(0.0, source_len - offset))
+            logger.info(f"scene {scene_num}: intro start offset {intro_start_offset:.2f}s -> effective intro duration {intro_dur:.2f}s (source {source_len:.2f}s)")
     intro_sufficient = intro_exists and (intro_cover_full or intro_dur >= audio_duration)
 
     # Add online videos as supplement if needed
@@ -774,7 +787,8 @@ def process_scene(task_id, params, scene, scene_index, total_scenes, used_local_
         local_video_paths=local_video_paths,
         intro_video_path=actual_intro_video if actual_intro_video and os.path.exists(actual_intro_video) else None,
         intro_duration=scene.get("intro_duration", 10),
-        intro_video_cover_full=scene.get("intro_video_cover_full", False))
+        intro_video_cover_full=scene.get("intro_video_cover_full", False),
+        intro_start_offset=scene.get("intro_start_offset", 0))
     
     # build_result is the combined_video_path, used_local_paths contains actual used local material paths
     result = build_result

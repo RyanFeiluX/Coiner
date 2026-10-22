@@ -451,6 +451,7 @@ const startIntegration = async () => {
             intro_video_original_path: storeScene.introVideoOriginalPath || '',
             intro_duration: storeScene.introVideoDuration || 10,
             intro_video_cover_full: storeScene.introVideoCoverFull || false,
+            intro_start_offset: storeScene.introVideoStartOffset || 0,
           },
           search_terms: (storeScene.keywords || '')
             .split(',')
